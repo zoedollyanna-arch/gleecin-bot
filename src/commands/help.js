@@ -11,7 +11,8 @@ export default {
         '**/ping** — bot status',
         '**/help** — this menu',
         '**/ticket** — open a private support ticket',
-        '**/welcome** — manage welcome system (admin only)'
+        '**/welcome** — manage welcome system (admin only)',
+        '**/channels** — manage channel behaviors (admin only)'
       ].join('\n'))
       .setTimestamp();
 
