@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { REST, Routes } from 'discord.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const { DISCORD_TOKEN, CLIENT_ID, GUILD_ID } = process.env;
 
@@ -18,7 +18,8 @@ const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
 
 for (const file of commandFiles) {
-  const { default: command } = await import(path.join(commandsPath, file));
+  const filePath = path.join(commandsPath, file);
+  const { default: command } = await import(pathToFileURL(filePath));
   commands.push(command.data.toJSON());
 }
 

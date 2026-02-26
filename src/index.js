@@ -3,7 +3,7 @@ import express from 'express';
 import { Client, Collection, GatewayIntentBits, Events, EmbedBuilder } from 'discord.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const {
   DISCORD_TOKEN,
@@ -29,7 +29,7 @@ const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))
 
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
-  const commandModule = await import(filePath);
+  const commandModule = await import(pathToFileURL(filePath));
   const command = commandModule.default;
 
   if (!command?.data?.name || typeof command.execute !== 'function') {
