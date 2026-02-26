@@ -15,7 +15,10 @@ if (!DISCORD_TOKEN) throw new Error('Missing DISCORD_TOKEN');
 
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.MessageContent
   ]
 });
 
@@ -37,6 +40,22 @@ for (const file of commandFiles) {
     continue;
   }
   client.commands.set(command.data.name, command);
+}
+
+// ---- Event loader ----
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'));
+
+for (const file of eventFiles) {
+  const filePath = path.join(eventsPath, file);
+  const eventModule = await import(pathToFileURL(filePath));
+  const event = eventModule.default;
+
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args, client));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args, client));
+  }
 }
 
 // ---- Tiny web server (helps Render treat it as a web service) ----

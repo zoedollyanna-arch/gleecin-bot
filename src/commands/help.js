@@ -10,7 +10,8 @@ export default {
       .setDescription([
         '**/ping** — bot status',
         '**/help** — this menu',
-        '**/ticket** — open a private support ticket'
+        '**/ticket** — open a private support ticket',
+        '**/welcome** — manage welcome system (admin only)'
       ].join('\n'))
       .setTimestamp();
 
