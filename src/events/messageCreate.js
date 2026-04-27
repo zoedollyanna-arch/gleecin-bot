@@ -11,6 +11,7 @@ export default {
     const galleryChannelId = process.env.GALLERY_CHANNEL_ID;
     const reviewsChannelId = process.env.REVIEWS_CHANNEL_ID;
     const supportChannelId = process.env.SUPPORT_CHANNEL_ID;
+    const debugSupportChannelId = process.env.DEBUG_SUPPORT_CHANNEL_ID;
     const clientRoleId = process.env.CLIENT_ROLE_ID;
 
     // #general-chat - Auto filter and pricing responses
@@ -32,6 +33,19 @@ export default {
     if (channelId === supportChannelId) {
       await handleSupport(message, client);
     }
+
+    // #debug-support - Auto responses for error reports
+    if (channelId === debugSupportChannelId) {
+      await handleDebugSupport(message, client);
+    }
+
+    // Check for debug/error keywords in any message
+    if (message.content.toLowerCase().includes('error:') || 
+        message.content.toLowerCase().includes('failed:') ||
+        message.content.includes('TypeError') ||
+        message.content.includes('ReferenceError')) {
+      await handleErrorDetection(message, client);
+    }
   }
 };
 
@@ -46,7 +60,7 @@ async function handleGeneralChat(message, client) {
     const pricingEmbed = new EmbedBuilder()
       .setTitle('💰 GLEECIN Pricing Information')
       .setDescription('Our pricing varies by service and scope. For detailed pricing information:\n\n📋 **Check our website** for current packages\n💬 **Contact our team** for custom quotes\n🎫 **Open a support ticket** for specific inquiries')
-      .setColor('#gold')
+      .setColor('#ffd700')
       .addFields(
         { name: '🚀 Quick Quote', value: 'Use `/ticket` to get a personalized quote for your project.' },
         { name: '📧 Business Inquiries', value: 'DM our team or use the contact form on our website.' }
@@ -94,11 +108,11 @@ async function handleReviews(message, client) {
   await message.react('👑');
 
   // Check if user has Client role
-  if (message.member.roles.cache.has(clientRoleId)) {
+  if (message.member?.roles.cache.has(clientRoleId)) {
     const verifiedEmbed = new EmbedBuilder()
       .setTitle('⭐ Verified Client Review')
       .setDescription('Thank you for trusting GLEECIN!')
-      .setColor('#gold')
+      .setColor('#ffd700')
       .setFooter({ text: 'Verified Client' });
 
     await message.reply({ embeds: [verifiedEmbed] });
@@ -113,7 +127,7 @@ async function handleSupport(message, client) {
   ];
   
   // Only send if it's not a reply and not from staff
-  if (!message.reference && !message.member.permissions.has('ManageMessages')) {
+  if (!message.reference && !message.member?.permissions.has('ManageMessages')) {
     const guidanceEmbed = new EmbedBuilder()
       .setTitle('💡 Need Help?')
       .setDescription(`${supportMessages.join('\n\n')}`)
@@ -125,5 +139,37 @@ async function handleSupport(message, client) {
       .setTimestamp();
 
     await message.reply({ embeds: [guidanceEmbed] });
+  }
+}
+
+async function handleDebugSupport(message, client) {
+  // Auto acknowledgment for debug channel posts
+  if (!message.author.bot && message.content.length > 20) {
+    // Add thinking emoji to acknowledge the issue
+    await message.react('🤔').catch(() => {});
+  }
+}
+
+async function handleErrorDetection(message, client) {
+  // If someone mentions an error in any channel, suggest debug command
+  const debugEmbed = new EmbedBuilder()
+    .setTitle('🐛 Debug Support Available')
+    .setDescription('We detected an error in your message!')
+    .setColor('#ff6b6b')
+    .addFields(
+      {
+        name: '💡 Quick Solution',
+        value: 'Use `/debug` command to create a dedicated channel for debugging help'
+      },
+      {
+        name: '📋 What to Include',
+        value: '• Full error message\n• Your code snippet\n• What you expected to happen\n• What actually happened'
+      }
+    )
+    .setTimestamp();
+
+  // Only send if not already in a debug channel
+  if (!message.channel.name?.includes('debug')) {
+    await message.reply({ embeds: [debugEmbed], allowedMentions: { repliedUser: false } }).catch(() => {});
   }
 }
