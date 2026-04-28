@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Class Schedule | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/schedule.css">
+</head>
+<body class="schedule-page">
+    <%- include('partials/header'); %>
+    
+    <main class="schedule-container">
+        <div class="schedule-header">
+            <h1>Class Schedule</h1>
+            <p>View upcoming classes, office hours, and special events.</p>
+        </div>
+
+        <div class="schedule-controls">
+            <div class="view-toggle">
+                <button id="week-view" class="active">Week</button>
+                <button id="month-view">Month</button>
+            </div>
+            
+            <select id="class-filter" class="filter-select">
+                <option value="all">All Classes</option>
+                <option value="scripting">Scripting Fundamentals</option>
+                <option value="advanced">Advanced Scripting</option>
+                <option value="project">Project Development</option>
+            </select>
+        </div>
+
+        <div class="calendar-week">
+            <div class="week-days">
+                <div class="day-header">Monday</div>
+                <div class="day-header">Tuesday</div>
+                <div class="day-header">Wednesday</div>
+                <div class="day-header">Thursday</div>
+                <div class="day-header">Friday</div>
+                <div class="day-header">Saturday</div>
+                <div class="day-header">Sunday</div>
+            </div>
+            
+            <div class="week-rows">
+                <div class="time-slot">6:00 PM</div>
+                <div class="schedule-event scripting" data-class-id="1">
+                    <div class="event-title">Scripting Fundamentals - Week 1</div>
+                    <div class="event-details">#class-live • jwett</div>
+                </div>
+                <div class="schedule-event empty"></div>
+                <div class="schedule-event scripting" data-class-id="1">
+                    <div class="event-title">Scripting Fundamentals - Week 1</div>
+                    <div class="event-details">#class-live • jwett</div>
+                </div>
+                <div class="schedule-event empty"></div>
+                <div class="schedule-event empty"></div>
+                <div class="schedule-event empty"></div>
+                
+                <div class="time-slot">2:00 PM</div>
+                <div class="schedule-event empty"></div>
+                <div class="schedule-event office-hours" data-class-id="1">
+                    <div class="event-title">Office Hours</div>
+                    <div class="event-details">#office-hours • jwett</div>
+                </div>
+                <div class="schedule-event empty"></div>
+                <div class="schedule-event office-hours" data-class-id="1">
+                    <div class="event-title">Office Hours</div>
+                    <div class="event-details">#office-hours • jwett</div>
+                </div>
+                <div class="schedule-event empty"></div>
+                <div class="schedule-event empty"></div>
+                <div class="schedule-event empty"></div>
+            </div>
+        </div>
+
+        <div class="upcoming-events">
+            <h2>Upcoming Events</h2>
+            <div class="events-list">
+                <div class="event-card">
+                    <div class="event-date">May 1, 2026</div>
+                    <div class="event-info">
+                        <h3>Scripting Fundamentals - Week 1</h3>
+                        <p>6:00 PM - 8:00 PM EST • #class-live</p>
+                    </div>
+                    <button class="btn-secondary add-to-calendar">Add to Calendar</button>
+                </div>
+                
+                <div class="event-card">
+                    <div class="event-date">May 5, 2026</div>
+                    <div class="event-info">
+                        <h3>Office Hours</h3>
+                        <p>2:00 PM - 4:00 PM EST • #office-hours</p>
+                    </div>
+                    <button class="btn-secondary add-to-calendar">Add to Calendar</button>
+                </div>
+                
+                <div class="event-card">
+                    <div class="event-date">May 8, 2026</div>
+                    <div class="event-info">
+                        <h3>Scripting Fundamentals - Week 2</h3>
+                        <p>6:00 PM - 8:00 PM EST • #class-live</p>
+                    </div>
+                    <button class="btn-secondary add-to-calendar">Add to Calendar</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="announcements">
+            <h2>Announcements</h2>
+            <div class="announcement-list">
+                <div class="announcement important">
+                    <div class="announcement-date">April 28, 2026</div>
+                    <div class="announcement-content">
+                        <h3>Welcome to GLEECIN Academy!</h3>
+                        <p>Classes start May 1st. Make sure you have all required tools installed.</p>
+                    </div>
+                </div>
+                
+                <div class="announcement">
+                    <div class="announcement-date">April 25, 2026</div>
+                    <div class="announcement-content">
+                        <h3>Pre-class Survey</h3>
+                        <p>Please fill out the course survey to help us customize your experience.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/schedule.js"></script>
+</body>
+</html>

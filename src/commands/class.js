@@ -206,10 +206,6 @@ async function handleResources(interaction) {
         value: '• **VS Code** — Recommended IDE\n• **Node.js** — JavaScript runtime\n• **Git** — Version control\n• **Discord Bot API** — Our focus'
       },
       {
-        name: '📝 Assignment Submissions',
-        value: '📤 Submit to: #assignments\n• Use the assignment template\n• Include documentation\n• Explain your approach'
-      },
-      {
         name: '🤝 Getting Help',
         value: '• **#live-discussion** — Real-time chat during class\n• **#debug-support** — Post errors and get help\n• **Office Hours** — Sundays 2-4 PM EST\n• Use `/debug` command for technical issues'
       },

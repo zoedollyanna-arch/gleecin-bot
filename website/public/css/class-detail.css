@@ -1,0 +1,76 @@
+.class-detail-container {
+    padding: 2rem 0;
+}
+
+.class-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.class-header h1 {
+    font-size: 2.5rem;
+    color: var(--accent-violet);
+    text-shadow: 0 0 10px rgba(123, 97, 255, 0.5);
+}
+
+.class-meta {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+    color: #aaa;
+}
+
+.level {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.level.beginner { background: var(--accent-cyan); color: #0F0F14; }
+.level.intermediate { background: var(--accent-orange); color: #0F0F14; }
+.level.advanced { background: var(--accent-violet); color: white; }
+
+.class-content {
+    max-width: 800px;
+    margin: 0 auto 2rem;
+}
+
+.schedule-items {
+    margin: 1rem 0;
+}
+
+.schedule-item {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.class-enrollment {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.enrollment-info {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    color: #aaa;
+}
+
+.price {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.price.free { color: var(--accent-cyan); }
+.price.paid { color: var(--accent-orange); }
+.price.advanced { color: var(--accent-violet); }

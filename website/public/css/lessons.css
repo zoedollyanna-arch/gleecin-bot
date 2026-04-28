@@ -1,0 +1,129 @@
+.lessons-container {
+    padding: 2rem 0;
+}
+
+.lessons-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.lessons-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--accent-orange);
+    text-shadow: 0 0 10px rgba(255, 122, 0, 0.5);
+}
+
+.lesson-card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.lesson-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-orange);
+}
+
+.video-player {
+    width: 100%;
+    height: 400px;
+    background: #16161d;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+}
+
+.video-player-placeholder {
+    text-align: center;
+    padding: 2rem;
+}
+
+.video-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.progress-bar-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.progress-text {
+    min-width: 60px;
+    color: var(--text-color);
+}
+
+.transcript-container {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.transcript-line {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.transcript-line:last-child {
+    border-bottom: none;
+}
+
+.caption-toggle {
+    background: var(--accent-orange);
+    color: #0F0F14;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.caption-toggle:hover {
+    background: #e66f00;
+    transform: translateY(-2px);
+}
+
+.download-button {
+    background: var(--accent-cyan);
+    color: #0F0F14;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.download-button:hover {
+    background: #00b8dd;
+    transform: translateY(-2px);
+}
+
+.lesson-category {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 122, 0, 0.2);
+    border: 1px solid var(--accent-orange);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}

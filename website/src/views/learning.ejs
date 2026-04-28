@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Interactive Learning | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/learning.css">
+</head>
+<body class="learning-page">
+    <%- include('partials/header'); %>
+    
+    <main class="learning-container">
+        <div class="learning-header">
+            <h1>Interactive Coding Challenges</h1>
+            <p>Practice your skills with real-world coding problems and get instant feedback.</p>
+        </div>
+
+        <div class="challenge-filters">
+            <select id="difficulty-filter" class="filter-select">
+                <option value="all">All Difficulties</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+            </select>
+            
+            <select id="category-filter" class="filter-select">
+                <option value="all">All Categories</option>
+                <option value="basics">Basics</option>
+                <option value="functions">Functions</option>
+                <option value="events">Events</option>
+                <option value="ui">UI Elements</option>
+                <option value="physics">Physics</option>
+                <option value="animations">Animations</option>
+            </select>
+            
+            <button id="search-btn" class="btn-primary">Search</button>
+        </div>
+
+        <div class="challenges-grid" id="challenges-container">
+            <!-- Challenges will be loaded dynamically -->
+            <div class="challenge-card" data-challenge-id="1">
+                <div class="challenge-header">
+                    <h3>Hello World Script</h3>
+                    <span class="difficulty beginner">Beginner</span>
+                </div>
+                <p class="challenge-description">Create a simple script that displays "Hello World" in chat when triggered.</p>
+                <div class="challenge-stats">
+                    <span class="stat"><i class="fas fa-user"></i> 124 attempts</span>
+                    <span class="stat"><i class="fas fa-check-circle"></i> 89% success</span>
+                </div>
+                <button class="btn-secondary start-challenge">Start Challenge</button>
+            </div>
+            
+            <div class="challenge-card" data-challenge-id="2">
+                <div class="challenge-header">
+                    <h3>Basic Movement Script</h3>
+                    <span class="difficulty intermediate">Intermediate</span>
+                </div>
+                <p class="challenge-description">Create a script that allows an object to move forward when touched.</p>
+                <div class="challenge-stats">
+                    <span class="stat"><i class="fas fa-user"></i> 87 attempts</span>
+                    <span class="stat"><i class="fas fa-check-circle"></i> 65% success</span>
+                </div>
+                <button class="btn-secondary start-challenge">Start Challenge</button>
+            </div>
+            
+            <div class="challenge-card" data-challenge-id="3">
+                <div class="challenge-header">
+                    <h3>Interactive Door System</h3>
+                    <span class="difficulty advanced">Advanced</span>
+                </div>
+                <p class="challenge-description">Build a door system that opens/closes based on proximity and includes sound effects.</p>
+                <div class="challenge-stats">
+                    <span class="stat"><i class="fas fa-user"></i> 45 attempts</span>
+                    <span class="stat"><i class="fas fa-check-circle"></i> 42% success</span>
+                </div>
+                <button class="btn-secondary start-challenge">Start Challenge</button>
+            </div>
+        </div>
+
+        <!-- Challenge Modal -->
+        <div class="modal" id="challenge-modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <div class="challenge-modal-header">
+                    <h2 id="modal-challenge-title">Challenge Title</h2>
+                    <span id="modal-difficulty" class="difficulty beginner">Beginner</span>
+                </div>
+                
+                <div class="challenge-description" id="modal-description">
+                    <!-- Challenge description will be populated here -->
+                </div>
+                
+                <div class="code-editor-container">
+                    <div class="editor-header">
+                        <span>Linden Script Editor</span>
+                        <select id="language-select">
+                            <option value="lsl">LSL (Linden Scripting Language)</option>
+                        </select>
+                    </div>
+                    <textarea id="code-editor" class="code-editor" placeholder="// Write your code here..."></textarea>
+                </div>
+                
+                <div class="test-controls">
+                    <button id="run-tests" class="btn-primary">Run Tests</button>
+                    <button id="submit-solution" class="btn-success">Submit Solution</button>
+                </div>
+                
+                <div class="test-results" id="test-results" style="display: none;">
+                    <h4>Test Results:</h4>
+                    <div id="results-list"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/learning.js"></script>
+</body>
+</html>

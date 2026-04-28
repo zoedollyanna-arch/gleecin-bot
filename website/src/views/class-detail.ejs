@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Class Details | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/class-detail.css">
+</head>
+<body class="class-detail-page">
+    <%- include('partials/header'); %>
+    
+    <main class="class-detail-container">
+        <div class="class-header">
+            <h1 id="class-title">Scripting Fundamentals</h1>
+            <div class="class-meta">
+                <span class="level beginner">Beginner</span>
+                <span class="instructor">Instructor: jwett</span>
+                <span class="duration">Duration: 3 weeks</span>
+            </div>
+        </div>
+
+        <div class="class-content">
+            <div class="class-description">
+                <h2>About This Class</h2>
+                <p id="class-description">Learn the basics of scripting from the ground up. This comprehensive course covers variables, data types, control flow, functions, and event handling in virtual world environments.</p>
+            </div>
+
+            <div class="class-schedule">
+                <h2>Class Schedule</h2>
+                <div class="schedule-items">
+                    <div class="schedule-item">
+                        <div class="schedule-date">May 1, 2026</div>
+                        <div class="schedule-time">6:00 PM - 8:00 PM EST</div>
+                        <div class="schedule-topic">Week 1: Variables and Data Types</div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="schedule-date">May 5, 2026</div>
+                        <div class="schedule-time">2:00 PM - 4:00 PM EST</div>
+                        <div class="schedule-topic">Office Hours</div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="schedule-date">May 8, 2026</div>
+                        <div class="schedule-time">6:00 PM - 8:00 PM EST</div>
+                        <div class="schedule-topic">Week 2: Control Flow and Functions</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="class-topics">
+                <h2>What You'll Learn</h2>
+                <ul id="class-topics">
+                    <li>Variables and data types</li>
+                    <li>Control flow (if/else, loops)</li>
+                    <li>Functions and scope</li>
+                    <li>Event handling</li>
+                    <li>Debugging techniques</li>
+                    <li>Best practices</li>
+                </ul>
+            </div>
+
+            <div class="class-requirements">
+                <h2>Requirements</h2>
+                <ul>
+                    <li>Basic computer skills</li>
+                    <li>Willingness to learn</li>
+                    <li>Access to virtual world client</li>
+                </ul>
+            </div>
+
+            <div class="class-resources">
+                <h2>Resources Included</h2>
+                <ul>
+                    <li>Course materials</li>
+                    <li>Code examples</li>
+                    <li>Video recordings</li>
+                    <li>Certificate upon completion</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="class-enrollment">
+            <div class="enrollment-info">
+                <span class="price free">Free</span>
+                <span class="students">24 students enrolled</span>
+            </div>
+            <button id="enroll-button" class="btn-primary">Enroll Now</button>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/class-detail.js"></script>
+</body>
+</html>

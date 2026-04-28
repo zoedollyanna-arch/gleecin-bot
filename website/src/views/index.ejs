@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head') %>
+    <title><%= title %></title>
+</head>
+<body>
+    <%- include('partials/header') %>
+
+    <section class="hero">
+        <h1>Premium Scripting Education</h1>
+        <p>Learn professional scripting from beginner to advanced | Access premium scripts & tools</p>
+        <% if (!isAuth) { %>
+            <a href="/auth/login" class="btn btn-primary" style="font-size: 1.1rem;">Start Learning Today</a>
+        <% } else { %>
+            <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+        <% } %>
+    </section>
+
+    <section class="features">
+        <div class="feature">
+            <h3>🎓 Live Classes</h3>
+            <p>Learn from experienced instructors in live, interactive sessions. Tuesdays & Thursdays.</p>
+        </div>
+
+        <div class="feature">
+            <h3>📚 Comprehensive Curriculum</h3>
+            <p>From fundamentals to advanced topics. 7-week program with hands-on projects.</p>
+        </div>
+
+        <div class="feature">
+            <h3>🛠️ Script Library</h3>
+            <p>Access hundreds of pre-built scripts organized by category with full documentation.</p>
+        </div>
+
+        <div class="feature">
+            <h3>🎥 Video Lessons</h3>
+            <p>Recorded classes and short tutorials available on-demand for all learning levels.</p>
+        </div>
+
+        <div class="feature">
+            <h3>💪 Interactive Challenges</h3>
+            <p>Practice with coding challenges and mini-projects to reinforce what you learn.</p>
+        </div>
+
+        <div class="feature">
+            <h3>🏆 Certifications</h3>
+            <p>Earn recognized certificates and in-world badges upon course completion.</p>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2>Ready to Level Up Your Scripting Skills?</h2>
+        <p>Join hundreds of creators learning professional scripting at GLEECIN Academy</p>
+        <% if (!isAuth) { %>
+            <a href="/auth/login" class="btn btn-primary">Login with Discord to Begin</a>
+        <% } %>
+    </section>
+
+    <%- include('partials/footer') %>
+    <style>
+        .hero {
+            background: linear-gradient(135deg, rgba(123, 97, 255, 0.1), rgba(0, 209, 255, 0.1));
+            padding: 4rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--accent-violet);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: var(--text-color);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            padding: 3rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature {
+            background: var(--card-background);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            border-color: var(--accent-violet);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(123, 97, 255, 0.2);
+        }
+
+        .feature h3 {
+            color: var(--accent-violet);
+            margin-bottom: 1rem;
+        }
+
+        .cta-section {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(123, 97, 255, 0.1), rgba(0, 209, 255, 0.1));
+            margin: 3rem 0;
+        }
+
+        .cta-section h2 {
+            color: var(--accent-cyan);
+            margin-bottom: 1rem;
+        }
+    </style>
+</body>
+</html>

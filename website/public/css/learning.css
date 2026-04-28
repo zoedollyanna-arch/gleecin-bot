@@ -1,0 +1,209 @@
+/* Interactive Learning Module Styles */
+
+.learning-container {
+    padding: 2rem 0;
+}
+
+.challenges-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.challenges-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--accent-violet);
+    text-shadow: 0 0 10px rgba(123, 97, 255, 0.5);
+}
+
+.challenge-filters {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.challenge-card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.challenge-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-violet);
+}
+
+.challenge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.challenge-header h2 {
+    color: var(--text-color);
+    font-size: 1.5rem;
+}
+
+.challenge-difficulty {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.challenge-difficulty.beginner { background: var(--accent-cyan); color: #0F0F14; }
+.challenge-difficulty.intermediate { background: var(--accent-orange); color: #0F0F14; }
+.challenge-difficulty.advanced { background: var(--accent-violet); color: white; }
+
+.code-editor {
+    width: 100%;
+    height: 300px;
+    background: #16161d;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text-color);
+    resize: vertical;
+    margin: 1rem 0;
+}
+
+.test-results {
+    margin-top: 1rem;
+}
+
+.test-result-item {
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.test-result-item.passed {
+    background: rgba(0, 209, 255, 0.1);
+    border-left: 3px solid var(--accent-cyan);
+}
+
+.test-result-item.failed {
+    background: rgba(255, 77, 77, 0.1);
+    border-left: 3px solid var(--error-color);
+}
+
+.submit-challenge {
+    background: var(--accent-violet);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1rem;
+}
+
+.submit-challenge:hover {
+    background: #6a51e6;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(123, 97, 255, 0.3);
+}
+
+.progress-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    min-width: 120px;
+}
+
+.stat-card h3 {
+    font-size: 2rem;
+    color: var(--accent-violet);
+    margin-bottom: 0.5rem;
+}
+
+.stat-card p {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 10px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    padding: 2rem;
+}
+
+.close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #7f8c8d;
+}
+
+.close:hover {
+    color: #2c3e50;
+}
+
+.challenge-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .learning-container {
+        padding: 1rem;
+    }
+    
+    .challenges-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .challenge-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .modal-content {
+        padding: 1rem;
+    }
+}

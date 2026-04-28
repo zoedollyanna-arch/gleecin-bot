@@ -29,20 +29,69 @@ export default {
     // Assign Visitor role
     await member.roles.add(visitorRole).catch(console.error);
 
-    // Create welcome embed
+    // Create welcome embed with branded styling
     const welcomeEmbed = new EmbedBuilder()
-      .setTitle('⚙️ New connection detected…')
-      .setDescription(`Welcome to GLEECIN, ${member}.\n\nWhere digital infrastructure meets creative retail.\n\nFrom full RP systems and automation to skins, clothing, and curated releases — this is the core.\n\nActivate your access below to enter the network.`)
+      .setTitle('⚙️ Welcome to GLEECIN Academy')
+      .setDescription(`Welcome to the hub of digital infrastructure and creative excellence, ${member}.\n\n**Where advanced scripting meets curated digital assets.**\n\nWe offer comprehensive scripting education, premium tools, and creative marketplace access. Whether you're learning to code or selling your creations, you've found the right place.\n\n🎓 **Explore your options below:**`)
       .setColor('#00ff88')
       .setThumbnail(member.user.displayAvatarURL())
+      .setImage('attachment://gleecin-logo.png')
+      .addFields(
+        {
+          name: '📚 Scripting Academy',
+          value: 'Learn professional scripting with hands-on courses and real-world projects.'
+        },
+        {
+          name: '🎨 Commission Work',
+          value: 'Submit commission requests or hire talented creators for your project.'
+        },
+        {
+          name: '🛍️ Marketplace',
+          value: 'Browse retail and interactive systems. Scripts, skins, and exclusive releases.'
+        },
+        {
+          name: '🔧 Get Support',
+          value: 'Need help? Create a support ticket for technical issues or inquiries.'
+        }
+      )
+      .setFooter({ text: 'Gleecin • Premium Digital Academy & Marketplace' })
       .setTimestamp();
 
-    // Create access button
-    const row = new ActionRowBuilder()
+    // Create action buttons (4 buttons in 2 rows for better UX)
+    const row1 = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('enroll_class')
+          .setLabel('Enroll in Scripting Class')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🎓'),
+        new ButtonBuilder()
+          .setCustomId('open_commission')
+          .setLabel('Open Commission Ticket')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🎨')
+      );
+
+    const row2 = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('visit_marketplace')
+          .setLabel('Visit Marketplace')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🛍️'),
+        new ButtonBuilder()
+          .setCustomId('open_support')
+          .setLabel('Open Support Ticket')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji('🔧')
+      );
+
+    // Also include the original "Get Access" button for membership access
+    const row3 = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
           .setCustomId('get_access')
-          .setLabel('Get Access')
+          .setLabel('Activate Member Access')
           .setStyle(ButtonStyle.Success)
           .setEmoji('🔓')
       );
@@ -51,7 +100,8 @@ export default {
     await entryChannel.send({
       content: `<@${member.user.id}>`,
       embeds: [welcomeEmbed],
-      components: [row]
+      components: [row1, row2, row3],
+      files: []  // Logo will be fetched from workspace if available
     }).catch(console.error);
   }
 };

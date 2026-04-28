@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Marketplace | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/marketplace.css">
+</head>
+<body class="marketplace-page">
+    <%- include('partials/header'); %>
+    
+    <main class="marketplace-container">
+        <div class="marketplace-header">
+            <h1>Marketplace</h1>
+            <p>Discover premium scripts, tools, and services from our community.</p>
+        </div>
+
+        <div class="marketplace-filters">
+            <select id="category-filter" class="filter-select">
+                <option value="all">All Categories</option>
+                <option value="scripts">Scripts</option>
+                <option value="tools">Tools</option>
+                <option value="services">Services</option>
+                <option value="templates">Templates</option>
+            </select>
+            
+            <select id="price-filter" class="filter-select">
+                <option value="all">All Prices</option>
+                <option value="free">Free</option>
+                <option value="paid">Paid</option>
+                <option value="premium">Premium</option>
+            </select>
+            
+            <input type="text" id="search-input" placeholder="Search marketplace..." class="search-input">
+        </div>
+
+        <div class="marketplace-grid" id="marketplace-container">
+            <!-- Items will be loaded dynamically -->
+            <div class="marketplace-item" data-item-id="1">
+                <div class="item-image">
+                    <img src="/images/marketplace/script-pack.jpg" alt="Script Pack">
+                    <div class="item-badge premium">Premium</div>
+                </div>
+                <div class="item-info">
+                    <h3>Complete Script Pack</h3>
+                    <p class="item-description">50+ ready-to-use scripts for all common scenarios.</p>
+                    <div class="item-meta">
+                        <span class="rating">⭐ 4.9 (124 reviews)</span>
+                        <span class="price">$29.99</span>
+                    </div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn-primary purchase-item">Purchase</button>
+                    <button class="btn-secondary view-details">Details</button>
+                </div>
+            </div>
+            
+            <div class="marketplace-item" data-item-id="2">
+                <div class="item-image">
+                    <img src="/images/marketplace/debug-tool.jpg" alt="Debug Tool">
+                    <div class="item-badge free">Free</div>
+                </div>
+                <div class="item-info">
+                    <h3>Advanced Debug Tool</h3>
+                    <p class="item-description">Professional debugging tool with performance monitoring.</p>
+                    <div class="item-meta">
+                        <span class="rating">⭐ 4.7 (89 reviews)</span>
+                        <span class="price">Free</span>
+                    </div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn-primary download-item">Download</button>
+                    <button class="btn-secondary view-details">Details</button>
+                </div>
+            </div>
+            
+            <div class="marketplace-item" data-item-id="3">
+                <div class="item-image">
+                    <img src="/images/marketplace/building-kit.jpg" alt="Building Kit">
+                    <div class="item-badge paid">Paid</div>
+                </div>
+                <div class="item-info">
+                    <h3>Professional Building Kit</h3>
+                    <p class="item-description">Complete building kit with 100+ modular components.</p>
+                    <div class="item-meta">
+                        <span class="rating">⭐ 4.8 (203 reviews)</span>
+                        <span class="price">$49.99</span>
+                    </div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn-primary purchase-item">Purchase</button>
+                    <button class="btn-secondary view-details">Details</button>
+                </div>
+            </div>
+            
+            <div class="marketplace-item" data-item-id="4">
+                <div class="item-image">
+                    <img src="/images/marketplace/animation-system.jpg" alt="Animation System">
+                    <div class="item-badge premium">Premium</div>
+                </div>
+                <div class="item-info">
+                    <h3>Advanced Animation System</h3>
+                    <p class="item-description">Professional-grade animation system with blending support.</p>
+                    <div class="item-meta">
+                        <span class="rating">⭐ 5.0 (56 reviews)</span>
+                        <span class="price">$79.99</span>
+                    </div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn-primary purchase-item">Purchase</button>
+                    <button class="btn-secondary view-details">Details</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="featured-sellers">
+            <h2>Featured Sellers</h2>
+            <div class="sellers-grid">
+                <div class="seller-card">
+                    <img src="/images/sellers/jwett.jpg" alt="jwett">
+                    <h3>jwett</h3>
+                    <p>Official GLEECIN Instructor</p>
+                    <span class="seller-rating">⭐ 5.0</span>
+                </div>
+                <div class="seller-card">
+                    <img src="/images/sellers/community.jpg" alt="Community">
+                    <h3>Community Creators</h3>
+                    <p>Verified Community Members</p>
+                    <span class="seller-rating">⭐ 4.8</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/marketplace.js"></script>
+</body>
+</html>

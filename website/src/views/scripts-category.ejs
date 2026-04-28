@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title><%= category %> Scripts | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/scripts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+</head>
+<body class="scripts-page">
+    <%- include('partials/header'); %>
+    
+    <main class="scripts-container">
+        <div class="scripts-header">
+            <h1><%= category %> Scripts</h1>
+            <p>Browse and download <%= category.toLowerCase() %> scripts created by our community.</p>
+            <div style="margin-top: 15px;">
+                <a href="/scripts" class="btn-secondary">← Back to All Scripts</a>
+            </div>
+        </div>
+
+        <div class="scripts-search-bar">
+            <input type="text" id="search-input" placeholder="Search <%= category.toLowerCase() %> scripts..." class="search-input">
+            
+            <div class="advanced-filters">
+                <select id="language-filter" class="filter-select">
+                    <option value="all">All Languages</option>
+                    <option value="lsl">LSL (Linden Scripting Language)</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                </select>
+                
+                <select id="difficulty-filter" class="filter-select">
+                    <option value="all">All Difficulties</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+                
+                <button id="apply-filters" class="btn-primary">Apply Filters</button>
+            </div>
+        </div>
+
+        <div class="tags-container">
+            <span class="tag active" data-tag="all">All</span>
+            <span class="tag" data-tag="beginner">Beginner</span>
+            <span class="tag" data-tag="intermediate">Intermediate</span>
+            <span class="tag" data-tag="advanced">Advanced</span>
+            <span class="tag" data-tag="free">Free</span>
+            <span class="tag" data-tag="premium">Premium</span>
+            <span class="tag" data-tag="popular">Popular</span>
+        </div>
+
+        <div class="scripts-grid" id="scripts-container">
+            <!-- Sample scripts for this category -->
+            <div class="script-card" data-script-id="cat-1">
+                <div class="script-header">
+                    <h3><%= category %> Script #1</h3>
+                    <div class="script-meta">
+                        <span class="language-badge lsl">LSL</span>
+                        <span class="tag beginner">Beginner</span>
+                        <span class="tier-badge free">FREE</span>
+                    </div>
+                </div>
+                <p class="script-description">A useful <%= category.toLowerCase() %> script demonstrating core concepts and best practices.</p>
+                
+                <div class="script-preview">
+                    <pre><code class="language-lsl">// <%= category %> Script
+// Create your <%= category.toLowerCase() %> functionality here
+
+default {
+    state_entry() {
+        llSay(0, "<%= category %> script initialized");
+    }
+    
+    touch_start(integer total_number) {
+        llSay(0, "Script touched!");
+    }
+}</code></pre>
+                </div>
+                
+                <div class="script-stats">
+                    <span class="stat">📥 156 downloads</span>
+                    <span class="stat">👁️ 892 views</span>
+                    <span class="stat">⭐ 4.6 rating</span>
+                </div>
+                
+                <div class="script-actions">
+                    <button class="btn-secondary copy-code" data-script-id="cat-1">
+                        📋 Copy Code
+                    </button>
+                    <button class="btn-primary download-script" data-script-id="cat-1">
+                        📥 Download
+                    </button>
+                </div>
+            </div>
+
+            <div class="script-card" data-script-id="cat-2">
+                <div class="script-header">
+                    <h3><%= category %> Script #2</h3>
+                    <div class="script-meta">
+                        <span class="language-badge lsl">LSL</span>
+                        <span class="tag intermediate">Intermediate</span>
+                        <span class="tier-badge premium">PAID</span>
+                    </div>
+                </div>
+                <p class="script-description">Advanced <%= category.toLowerCase() %> implementation with enhanced features and optimization.</p>
+                
+                <div class="script-preview">
+                    <pre><code class="language-lsl">// Advanced <%= category %> Script
+// Premium version with additional features
+
+default {
+    state_entry() {
+        llSay(0, "Advanced <%= category.toLowerCase() %> script loaded");
+    }
+}</code></pre>
+                </div>
+                
+                <div class="script-stats">
+                    <span class="stat">📥 89 downloads</span>
+                    <span class="stat">👁️ 445 views</span>
+                    <span class="stat">⭐ 4.9 rating</span>
+                </div>
+                
+                <div class="script-actions">
+                    <button class="btn-secondary copy-code" data-script-id="cat-2">
+                        📋 Copy Code
+                    </button>
+                    <button class="btn-primary download-script" data-script-id="cat-2">
+                        📥 Download
+                    </button>
+                </div>
+            </div>
+
+            <div class="script-card" data-script-id="cat-3">
+                <div class="script-header">
+                    <h3><%= category %> Script #3</h3>
+                    <div class="script-meta">
+                        <span class="language-badge javascript">JavaScript</span>
+                        <span class="tag advanced">Advanced</span>
+                        <span class="tier-badge premium">PAID</span>
+                    </div>
+                </div>
+                <p class="script-description">Full-featured <%= category.toLowerCase() %> solution using JavaScript for web integration.</p>
+                
+                <div class="script-preview">
+                    <pre><code class="language-javascript">// <%= category %> JavaScript Module
+class <%= category %>Handler {
+    constructor() {
+        this.initialized = true;
+    }
+    
+    execute() {
+        console.log("<%= category %> script executed");
+    }
+}
+
+export default new <%= category %>Handler();</code></pre>
+                </div>
+                
+                <div class="script-stats">
+                    <span class="stat">📥 234 downloads</span>
+                    <span class="stat">👁️ 1.2K views</span>
+                    <span class="stat">⭐ 4.7 rating</span>
+                </div>
+                
+                <div class="script-actions">
+                    <button class="btn-secondary copy-code" data-script-id="cat-3">
+                        📋 Copy Code
+                    </button>
+                    <button class="btn-primary download-script" data-script-id="cat-3">
+                        📥 Download
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <h2>No scripts found</h2>
+            <p>Try adjusting your filters or explore other categories.</p>
+            <a href="/scripts" class="btn-primary">Browse all scripts →</a>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+
+    <style>
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state h2 {
+            color: #7B61FF;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            margin-bottom: 20px;
+        }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .tier-badge.free {
+            background: rgba(0, 209, 255, 0.2);
+            color: #00D1FF;
+        }
+
+        .tier-badge.premium {
+            background: rgba(123, 97, 255, 0.2);
+            color: #7B61FF;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+        // Initialize code highlighting
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('pre code').forEach(block => {
+                hljs.highlightElement(block);
+            });
+        });
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.script-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const description = card.querySelector('.script-description').textContent.toLowerCase();
+
+                if (title.includes(query) || description.includes(query)) {
+                    card.style.display = '';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            document.getElementById('empty-state').style.display = visibleCount === 0 ? 'block' : 'none';
+        });
+
+        // Filter by difficulty
+        document.getElementById('apply-filters').addEventListener('click', () => {
+            const languageFilter = document.getElementById('language-filter').value;
+            const difficultyFilter = document.getElementById('difficulty-filter').value;
+            
+            const cards = document.querySelectorAll('.script-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const language = card.querySelector('.language-badge').textContent.toLowerCase();
+                const difficulty = card.querySelector('.tag').textContent.toLowerCase();
+
+                const languageMatch = languageFilter === 'all' || language.includes(languageFilter);
+                const difficultyMatch = difficultyFilter === 'all' || difficulty.includes(difficultyFilter);
+
+                if (languageMatch && difficultyMatch) {
+                    card.style.display = '';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            document.getElementById('empty-state').style.display = visibleCount === 0 ? 'block' : 'none';
+        });
+
+        // Tag filtering
+        document.querySelectorAll('.tag').forEach(tag => {
+            tag.addEventListener('click', (e) => {
+                document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+
+                const tagValue = e.target.dataset.tag.toLowerCase();
+                const cards = document.querySelectorAll('.script-card');
+                let visibleCount = 0;
+
+                cards.forEach(card => {
+                    if (tagValue === 'all') {
+                        card.style.display = '';
+                        visibleCount++;
+                    } else {
+                        const hasTag = Array.from(card.querySelectorAll('.tag, .tier-badge')).some(el => 
+                            el.textContent.toLowerCase().includes(tagValue)
+                        );
+                        
+                        if (hasTag) {
+                            card.style.display = '';
+                            visibleCount++;
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    }
+                });
+
+                document.getElementById('empty-state').style.display = visibleCount === 0 ? 'block' : 'none';
+            });
+        });
+
+        // Copy code functionality
+        document.querySelectorAll('.copy-code').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const card = e.target.closest('.script-card');
+                const code = card.querySelector('code').textContent;
+                
+                navigator.clipboard.writeText(code).then(() => {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '✓ Copied!';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                });
+            });
+        });
+
+        // Download functionality
+        document.querySelectorAll('.download-script').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const scriptId = e.target.closest('.script-card').dataset.scriptId;
+                const category = '<%= category %>';
+                
+                // Create a simple download file
+                const card = e.target.closest('.script-card');
+                const code = card.querySelector('code').textContent;
+                const title = card.querySelector('h3').textContent;
+
+                const element = document.createElement('a');
+                element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(code));
+                element.setAttribute('download', `${title.replace(/\s+/g, '-')}.txt`);
+                element.style.display = 'none';
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Classes | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/classes.css">
+</head>
+<body class="classes-page">
+    <%- include('partials/header'); %>
+    
+    <main class="classes-container">
+        <div class="classes-header">
+            <h1>Available Classes</h1>
+            <p>Choose from our comprehensive curriculum designed for all skill levels.</p>
+        </div>
+
+        <div class="class-filters">
+            <select id="level-filter" class="filter-select">
+                <option value="all">All Levels</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+            </select>
+            
+            <select id="category-filter" class="filter-select">
+                <option value="all">All Categories</option>
+                <option value="scripting">Scripting</option>
+                <option value="building">Building</option>
+                <option value="animations">Animations</option>
+                <option value="physics">Physics</option>
+            </select>
+        </div>
+
+        <div class="classes-grid" id="classes-container">
+            <!-- Classes will be loaded dynamically -->
+            <div class="class-card" data-class-id="1">
+                <div class="class-header">
+                    <h3>Scripting Fundamentals</h3>
+                    <span class="level beginner">Beginner</span>
+                </div>
+                <p class="class-description">Learn the basics of scripting: variables, loops, functions, and event handling.</p>
+                <div class="class-details">
+                    <span class="detail"><i class="fas fa-clock"></i> 3 weeks</span>
+                    <span class="detail"><i class="fas fa-user"></i> jwett</span>
+                    <span class="detail price free">Free</span>
+                </div>
+                <div class="class-actions">
+                    <button class="btn-primary enroll-class">Enroll Now</button>
+                    <button class="btn-secondary view-syllabus">View Syllabus</button>
+                </div>
+            </div>
+            
+            <div class="class-card" data-class-id="2">
+                <div class="class-header">
+                    <h3>Advanced Scripting Concepts</h3>
+                    <span class="level intermediate">Intermediate</span>
+                </div>
+                <p class="class-description">Master objects, arrays, async/await, and error handling in complex scenarios.</p>
+                <div class="class-details">
+                    <span class="detail"><i class="fas fa-clock"></i> 4 weeks</span>
+                    <span class="detail"><i class="fas fa-user"></i> jwett</span>
+                    <span class="detail price paid">Paid</span>
+                </div>
+                <div class="class-actions">
+                    <button class="btn-primary enroll-class">Enroll Now</button>
+                    <button class="btn-secondary view-syllabus">View Syllabus</button>
+                </div>
+            </div>
+            
+            <div class="class-card" data-class-id="3">
+                <div class="class-header">
+                    <h3>Project Development</h3>
+                    <span class="level intermediate">Intermediate</span>
+                </div>
+                <p class="class-description">Build real-world scripting projects from start to finish with industry best practices.</p>
+                <div class="class-details">
+                    <span class="detail"><i class="fas fa-clock"></i> 5 weeks</span>
+                    <span class="detail"><i class="fas fa-user"></i> jwett</span>
+                    <span class="detail price paid">Paid</span>
+                </div>
+                <div class="class-actions">
+                    <button class="btn-primary enroll-class">Enroll Now</button>
+                    <button class="btn-secondary view-syllabus">View Syllabus</button>
+                </div>
+            </div>
+            
+            <div class="class-card" data-class-id="4">
+                <div class="class-header">
+                    <h3>Advanced Performance & Security</h3>
+                    <span class="level advanced">Advanced</span>
+                </div>
+                <p class="class-description">Optimize code performance and implement security best practices for production systems.</p>
+                <div class="class-details">
+                    <span class="detail"><i class="fas fa-clock"></i> 3 weeks</span>
+                    <span class="detail"><i class="fas fa-user"></i> jwett</span>
+                    <span class="detail price advanced">Advanced</span>
+                </div>
+                <div class="class-actions">
+                    <button class="btn-primary enroll-class">Enroll Now</button>
+                    <button class="btn-secondary view-syllabus">View Syllabus</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/classes.js"></script>
+</body>
+</html>

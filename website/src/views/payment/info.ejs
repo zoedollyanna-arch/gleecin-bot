@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upgrade Your Account</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .payment-container {
+      background: linear-gradient(135deg, #0F0F14 0%, #1a1a22 100%);
+      color: #EAEAEA;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .payment-content {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .payment-header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .payment-header h1 {
+      font-size: 2.5em;
+      color: #7B61FF;
+      margin-bottom: 10px;
+    }
+
+    .payment-header p {
+      font-size: 1.1em;
+      color: #00D1FF;
+    }
+
+    .tiers-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 50px;
+    }
+
+    .tier-card {
+      background: #1a1a22;
+      border: 2px solid #7B61FF;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .tier-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(123, 97, 255, 0.3);
+    }
+
+    .tier-card.current {
+      border-color: #00D1FF;
+      background: rgba(0, 209, 255, 0.1);
+    }
+
+    .tier-name {
+      font-size: 1.8em;
+      color: #FF7A00;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+
+    .tier-price {
+      font-size: 2.5em;
+      color: #7B61FF;
+      margin: 20px 0;
+      font-weight: bold;
+    }
+
+    .tier-price-currency {
+      font-size: 0.5em;
+      vertical-align: super;
+      color: #00D1FF;
+    }
+
+    .tier-features {
+      list-style: none;
+      padding: 20px 0;
+      text-align: left;
+    }
+
+    .tier-features li {
+      padding: 10px 0;
+      border-bottom: 1px solid #333;
+      color: #EAEAEA;
+    }
+
+    .tier-features li:last-child {
+      border-bottom: none;
+    }
+
+    .tier-features li::before {
+      content: "✓ ";
+      color: #00D1FF;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .tier-current-badge {
+      display: inline-block;
+      background: #00D1FF;
+      color: #0F0F14;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      margin: 15px 0;
+      font-weight: bold;
+    }
+
+    .payment-form {
+      background: #1a1a22;
+      border: 2px solid #7B61FF;
+      border-radius: 12px;
+      padding: 40px;
+      margin-top: 50px;
+    }
+
+    .payment-form h2 {
+      color: #7B61FF;
+      margin-bottom: 30px;
+      font-size: 1.8em;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 10px;
+      color: #00D1FF;
+      font-weight: bold;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      background: #0F0F14;
+      border: 1px solid #7B61FF;
+      border-radius: 6px;
+      color: #EAEAEA;
+      font-size: 1em;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #00D1FF;
+      box-shadow: 0 0 10px rgba(0, 209, 255, 0.3);
+    }
+
+    .payment-instructions {
+      background: rgba(255, 122, 0, 0.1);
+      border-left: 4px solid #FF7A00;
+      padding: 20px;
+      margin-bottom: 25px;
+      border-radius: 6px;
+    }
+
+    .payment-instructions h3 {
+      color: #FF7A00;
+      margin-bottom: 10px;
+    }
+
+    .payment-instructions p {
+      color: #EAEAEA;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .payment-instructions code {
+      background: #0F0F14;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #00D1FF;
+      font-family: monospace;
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, #7B61FF 0%, #00D1FF 100%);
+      color: #0F0F14;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      width: 100%;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(123, 97, 255, 0.4);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .success-message {
+      display: none;
+      background: rgba(0, 209, 255, 0.1);
+      border-left: 4px solid #00D1FF;
+      padding: 20px;
+      border-radius: 6px;
+      margin-top: 20px;
+      color: #00D1FF;
+    }
+
+    .success-message.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .current-tier-banner {
+      background: rgba(123, 97, 255, 0.1);
+      border: 2px solid #7B61FF;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .current-tier-banner h3 {
+      color: #7B61FF;
+      margin-bottom: 10px;
+    }
+
+    .current-tier-banner p {
+      color: #EAEAEA;
+    }
+
+    @media (max-width: 768px) {
+      .payment-header h1 {
+        font-size: 2em;
+      }
+
+      .tier-card {
+        padding: 20px;
+      }
+
+      .payment-form {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="payment-container">
+    <div class="payment-content">
+      <div class="payment-header">
+        <h1>🌈 Upgrade Your Account</h1>
+        <p>Unlock premium content and features</p>
+      </div>
+
+      <% if (tier && tier !== 'free') %>
+        <div class="current-tier-banner">
+          <h3>Current Tier: <%= tier %></h3>
+          <p>You're already enjoying premium features!</p>
+        </div>
+      <% end %>
+
+      <div class="tiers-row">
+        <!-- Free Tier -->
+        <div class="tier-card <%= tier === 'free' ? 'current' : '' %>">
+          <div class="tier-name">Free Student</div>
+          <div class="tier-price">$<span class="tier-price-currency">FREE</span></div>
+          <ul class="tier-features">
+            <li>Access to free classes</li>
+            <li>Basic resources</li>
+            <li>Community forums</li>
+            <li>1 free certificate</li>
+          </ul>
+          <% if (tier === 'free') %>
+            <div class="tier-current-badge">✓ CURRENT</div>
+          <% else %>
+            <button class="submit-btn" disabled>Free Tier</button>
+          <% end %>
+        </div>
+
+        <!-- Paid Tier -->
+        <div class="tier-card <%= tier === 'paid' ? 'current' : '' %>">
+          <div class="tier-name">Paid Student</div>
+          <div class="tier-price">5,000<span class="tier-price-currency">L$</span></div>
+          <ul class="tier-features">
+            <li>All free tier features</li>
+            <li>Paid class access</li>
+            <li>Advanced scripts</li>
+            <li>Unlimited certificates</li>
+            <li>Priority support</li>
+          </ul>
+          <% if (tier === 'paid' || tier === 'advanced') %>
+            <div class="tier-current-badge">✓ ACTIVE</div>
+          <% else %>
+            <button class="submit-btn" onclick="selectTier('paid')">Upgrade Now</button>
+          <% end %>
+        </div>
+
+        <!-- Advanced Tier -->
+        <div class="tier-card <%= tier === 'advanced' ? 'current' : '' %>">
+          <div class="tier-name">Advanced Student</div>
+          <div class="tier-price">10,000<span class="tier-price-currency">L$</span></div>
+          <ul class="tier-features">
+            <li>All paid tier features</li>
+            <li>Advanced-only content</li>
+            <li>1-on-1 mentoring</li>
+            <li>Code review service</li>
+            <li>Expert community access</li>
+          </ul>
+          <% if (tier === 'advanced') %>
+            <div class="tier-current-badge">✓ CURRENT</div>
+          <% else %>
+            <button class="submit-btn" onclick="selectTier('advanced')">Upgrade Now</button>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Payment Form -->
+      <div class="payment-form" id="paymentForm" style="display: none;">
+        <h2>Complete Your Payment</h2>
+        
+        <div class="payment-instructions">
+          <h3>💰 How to Pay with Lindens</h3>
+          <p>
+            Send Lindens to <code><%= recipient %></code> with the following details in the payment description:
+          </p>
+          <p>
+            <strong>Description format:</strong> <code>GLEECIN Academy - [Username] - [Tier]</code>
+          </p>
+          <p style="color: #FF7A00;">
+            ⚠️ Make sure to include your username in the description so we can verify your payment!
+          </p>
+        </div>
+
+        <form onsubmit="submitPayment(event)">
+          <div class="form-group">
+            <label for="tier">Tier *</label>
+            <select id="tier" required>
+              <option value="">-- Select a tier --</option>
+              <option value="paid">Paid Student (5,000 L$)</option>
+              <option value="advanced">Advanced Student (10,000 L$)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="lindens">Amount Sent (in Lindens) *</label>
+            <input type="number" id="lindens" placeholder="e.g., 5000" required min="1000" />
+          </div>
+
+          <div class="form-group">
+            <label for="proof">Payment Proof / Details *</label>
+            <textarea 
+              id="proof" 
+              placeholder="Describe how you sent the payment (e.g., 'Sent via avatar payment to zoedollyanna resident' or paste transaction ID)"
+              required
+            ></textarea>
+          </div>
+
+          <button type="submit" class="submit-btn">Submit Payment for Verification</button>
+        </form>
+
+        <div class="success-message" id="successMessage">
+          <strong>✓ Payment submitted!</strong> An admin will verify your payment within 24 hours.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function selectTier(tier) {
+      document.getElementById('tier').value = tier;
+      document.getElementById('paymentForm').style.display = 'block';
+      document.getElementById('paymentForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function submitPayment(event) {
+      event.preventDefault();
+
+      const tier = document.getElementById('tier').value;
+      const lindens = document.getElementById('lindens').value;
+      const proof = document.getElementById('proof').value;
+
+      if (!tier || !lindens || !proof) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      try {
+        const response = await fetch('/payment/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier, lindens, proof_text: proof })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('successMessage').classList.add('show');
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 3000);
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error('Submission error:', error);
+        alert('Failed to submit payment');
+      }
+    }
+
+    // Check if tier was already selected
+    const selectedTier = '<%= tier %>';
+    if (selectedTier === 'free') {
+      document.getElementById('paymentForm').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

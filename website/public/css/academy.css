@@ -1,0 +1,105 @@
+.academy-container {
+    padding: 2rem 0;
+}
+
+.academy-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.academy-header h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--accent-violet);
+    text-shadow: 0 0 15px rgba(123, 97, 255, 0.5);
+}
+
+.academy-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.stat-card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-violet);
+}
+
+.stat-card h3 {
+    font-size: 2.5rem;
+    color: var(--accent-cyan);
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 10px rgba(0, 209, 255, 0.3);
+}
+
+.academy-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.section {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2rem;
+    transition: all 0.3s ease;
+}
+
+.section:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-orange);
+}
+
+.section h2 {
+    color: var(--accent-orange);
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px rgba(255, 122, 0, 0.3);
+}
+
+.testimonials {
+    margin-top: 3rem;
+}
+
+.testimonial-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.testimonial {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2rem;
+    position: relative;
+}
+
+.testimonial::before {
+    content: """;
+    position: absolute;
+    top: -20px;
+    left: 20px;
+    font-size: 4rem;
+    color: var(--accent-violet);
+    opacity: 0.2;
+}
+
+.testimonial p {
+    margin-bottom: 1rem;
+    font-style: italic;
+}

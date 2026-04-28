@@ -1,0 +1,121 @@
+.scripts-container {
+    padding: 2rem 0;
+}
+
+.scripts-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.scripts-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--accent-cyan);
+    text-shadow: 0 0 10px rgba(0, 209, 255, 0.5);
+}
+
+.scripts-filters {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.script-card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.script-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-cyan);
+}
+
+.script-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.script-header h2 {
+    color: var(--text-color);
+    font-size: 1.5rem;
+}
+
+.language-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.language-badge.lsl { background: var(--accent-orange); color: #0F0F14; }
+.language-badge.js { background: var(--accent-violet); color: white; }
+.language-badge.python { background: var(--accent-cyan); color: #0F0F14; }
+
+.code-display {
+    background: #16161d;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    overflow-x: auto;
+    margin: 1rem 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.copy-button {
+    background: var(--accent-cyan);
+    color: #0F0F14;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    margin-top: 0.5rem;
+}
+
+.copy-button:hover {
+    background: #00b8dd;
+    transform: translateY(-2px);
+}
+
+.script-stats {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    color: #aaa;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: rgba(123, 97, 255, 0.2);
+    border: 1px solid var(--accent-violet);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.search-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 300px;
+}

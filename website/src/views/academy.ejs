@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Academy Overview | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/academy.css">
+</head>
+<body class="academy-page">
+    <%- include('partials/header'); %>
+    
+    <main class="academy-container">
+        <div class="academy-header">
+            <h1>Welcome to GLEECIN Academy</h1>
+            <p>Your premier destination for learning scripting, building, and development in virtual worlds.</p>
+        </div>
+
+        <div class="academy-stats">
+            <div class="stat-card">
+                <h3>500+</h3>
+                <p>Students Enrolled</p>
+            </div>
+            <div class="stat-card">
+                <h3>25+</h3>
+                <p>Courses Available</p>
+            </div>
+            <div class="stat-card">
+                <h3>98%</h3>
+                <p>Satisfaction Rate</p>
+            </div>
+            <div class="stat-card">
+                <h3>24/7</h3>
+                <p>Support Available</p>
+            </div>
+        </div>
+
+        <div class="academy-sections">
+            <div class="section">
+                <h2>Interactive Learning</h2>
+                <p>Practice your skills with real coding challenges and get instant feedback from our automated testing system.</p>
+                <a href="/learning" class="btn-primary">Start Learning</a>
+            </div>
+            
+            <div class="section">
+                <h2>Script Library</h2>
+                <p>Browse thousands of community-created scripts with advanced filtering and syntax highlighting.</p>
+                <a href="/scripts" class="btn-primary">Browse Scripts</a>
+            </div>
+            
+            <div class="section">
+                <h2>Lesson Vault</h2>
+                <p>Access our comprehensive video library with step-by-step tutorials and progress tracking.</p>
+                <a href="/lessons" class="btn-primary">Watch Lessons</a>
+            </div>
+            
+            <div class="section">
+                <h2>Certification</h2>
+                <p>Earn recognized certificates and in-world badges by completing courses and challenges.</p>
+                <a href="/certification" class="btn-primary">View Certificates</a>
+            </div>
+        </div>
+
+        <div class="testimonials">
+            <h2>What Our Students Say</h2>
+            <div class="testimonial-grid">
+                <div class="testimonial">
+                    <p>"GLEECIN Academy transformed my understanding of scripting. The interactive challenges made learning fun!"</p>
+                    <cite>- Sarah M., Advanced Student</cite>
+                </div>
+                <div class="testimonial">
+                    <p>"The script library saved me countless hours. Being able to search and filter by category is a game-changer."</p>
+                    <cite>- Mike R., Professional Developer</cite>
+                </div>
+                <div class="testimonial">
+                    <p>"Earning my certification opened up new opportunities in the virtual world economy."</p>
+                    <cite>- Alex T., Certified Developer</cite>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/academy.js"></script>
+</body>
+</html>

@@ -4,12 +4,16 @@ import { Client, Collection, GatewayIntentBits, Events, EmbedBuilder } from 'dis
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { initDatabase } from './database/connection.js';
 
 const {
   DISCORD_TOKEN,
   GUILD_ID,
   PORT = 10000
 } = process.env;
+
+// Initialize database on startup
+await initDatabase();
 
 if (!DISCORD_TOKEN) throw new Error('Missing DISCORD_TOKEN');
 
@@ -72,29 +76,78 @@ client.once(Events.ClientReady, (c) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
+  // Handle slash commands
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) {
+      await interaction.reply({ content: 'Command not found.', ephemeral: true });
+      return;
+    }
 
-  const command = client.commands.get(interaction.commandName);
-  if (!command) {
-    await interaction.reply({ content: 'Command not found.', ephemeral: true });
+    try {
+      await command.execute(interaction, client);
+    } catch (err) {
+      console.error(`[ERR] ${interaction.commandName}`, err);
+
+      const errorEmbed = new EmbedBuilder()
+        .setTitle('Something went wrong')
+        .setDescription('Try again. If this keeps happening, open a support ticket.')
+        .setTimestamp();
+
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ embeds: [errorEmbed], ephemeral: true }).catch(() => {});
+      } else {
+        await interaction.reply({ embeds: [errorEmbed], ephemeral: true }).catch(() => {});
+      }
+    }
     return;
   }
 
-  try {
-    await command.execute(interaction, client);
-  } catch (err) {
-    console.error(`[ERR] ${interaction.commandName}`, err);
-
-    const errorEmbed = new EmbedBuilder()
-      .setTitle('Something went wrong')
-      .setDescription('Try again. If this keeps happening, open a support ticket.')
-      .setTimestamp();
-
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ embeds: [errorEmbed], ephemeral: true }).catch(() => {});
-    } else {
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true }).catch(() => {});
+  // Handle button interactions
+  if (interaction.isButton()) {
+    const buttonId = interaction.customId;
+    
+    try {
+      // Import and delegate to event handler
+      const eventsPath = path.join(__dirname, 'events');
+      const interactionEventPath = path.join(eventsPath, 'interactionCreate.js');
+      const interactionEvent = await import(pathToFileURL(interactionEventPath));
+      
+      if (interactionEvent.default?.handleButton) {
+        await interactionEvent.default.handleButton(interaction, client);
+      } else {
+        await interaction.reply({
+          content: 'This button action is not yet configured.',
+          ephemeral: true
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.error(`[ERR] Button interaction ${buttonId}`, err);
+      
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: '❌ An error occurred processing your request.',
+          ephemeral: true
+        }).catch(() => {});
+      }
     }
+    return;
+  }
+
+  // Handle modal submissions
+  if (interaction.isModalSubmit()) {
+    try {
+      const eventsPath = path.join(__dirname, 'events');
+      const interactionEventPath = path.join(eventsPath, 'interactionCreate.js');
+      const interactionEvent = await import(pathToFileURL(interactionEventPath));
+      
+      if (interactionEvent.default?.handleModal) {
+        await interactionEvent.default.handleModal(interaction, client);
+      }
+    } catch (err) {
+      console.error(`[ERR] Modal submission`, err);
+    }
+    return;
   }
 });
 

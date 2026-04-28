@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Certifications | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/certification.css">
+</head>
+<body class="certification-page">
+    <%- include('partials/header'); %>
+    
+    <main class="certification-container">
+        <div class="certification-header">
+            <h1>Your Certifications</h1>
+            <p>Earn certificates by completing courses and challenges. Share your achievements with the community.</p>
+        </div>
+
+        <div class="certification-stats">
+            <div class="stat-card">
+                <h3 id="total-certificates">0</h3>
+                <p>Total Certificates</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="verified-certificates">0</h3>
+                <p>Blockchain Verified</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="shared-certificates">0</h3>
+                <p>Shared Publicly</p>
+            </div>
+        </div>
+
+        <div class="certificates-grid" id="certificates-container">
+            <!-- Certificates will be loaded dynamically -->
+            <div class="certificate-card" data-certificate-id="1">
+                <div class="certificate-preview">
+                    <img src="/images/certificates/beginner-scripting.jpg" alt="Beginner Scripting Certificate">
+                    <div class="certificate-overlay">
+                        <button class="btn-primary view-certificate">View Certificate</button>
+                    </div>
+                </div>
+                <div class="certificate-info">
+                    <h3>Beginner Scripting Certification</h3>
+                    <p class="issue-date">Issued: April 28, 2026</p>
+                    <div class="certificate-meta">
+                        <span class="status verified">Verified</span>
+                        <span class="blockchain-hash">0x...a1b2c3</span>
+                    </div>
+                </div>
+                <div class="certificate-actions">
+                    <button class="btn-secondary download-pdf">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
+                    <button class="btn-secondary share-certificate">
+                        <i class="fas fa-share-alt"></i> Share
+                    </button>
+                </div>
+            </div>
+            
+            <div class="certificate-card" data-certificate-id="2">
+                <div class="certificate-preview">
+                    <img src="/images/certificates/intermediate-scripting.jpg" alt="Intermediate Scripting Certificate">
+                    <div class="certificate-overlay">
+                        <button class="btn-primary view-certificate">View Certificate</button>
+                    </div>
+                </div>
+                <div class="certificate-info">
+                    <h3>Intermediate Scripting Certification</h3>
+                    <p class="issue-date">Issued: April 28, 2026</p>
+                    <div class="certificate-meta">
+                        <span class="status pending">Pending Verification</span>
+                    </div>
+                </div>
+                <div class="certificate-actions">
+                    <button class="btn-secondary download-pdf">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
+                    <button class="btn-secondary share-certificate">
+                        <i class="fas fa-share-alt"></i> Share
+                    </button>
+                </div>
+            </div>
+            
+            <div class="certificate-card empty-state">
+                <div class="empty-content">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>No Certificates Yet</h3>
+                    <p>Complete courses and challenges to earn your first certification!</p>
+                    <a href="/learning" class="btn-primary">Start Learning</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Certificate Viewer Modal -->
+        <div class="modal" id="certificate-modal" style="display: none;">
+            <div class="modal-content certificate-viewer">
+                <span class="close">&times;</span>
+                <div class="certificate-full">
+                    <img id="certificate-full-image" src="" alt="Certificate">
+                    <div class="certificate-details">
+                        <h2 id="certificate-title">Certificate Title</h2>
+                        <p id="certificate-recipient">Awarded to: [User Name]</p>
+                        <p id="certificate-date">Issued on: [Date]</p>
+                        <div class="verification-info">
+                            <span id="verification-status">Status: Verified</span>
+                            <span id="blockchain-link">Blockchain Hash: <a href="#" target="_blank">0x...</a></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="certificate-actions-modal">
+                    <button class="btn-primary download-certificate-pdf">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
+                    <button class="btn-secondary share-certificate-modal">
+                        <i class="fas fa-share-alt"></i> Share Certificate
+                    </button>
+                    <button class="btn-secondary verify-blockchain">
+                        <i class="fas fa-check-circle"></i> Verify on Blockchain
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Badges Section -->
+        <div class="badges-section">
+            <h2>In-World Badges</h2>
+            <div class="badges-grid" id="badges-container">
+                <div class="badge-card">
+                    <img src="/images/badges/scripting-novice.png" alt="Scripting Novice">
+                    <h4>Scripting Novice</h4>
+                    <p>Completed 5 beginner challenges</p>
+                </div>
+                <div class="badge-card locked">
+                    <img src="/images/badges/scripting-expert.png" alt="Scripting Expert">
+                    <h4>Scripting Expert</h4>
+                    <p>Complete 20 advanced challenges</p>
+                </div>
+                <div class="badge-card">
+                    <img src="/images/badges/community-helper.png" alt="Community Helper">
+                    <h4>Community Helper</h4>
+                    <p>Helped 10+ community members</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/certification.js"></script>
+</body>
+</html>

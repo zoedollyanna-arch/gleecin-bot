@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head') %>
+    <title><%= title %></title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .login-container {
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 3rem;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(123, 97, 255, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-violet);
+            margin-bottom: 1rem;
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .description {
+            text-align: center;
+            color: var(--text-color);
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .btn-discord {
+            background: linear-gradient(135deg, #5865f2 0%, #4752c4 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn-discord:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(88, 101, 242, 0.5);
+        }
+
+        .error {
+            background-color: rgba(255, 77, 77, 0.1);
+            border: 1px solid var(--error-color);
+            color: var(--error-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .info {
+            background-color: rgba(0, 209, 255, 0.1);
+            border: 1px solid var(--accent-cyan);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-color);
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .back-link a {
+            color: var(--accent-violet);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .back-link a:hover {
+            color: var(--accent-cyan);
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">🔐</div>
+        <h1>Sign In</h1>
+        <p class="description">Connect with Discord to access GLEECIN Academy</p>
+
+        <% if (error) { %>
+            <div class="error">
+                Error: <%= error %>
+            </div>
+        <% } %>
+
+        <a href="/auth/login" class="btn btn-discord">
+            🔗 Login with Discord
+        </a>
+
+        <div class="info">
+            <strong>Discord OAuth</strong><br>
+            No password needed. Sign in securely with your Discord account.
+        </div>
+
+        <div class="back-link">
+            <a href="/">← Back to Home</a>
+        </div>
+    </div>
+</body>
+</html>

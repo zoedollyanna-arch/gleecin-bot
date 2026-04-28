@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Lesson Vault | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/lessons.css">
+</head>
+<body class="lessons-page">
+    <%- include('partials/header'); %>
+    
+    <main class="lessons-container">
+        <div class="lessons-header">
+            <h1>Lesson Vault</h1>
+            <p>Access our comprehensive video library with step-by-step tutorials and advanced concepts.</p>
+        </div>
+
+        <div class="lessons-filters">
+            <select id="category-filter" class="filter-select">
+                <option value="all">All Categories</option>
+                <option value="beginner">Beginner Tutorials</option>
+                <option value="intermediate">Intermediate Concepts</option>
+                <option value="advanced">Advanced Techniques</option>
+                <option value="scripting">Scripting</option>
+                <option value="building">Building</option>
+                <option value="animations">Animations</option>
+            </select>
+            
+            <select id="difficulty-filter" class="filter-select">
+                <option value="all">All Difficulties</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+            </select>
+            
+            <div class="premium-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="show-premium">
+                    <span class="slider round"></span>
+                </label>
+                <span>Show Premium Content</span>
+            </div>
+        </div>
+
+        <div class="lessons-grid" id="lessons-container">
+            <!-- Lessons will be loaded dynamically -->
+            <div class="lesson-card" data-lesson-id="1">
+                <div class="lesson-thumbnail">
+                    <img src="/images/lessons/hello-world-thumbnail.jpg" alt="Hello World Tutorial">
+                    <div class="lesson-duration">8:45</div>
+                    <div class="lesson-progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="lesson-info">
+                    <h3>Hello World: Getting Started</h3>
+                    <p class="lesson-description">Learn the basics of scripting by creating your first "Hello World" script.</p>
+                    <div class="lesson-meta">
+                        <span class="difficulty beginner">Beginner</span>
+                        <span class="category">Scripting</span>
+                    </div>
+                </div>
+                <div class="lesson-actions">
+                    <button class="btn-primary watch-lesson">Watch Now</button>
+                    <button class="btn-secondary download-lesson">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="lesson-card" data-lesson-id="2">
+                <div class="lesson-thumbnail">
+                    <img src="/images/lessons/movement-basics-thumbnail.jpg" alt="Movement Basics">
+                    <div class="lesson-duration">12:30</div>
+                    <div class="lesson-progress-bar">
+                        <div class="progress-fill" style="width: 75%;"></div>
+                    </div>
+                </div>
+                <div class="lesson-info">
+                    <h3>Movement Basics in LSL</h3>
+                    <p class="lesson-description">Understand the fundamentals of object movement using llSetPos and llMoveToTarget.</p>
+                    <div class="lesson-meta">
+                        <span class="difficulty intermediate">Intermediate</span>
+                        <span class="category">Scripting</span>
+                    </div>
+                </div>
+                <div class="lesson-actions">
+                    <button class="btn-primary watch-lesson">Continue Watching</button>
+                    <button class="btn-secondary download-lesson">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="lesson-card premium" data-lesson-id="3">
+                <div class="lesson-thumbnail">
+                    <img src="/images/lessons/advanced-physics-thumbnail.jpg" alt="Advanced Physics">
+                    <div class="lesson-duration">24:15</div>
+                    <div class="lesson-progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="premium-badge">Premium</div>
+                </div>
+                <div class="lesson-info">
+                    <h3>Advanced Physics Systems</h3>
+                    <p class="lesson-description">Build complex physics-based interactions with realistic collision detection and response.</p>
+                    <div class="lesson-meta">
+                        <span class="difficulty advanced">Advanced</span>
+                        <span class="category">Physics</span>
+                    </div>
+                </div>
+                <div class="lesson-actions">
+                    <button class="btn-primary watch-lesson premium">Unlock Premium</button>
+                    <button class="btn-secondary download-lesson disabled" disabled>
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Player Modal -->
+        <div class="modal" id="video-modal" style="display: none;">
+            <div class="modal-content video-player">
+                <span class="close">&times;</span>
+                <div class="video-container">
+                    <video id="lesson-video" controls>
+                        <source src="" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="video-controls">
+                    <div class="transcript-toggle">
+                        <button id="show-transcript">Show Transcript</button>
+                    </div>
+                    <div class="video-info">
+                        <h3 id="video-title">Lesson Title</h3>
+                        <p id="video-description">Lesson description will appear here.</p>
+                    </div>
+                </div>
+                <div class="transcript-container" id="transcript-container" style="display: none;">
+                    <h4>Transcript:</h4>
+                    <div id="transcript-content">
+                        <!-- Transcript content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/lessons.js"></script>
+</body>
+</html>

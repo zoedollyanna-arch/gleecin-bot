@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>My Profile | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/profile.css">
+</head>
+<body class="profile-page">
+    <%- include('partials/header'); %>
+    
+    <main class="profile-container">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                <img src="<%= user.avatar_url || '/images/default-avatar.jpg' %>" alt="<%= user.username %>">
+            </div>
+            <div class="profile-info">
+                <h1><%= user.username %></h1>
+                <p class="user-tier <%= user.tier %>"><%= user.tier.charAt(0).toUpperCase() + user.tier.slice(1) %> Member</p>
+                <p class="join-date">Member since <%= new Date(user.joined_at).toLocaleDateString() %></p>
+            </div>
+        </div>
+
+        <div class="profile-tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="progress">Progress</button>
+            <button class="tab" data-tab="certificates">Certificates</button>
+            <button class="tab" data-tab="scripts">My Scripts</button>
+            <button class="tab" data-tab="settings">Settings</button>
+        </div>
+
+        <div class="tab-content active" id="overview-tab">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="total-lessons">0</h3>
+                    <p>Lessons Completed</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="total-challenges">0</h3>
+                    <p>Challenges Solved</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="total-certificates">0</h3>
+                    <p>Certificates Earned</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="total-scripts">0</h3>
+                    <p>Scripts Shared</p>
+                </div>
+            </div>
+
+            <div class="recent-activity">
+                <h2>Recent Activity</h2>
+                <div class="activity-list" id="activity-list">
+                    <!-- Activity will be loaded dynamically -->
+                    <div class="activity-item">
+                        <span class="activity-icon">🎓</span>
+                        <div class="activity-details">
+                            <p>Completed "Variables and Data Types" lesson</p>
+                            <span class="activity-time">2 hours ago</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <span class="activity-icon">✅</span>
+                        <div class="activity-details">
+                            <p>Solved "Hello World Script" challenge</p>
+                            <span class="activity-time">1 day ago</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <span class="activity-icon">📜</span>
+                        <div class="activity-details">
+                            <p>Earned "Scripting Fundamentals" certificate</p>
+                            <span class="activity-time">3 days ago</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="progress-tab" style="display: none;">
+            <h2>Learning Progress</h2>
+            <div class="progress-overview">
+                <div class="progress-item">
+                    <div class="progress-info">
+                        <h3>Scripting Fundamentals</h3>
+                        <p>Course Progress</p>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 75%;"></div>
+                        <span class="progress-text">75%</span>
+                    </div>
+                </div>
+                
+                <div class="progress-item">
+                    <div class="progress-info">
+                        <h3>Interactive Challenges</h3>
+                        <p>Challenges Completed</p>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 45%;"></div>
+                        <span class="progress-text">45%</span>
+                    </div>
+                </div>
+                
+                <div class="progress-item">
+                    <div class="progress-info">
+                        <h3>Lesson Vault</h3>
+                        <p>Videos Watched</p>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 60%;"></div>
+                        <span class="progress-text">60%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="certificates-tab" style="display: none;">
+            <h2>My Certificates</h2>
+            <div class="certificates-grid" id="my-certificates">
+                <!-- Certificates will be loaded dynamically -->
+                <div class="certificate-card">
+                    <div class="certificate-preview">
+                        <img src="/images/certificates/scripting-fundamentals.jpg" alt="Scripting Fundamentals">
+                    </div>
+                    <div class="certificate-info">
+                        <h3>Scripting Fundamentals</h3>
+                        <p class="issue-date">Issued: April 28, 2026</p>
+                        <div class="certificate-actions">
+                            <button class="btn-secondary download-pdf">
+                                <i class="fas fa-file-pdf"></i> Download
+                            </button>
+                            <button class="btn-secondary share-certificate">
+                                <i class="fas fa-share-alt"></i> Share
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="scripts-tab" style="display: none;">
+            <h2>My Scripts</h2>
+            <div class="scripts-actions">
+                <button class="btn-primary" id="upload-script">Upload New Script</button>
+            </div>
+            <div class="my-scripts-grid" id="my-scripts">
+                <!-- My scripts will be loaded dynamically -->
+                <div class="script-card">
+                    <div class="script-header">
+                        <h3>My First Script</h3>
+                        <div class="script-meta">
+                            <span class="language-badge lsl">LSL</span>
+                            <span class="tag beginner">Beginner</span>
+                        </div>
+                    </div>
+                    <p class="script-description">My first attempt at scripting!</p>
+                    <div class="script-stats">
+                        <span class="stat"><i class="fas fa-eye"></i> 12 views</span>
+                        <span class="stat"><i class="fas fa-download"></i> 3 downloads</span>
+                    </div>
+                    <div class="script-actions">
+                        <button class="btn-secondary edit-script">Edit</button>
+                        <button class="btn-secondary delete-script">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="settings-tab" style="display: none;">
+            <h2>Account Settings</h2>
+            <form id="profile-settings">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" value="<%= user.username %>" disabled>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" value="<%= user.email || '' %>">
+                </div>
+                
+                <div class="form-group">
+                    <label for="notification-preferences">Notification Preferences</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" checked> Class announcements</label>
+                        <label><input type="checkbox" checked> Challenge updates</label>
+                        <label><input type="checkbox"> Marketplace deals</label>
+                        <label><input type="checkbox"> Community updates</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="privacy-settings">Privacy Settings</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="privacy" checked> Public profile</label>
+                        <label><input type="radio" name="privacy"> Private profile</label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </main>
+
+    <%- include('partials/footer'); %>
+    
+    <script src="/js/profile.js"></script>
+</body>
+</html>

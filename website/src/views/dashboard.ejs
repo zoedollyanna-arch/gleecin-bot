@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head') %>
+    <title><%= title %></title>
+    <style>
+        .welcome-section {
+            background: rgba(123, 97, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .welcome-section h1 {
+            color: var(--accent-violet);
+            margin-bottom: 0.5rem;
+        }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .tier-free {
+            background: rgba(170, 170, 170, 0.3);
+            color: var(--muted-text);
+        }
+
+        .tier-paid {
+            background: rgba(0, 209, 255, 0.3);
+            color: var(--accent-cyan);
+        }
+
+        .tier-advanced {
+            background: rgba(255, 122, 0, 0.3);
+            color: var(--accent-orange);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .card h3 {
+            color: var(--accent-violet);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-btn {
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        .section-title {
+            color: var(--accent-violet);
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .progress-item {
+            background: var(--card-background);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-violet);
+        }
+
+        .progress-item strong {
+            color: var(--text-color);
+        }
+
+        .progress-fill {
+            background: var(--accent-violet);
+            box-shadow: 0 0 10px var(--accent-violet);
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/header') %>
+
+    <div class="container">
+        <div class="welcome-section">
+            <h1>Welcome back, <%= user.username %>! 👋</h1>
+            <p>You're on track with your scripting education. Let's continue learning!</p>
+            <div class="tier-badge tier-<%= tier %>">
+                Tier: <strong><%= tier.toUpperCase() %></strong>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>📚 Enrolled Classes</h3>
+                <p>Continue with your current coursework</p>
+                <ul style="list-style: none; margin: 1rem 0;">
+                    <li>• Scripting Fundamentals (Week 2)</li>
+                    <li>• Office hours on Sundays</li>
+                </ul>
+                <a href="/classes" class="btn btn-primary card-btn">View Classes</a>
+            </div>
+
+            <div class="card">
+                <h3>🎥 Lessons</h3>
+                <p>Access recorded classes and tutorials</p>
+                <p style="font-size: 0.9rem; color: #aaa;">12 lessons available for your tier</p>
+                <a href="/lessons" class="btn btn-primary card-btn">Watch Lessons</a>
+            </div>
+
+            <div class="card">
+                <h3>💻 Challenges</h3>
+                <p>Practice with interactive coding challenges</p>
+                <p style="font-size: 0.9rem; color: #aaa;">3 challenges completed, 5 available</p>
+                <a href="/learning" class="btn btn-primary card-btn">Start Challenge</a>
+            </div>
+
+            <div class="card">
+                <h3>📖 Scripts</h3>
+                <p>Browse the script library</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Access <strong><%= tier === 'free' ? '50' : tier === 'paid' ? '200' : 'all' %></strong> scripts</p>
+                <a href="/scripts" class="btn btn-primary card-btn">Browse Scripts</a>
+            </div>
+
+            <div class="card">
+                <h3>📅 Schedule</h3>
+                <p>View upcoming classes and announcements</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Next class: Tuesday, 6 PM EST</p>
+                <a href="/schedule" class="btn btn-primary card-btn">View Schedule</a>
+            </div>
+
+            <div class="card">
+                <h3>🏆 Certifications</h3>
+                <p>Track your progress and earned certificates</p>
+                <p style="font-size: 0.9rem; color: #aaa;">1 earned, 2 in progress</p>
+                <a href="/certification" class="btn btn-primary card-btn">View Progress</a>
+            </div>
+        </div>
+
+        <h2 class="section-title">📈 Your Progress</h2>
+        <div class="progress-item">
+            <div>
+                <strong>Scripting Fundamentals</strong>
+                <span style="float: right; color: var(--primary);">65%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 65%"></div>
+            </div>
+        </div>
+
+        <div class="progress-item">
+            <div>
+                <strong>Video Lesson Completion</strong>
+                <span style="float: right; color: var(--primary);">42%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 42%"></div>
+            </div>
+        </div>
+
+        <div class="progress-item">
+            <div>
+                <strong>Coding Challenges</strong>
+                <span style="float: right; color: var(--primary);">37%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 37%"></div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
+</body>
+</html>

@@ -1,0 +1,94 @@
+.tools-container {
+    padding: 2rem 0;
+}
+
+.tools-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.tools-header h1 {
+    font-size: 2.5rem;
+    color: var(--accent-cyan);
+    text-shadow: 0 0 10px rgba(0, 209, 255, 0.5);
+}
+
+.tools-categories {
+    display: grid;
+    gap: 3rem;
+    margin-bottom: 3rem;
+}
+
+.category {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2rem;
+}
+
+.category h2 {
+    color: var(--accent-orange);
+    margin-bottom: 2rem;
+    text-shadow: 0 0 10px rgba(255, 122, 0, 0.3);
+}
+
+.tool-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.tool-card {
+    background: rgba(0, 209, 255, 0.1);
+    border: 1px solid var(--accent-cyan);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.tool-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 209, 255, 0.2);
+}
+
+.setup-guides {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.guide {
+    background: rgba(123, 97, 255, 0.1);
+    border: 1px solid var(--accent-violet);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.guide:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(123, 97, 255, 0.2);
+}
+
+.quick-setup {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.quick-setup ol {
+    text-align: left;
+    max-width: 600px;
+    margin: 2rem auto;
+    list-style-position: inside;
+}
+
+.quick-setup li {
+    margin: 1rem 0;
+    padding: 0.5rem;
+    background: rgba(255, 122, 0, 0.1);
+    border-left: 3px solid var(--accent-orange);
+    border-radius: 5px;
+}
