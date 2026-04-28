@@ -220,15 +220,7 @@ async function startup() {
     console.log('[BOT] Loading events...');
     await loadBotEvents();
 
-    // Login to Discord
-    if (!DISCORD_TOKEN) {
-      throw new Error('Missing DISCORD_TOKEN environment variable');
-    }
-
-    console.log('[BOT] Connecting to Discord...');
-    await bot.login(DISCORD_TOKEN);
-
-    // Start Express server
+    // Start Express server FIRST so Render detects the port immediately
     app.listen(PORT, () => {
       console.log(`
 ╔══════════════════════════════════════════╗
@@ -238,6 +230,14 @@ async function startup() {
 ╚══════════════════════════════════════════╝
       `);
     });
+
+    // Login to Discord (runs in background after server is up)
+    if (!DISCORD_TOKEN) {
+      throw new Error('Missing DISCORD_TOKEN environment variable');
+    }
+
+    console.log('[BOT] Connecting to Discord...');
+    await bot.login(DISCORD_TOKEN);
 
   } catch (error) {
     console.error('\n❌ Startup failed:', error);
