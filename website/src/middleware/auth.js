@@ -15,13 +15,22 @@ export async function isAuthenticated(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized' }).end();
   }
   
-  // Verify token is still valid
+  // Verify token is still valid, refresh if needed
   try {
     await verifyDiscordToken(req.session.user.token);
     next();
   } catch (error) {
-    req.session.destroy();
-    res.status(401).json({ error: 'Token expired or invalid' });
+    // Token expired, try to refresh it
+    try {
+      const refreshedToken = await refreshDiscordToken(req.session.user.refreshToken);
+      req.session.user.token = refreshedToken.access_token;
+      req.session.user.refreshToken = refreshedToken.refresh_token;
+      next();
+    } catch (refreshError) {
+      console.error('[AUTH REFRESH ERROR]', refreshError.message);
+      req.session.destroy();
+      res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 }
 
@@ -62,6 +71,34 @@ export async function verifyDiscordToken(token) {
     return response.data;
   } catch (error) {
     throw new Error('Invalid Discord token');
+  }
+}
+
+/**
+ * Refresh Discord OAuth token using refresh token
+ */
+export async function refreshDiscordToken(refreshToken) {
+  try {
+    const response = await axios.post(
+      'https://discord.com/api/oauth2/token',
+      new URLSearchParams({
+        client_id: DISCORD_CLIENT_ID,
+        client_secret: DISCORD_CLIENT_SECRET,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        scope: 'identify email guilds.members.read'
+      }).toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('[TOKEN REFRESH ERROR]', error.response?.data || error.message);
+    throw new Error('Failed to refresh Discord token');
   }
 }
 
