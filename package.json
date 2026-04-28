@@ -2,9 +2,10 @@
   "name": "gleecin-bot",
   "version": "1.0.0",
   "type": "module",
-  "main": "src/index.js",
+  "main": "website/src/unified-server.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node website/src/unified-server.js",
+    "dev": "node --watch website/src/unified-server.js",
     "deploy:commands": "node src/deploy-commands.js",
     "postinstall": "node src/deploy-commands.js"
   },

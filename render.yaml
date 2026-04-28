@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: gleecin-bot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    region: oregon
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+    # These need to be added in Render dashboard:
+    # - DATABASE_URL (PostgreSQL connection string)
+    # - DISCORD_TOKEN (Discord bot token)
+    # - DISCORD_CLIENT_ID (OAuth application ID)
+    # - DISCORD_CLIENT_SECRET (OAuth client secret)
+    # - SESSION_SECRET (random string for session)
+    # - And other required env vars from .env
+
+# After deploying:
+# 1. Go to Render Dashboard
+# 2. Select this service
+# 3. Go to Environment
+# 4. Add all required environment variables
+# 5. Deploy will auto-restart with new vars

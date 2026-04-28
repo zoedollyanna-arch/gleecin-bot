@@ -5,8 +5,8 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "start": "node src/unified-server.js",
+    "dev": "node --watch src/unified-server.js"
   },
   "keywords": [
     "discord",
