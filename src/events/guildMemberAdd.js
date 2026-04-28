@@ -31,7 +31,7 @@ export default {
 
     // Create welcome embed with branded styling
     const welcomeEmbed = new EmbedBuilder()
-      .setTitle('⚙️ Welcome to GLEECIN Academy')
+      .setTitle('⚙️ Welcome to GLEECIN')
       .setDescription(`Welcome to the hub of digital infrastructure and creative excellence, ${member}.\n\n**Where advanced scripting meets curated digital assets.**\n\nWe offer comprehensive scripting education, premium tools, and creative marketplace access. Whether you're learning to code or selling your creations, you've found the right place.\n\n🎓 **Explore your options below:**`)
       .setColor('#00ff88')
       .setThumbnail(member.user.displayAvatarURL())
@@ -43,11 +43,11 @@ export default {
         },
         {
           name: '🎨 Commission Work',
-          value: 'Submit commission requests or hire talented creators for your project.'
+          value: 'Submit a commission request & let our team craft something custom-built for you. From HUDs to full systems — we bring your vision to life.'
         },
         {
           name: '🛍️ Marketplace',
-          value: 'Browse retail and interactive systems. Scripts, skins, and exclusive releases.'
+          value: 'Scripts, RP systems & exclusive releases — built for serious creators.'
         },
         {
           name: '🔧 Get Support',

@@ -2,10 +2,18 @@ import { Events, EmbedBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilde
 
 export default {
   name: Events.InteractionCreate,
-  
+
+  async execute(interaction, client) {
+    if (interaction.isButton()) {
+      await this.handleButton(interaction, client);
+    } else if (interaction.isModalSubmit()) {
+      await this.handleModal(interaction, client);
+    }
+  },
+
   async handleButton(interaction, client) {
     const buttonId = interaction.customId;
-    
+
     if (buttonId === 'get_access') {
       await handleGetAccess(interaction);
     } else if (buttonId === 'enroll_class') {
@@ -20,7 +28,7 @@ export default {
       await handleCloseTicket(interaction);
     } else {
       await interaction.reply({
-        content: 'This button action is not yet configured.',
+        content: '❌ This button action is not yet configured.',
         ephemeral: true
       }).catch(() => {});
     }
@@ -276,7 +284,7 @@ async function handleVisitMarketplace(interaction) {
     new ButtonBuilder()
       .setLabel('Open Marketplace')
       .setStyle(ButtonStyle.Link)
-      .setURL('https://gleecin.com/marketplace')
+      .setURL('https://marketplace.secondlife.com/stores/263297')
       .setEmoji('🛍️')
   );
 
