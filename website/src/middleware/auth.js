@@ -1,3 +1,5 @@
+
+
 /**
  * Authentication Middleware
  * Handles Discord OAuth verification and role-based access
@@ -9,29 +11,40 @@ const { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, GUILD_ID } = process.env;
 
 /**
  * Middleware: Check if user is authenticated
+ * Only checks session existence - does NOT hit Discord API on every request
+ * to avoid rate limits. Token validity is checked only during login or
+ * when explicitly needed.
  */
 export async function isAuthenticated(req, res, next) {
   if (!req.session?.user) {
     return res.status(401).json({ error: 'Unauthorized' }).end();
   }
-  
-  // Verify token is still valid, refresh if needed
-  try {
-    await verifyDiscordToken(req.session.user.token);
-    next();
-  } catch (error) {
-    // Token expired, try to refresh it
+
+  // Check if token needs refresh (only once per hour to avoid rate limits)
+  const now = Date.now();
+  const lastVerified = req.session.user.tokenVerifiedAt || 0;
+  const ONE_HOUR = 60 * 60 * 1000;
+
+  if (now - lastVerified > ONE_HOUR) {
     try {
-      const refreshedToken = await refreshDiscordToken(req.session.user.refreshToken);
-      req.session.user.token = refreshedToken.access_token;
-      req.session.user.refreshToken = refreshedToken.refresh_token;
-      next();
-    } catch (refreshError) {
-      console.error('[AUTH REFRESH ERROR]', refreshError.message);
-      req.session.destroy();
-      res.status(401).json({ error: 'Unauthorized' });
+      await verifyDiscordToken(req.session.user.token);
+      req.session.user.tokenVerifiedAt = now;
+    } catch (error) {
+      // Token expired, try to refresh it
+      try {
+        const refreshedToken = await refreshDiscordToken(req.session.user.refreshToken);
+        req.session.user.token = refreshedToken.access_token;
+        req.session.user.refreshToken = refreshedToken.refresh_token;
+        req.session.user.tokenVerifiedAt = now;
+      } catch (refreshError) {
+        console.error('[AUTH REFRESH ERROR]', refreshError.message);
+        req.session.destroy();
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
     }
   }
+
+  next();
 }
 
 /**
@@ -168,7 +181,7 @@ export function getUserTier(user) {
 /**
  * Generate Discord OAuth URL
  */
-export function getDiscordOAuthURL(redirectUri) {
+export function getDiscordOAuthURL(redirectUri, state) {
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: redirectUri,
@@ -177,35 +190,56 @@ export function getDiscordOAuthURL(redirectUri) {
     prompt: 'none'
   });
 
+  if (state) {
+    params.append('state', state);
+  }
+
   return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
 }
 
 /**
  * Exchange Discord OAuth code for token
+ * Includes retry logic with exponential backoff for rate limits
  */
 export async function exchangeOAuthCode(code, redirectUri) {
-  try {
-    const response = await axios.post(
-      'https://discord.com/api/oauth2/token',
-      new URLSearchParams({
-        client_id: DISCORD_CLIENT_ID,
-        client_secret: DISCORD_CLIENT_SECRET,
-        code: code,
-        grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
-        scope: 'identify email guilds.members.read'
-      }).toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    );
+  const MAX_RETRIES = 3;
+  const BASE_DELAY = 1000; // 1 second
 
-    return response.data;
-  } catch (error) {
-    console.error('[OAUTH ERROR]', error.response?.data || error.message);
-    throw new Error('Failed to exchange OAuth code');
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await axios.post(
+        'https://discord.com/api/oauth2/token',
+        new URLSearchParams({
+          client_id: DISCORD_CLIENT_ID,
+          client_secret: DISCORD_CLIENT_SECRET,
+          code: code,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+          scope: 'identify email guilds.members.read'
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      const isLastAttempt = attempt === MAX_RETRIES;
+
+      if (isRateLimit && !isLastAttempt) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+        console.warn(`[OAUTH] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      console.error('[OAUTH ERROR]', error.response?.data || error.message);
+      throw new Error('Failed to exchange OAuth code');
+    }
   }
 }
 

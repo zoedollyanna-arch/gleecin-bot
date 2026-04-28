@@ -44,7 +44,9 @@ class LessonVault {
 
     async loadLessons() {
         try {
-            const response = await fetch('/api/lessons');
+            const response = await fetch('/api/lessons', {
+                credentials: 'include'
+            });
             const lessons = await response.json();
             
             const container = document.getElementById('lessons-container');
@@ -76,7 +78,9 @@ class LessonVault {
 
     async loadLessonDetails(lessonId) {
         try {
-            const response = await fetch(`/api/lessons/${lessonId}`);
+            const response = await fetch(`/api/lessons/${lessonId}`, {
+                credentials: 'include'
+            });
             const lesson = await response.json();
             
             // Create video player
@@ -211,6 +215,7 @@ class LessonVault {
         try {
             await fetch('/api/lessons/progress', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -230,6 +235,7 @@ class LessonVault {
         try {
             await fetch('/api/lessons/complete', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -251,7 +257,8 @@ class LessonVault {
             
             // Update download count in database
             await fetch(`/api/lessons/${lessonId}/download`, {
-                method: 'POST'
+                method: 'POST',
+                credentials: 'include'
             });
             
             setTimeout(() => {

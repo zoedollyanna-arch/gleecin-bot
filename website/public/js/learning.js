@@ -74,7 +74,9 @@ class LearningModule {
 
     async loadChallenges() {
         try {
-            const response = await fetch('/api/challenges');
+            const response = await fetch('/api/challenges', {
+                credentials: 'include'
+            });
             const challenges = await response.json();
             
             const container = document.getElementById('challenges-container');
@@ -106,7 +108,9 @@ class LearningModule {
 
     async loadChallengeDetails(challengeId) {
         try {
-            const response = await fetch(`/api/challenges/${challengeId}`);
+            const response = await fetch(`/api/challenges/${challengeId}`, {
+                credentials: 'include'
+            });
             const challenge = await response.json();
             
             // Update editor with starter code
@@ -154,6 +158,7 @@ class LearningModule {
         try {
             const response = await fetch('/api/challenges/submit', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                 },

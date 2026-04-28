@@ -53,7 +53,9 @@ class ScriptLibrary {
                 url += `?category=${encodeURIComponent(category)}`;
             }
             
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                credentials: 'include'
+            });
             this.scripts = await response.json();
             
             this.displayScripts(this.scripts);
@@ -203,7 +205,8 @@ class ScriptLibrary {
     async updateDownloadCount(scriptId) {
         try {
             await fetch(`/api/scripts/${scriptId}/download`, {
-                method: 'POST'
+                method: 'POST',
+                credentials: 'include'
             });
         } catch (error) {
             console.error('Error updating download count:', error);

@@ -36,7 +36,9 @@ class CertificationSystem {
 
     async loadCertificates() {
         try {
-            const response = await fetch('/api/certifications');
+            const response = await fetch('/api/certifications', {
+                credentials: 'include'
+            });
             this.certificates = await response.json();
             
             const container = document.getElementById('certificates-container');
@@ -52,7 +54,9 @@ class CertificationSystem {
 
     async loadStats() {
         try {
-            const response = await fetch('/api/certifications/stats');
+            const response = await fetch('/api/certifications/stats', {
+                credentials: 'include'
+            });
             const stats = await response.json();
             
             const totalElement = document.getElementById('total-certificates');
@@ -110,7 +114,9 @@ class CertificationSystem {
             button.disabled = true;
 
             // Generate and download PDF
-            const response = await fetch(`/api/certifications/${certificateId}/pdf`);
+            const response = await fetch(`/api/certifications/${certificateId}/pdf`, {
+                credentials: 'include'
+            });
             const blob = await response.blob();
             
             // Create download link
@@ -172,7 +178,8 @@ class CertificationSystem {
     async markCertificateShared(certificateId) {
         try {
             await fetch(`/api/certifications/${certificateId}/share`, {
-                method: 'POST'
+                method: 'POST',
+                credentials: 'include'
             });
         } catch (error) {
             console.error('Error marking certificate as shared:', error);

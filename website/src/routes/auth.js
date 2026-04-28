@@ -1,3 +1,4 @@
+
 /**
  * Authentication Routes
  * Handles Discord OAuth login, callback, and logout
@@ -20,7 +21,11 @@ const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:3000/auth/cal
  * Redirect to Discord OAuth authorization page
  */
 router.get('/login', (req, res) => {
-  const oauthUrl = getDiscordOAuthURL(REDIRECT_URI);
+  // Generate CSRF state token
+  const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  req.session.oauthState = state;
+
+  const oauthUrl = getDiscordOAuthURL(REDIRECT_URI, state);
   res.redirect(oauthUrl);
 });
 
@@ -51,7 +56,8 @@ router.get('/callback', async (req, res) => {
       token: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       roles: userInfo.roles,
-      joinedAt: userInfo.joinedAt
+      joinedAt: userInfo.joinedAt,
+      tokenVerifiedAt: Date.now()
     };
 
     console.log(`[AUTH] User logged in: ${userInfo.username} (${userInfo.id})`);
