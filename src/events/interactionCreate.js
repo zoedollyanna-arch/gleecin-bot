@@ -1,4 +1,23 @@
-import { Events, EmbedBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+/**
+ * Unified Interaction Handler
+ * Handles all button clicks, slash commands, and modals
+ */
+
+import {
+  Events,
+  EmbedBuilder,
+  PermissionFlagsBits,
+  ChannelType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} from 'discord.js';
+import {
+  createTicket,
+  getTicketByChannel,
+  closeTicket,
+  deleteTicket
+} from '../database/models/ticket.js';
 
 export default {
   name: Events.InteractionCreate,
@@ -19,13 +38,15 @@ export default {
     } else if (buttonId === 'enroll_class') {
       await handleEnrollClass(interaction);
     } else if (buttonId === 'open_commission') {
-      await handleOpenCommission(interaction);
+      await handleOpenTicket(interaction, 'commission');
+    } else if (buttonId === 'open_support') {
+      await handleOpenTicket(interaction, 'support');
     } else if (buttonId === 'visit_marketplace') {
       await handleVisitMarketplace(interaction);
-    } else if (buttonId === 'open_support') {
-      await handleOpenSupport(interaction);
     } else if (buttonId.startsWith('close_ticket_')) {
-      await handleCloseTicket(interaction);
+      await handleCloseTicketButton(interaction);
+    } else if (buttonId.startsWith('claim_ticket_')) {
+      await handleClaimTicket(interaction);
     } else {
       await interaction.reply({
         content: '❌ This button action is not yet configured.',
@@ -39,6 +60,9 @@ export default {
   }
 };
 
+// =====================
+// GET ACCESS
+// =====================
 async function handleGetAccess(interaction) {
   const visitorRoleId = process.env.VISITOR_ROLE_ID;
   const memberRoleId = process.env.MEMBER_ROLE_ID;
@@ -64,12 +88,9 @@ async function handleGetAccess(interaction) {
   }
 
   try {
-    // Remove Visitor role
     if (member.roles.cache.has(visitorRoleId)) {
       await member.roles.remove(visitorRole);
     }
-
-    // Add Member role
     await member.roles.add(memberRole);
 
     await interaction.reply({
@@ -77,8 +98,7 @@ async function handleGetAccess(interaction) {
       ephemeral: true
     });
 
-    // Log the access grant
-    console.log(`[ACCESS] ${member.user.tag} (${member.user.id}) gained access to the server`);
+    console.log(`[ACCESS] ${member.user.tag} gained access to the server`);
   } catch (error) {
     console.error('[ACCESS ERROR]', error);
     await interaction.reply({
@@ -88,79 +108,108 @@ async function handleGetAccess(interaction) {
   }
 }
 
+// =====================
+// ENROLL CLASS
+// =====================
 async function handleEnrollClass(interaction) {
-  const studentRoleId = process.env.STUDENT_ROLE_ID;
-
-  if (!studentRoleId) {
-    return interaction.reply({
-      content: '❌ Student role not configured.',
-      ephemeral: true
-    });
-  }
-
   try {
-    const member = interaction.member;
-    const hasStudentRole = member.roles.cache.has(studentRoleId);
-
-    if (hasStudentRole) {
-      return interaction.reply({
-        content: '✅ You\'re already enrolled in the Scripting Academy!',
-        ephemeral: true
-      });
-    }
-
-    await member.roles.add(studentRoleId);
-
     const enrollEmbed = new EmbedBuilder()
-      .setTitle('🎓 Enrolled in Scripting Academy!')
-      .setDescription('You are now enrolled in the Jwett Scripting Academy.')
+      .setTitle('🎓 Scripting Academy Enrollment')
+      .setDescription('Ready to level up your scripting skills? Here\'s how to get started.')
       .setColor('#0099ff')
       .addFields(
-        { name: '📅 Class Starts', value: 'May 1st, 2026', inline: true },
-        { name: '📍 Main Hub', value: 'Check #class-updates for announcements', inline: true },
-        { name: '🔗 Quick Links', value: 'Use `/class schedule` for class times\nUse `/class curriculum` for course content' }
+        {
+          name: '💰 Pricing',
+          value:
+            '**Standard Class:** 15,000 L$\n' +
+            '**Premium Class:** 25,000 L$\n\n' +
+            '• *Standard* covers core scripting fundamentals\n' +
+            '• *Premium* includes advanced modules + 1-on-1 mentorship'
+        },
+        {
+          name: '📩 How to Enroll',
+          value:
+            'To secure your spot, please reach out directly:\n\n' +
+            '**Discord DMs:**\n' +
+            '• <@1171505550333612112> (Lady Jwett)\n' +
+            '• <@1171505550333612112> (GLEECIN)\n\n' +
+            '**Instagram:**\n' +
+            '• [@ladyjwettt](https://instagram.com/ladyjwettt)\n' +
+            '• [@gleecin.sl](https://instagram.com/gleecin.sl)\n\n' +
+            'Send your **desired tier** (Standard or Premium) and we\'ll get you set up.'
+        },
+        {
+          name: '📅 Next Cohort',
+          value: 'Classes run in monthly sessions. Next intake begins soon — reserve your seat now!'
+        }
       )
-      .setFooter({ text: 'Ready to level up your scripting skills!' })
+      .setFooter({ text: 'GLEECIN Scripting Academy • Learn from the best' })
       .setTimestamp();
 
     await interaction.reply({ embeds: [enrollEmbed], ephemeral: true });
-
-    // Log to class channel
-    const classChannelId = process.env.CLASS_UPDATES_CHANNEL_ID;
-    if (classChannelId) {
-      const channel = await interaction.guild.channels.fetch(classChannelId).catch(() => null);
-      if (channel) {
-        const joinEmbed = new EmbedBuilder()
-          .setTitle('👤 New Student Enrolled')
-          .setDescription(`${interaction.user.username} has joined the Scripting Academy!`)
-          .setColor('#00ff88')
-          .setTimestamp();
-        await channel.send({ embeds: [joinEmbed] }).catch(() => {});
-      }
-    }
   } catch (error) {
     console.error('[ENROLL ERROR]', error);
-    await interaction.reply({ content: 'Failed to enroll. Please contact an administrator.', ephemeral: true });
+    await interaction.reply({
+      content: '❌ Failed to show enrollment info. Please contact an administrator.',
+      ephemeral: true
+    });
   }
 }
 
-async function handleOpenCommission(interaction) {
+// =====================
+// OPEN TICKET (Unified)
+// =====================
+async function handleOpenTicket(interaction, ticketType) {
   const guild = interaction.guild;
   const user = interaction.user;
   const staffRoleId = process.env.STAFF_ROLE_ID;
 
+  const typeConfig = {
+    support: {
+      icon: '🆘',
+      color: '#ff6600',
+      label: 'Support',
+      description: 'A team member will assist you shortly.',
+      defaultDesc: 'Support request from welcome message'
+    },
+    commission: {
+      icon: '🎨',
+      color: '#ff6b9d',
+      label: 'Commission',
+      description: 'A staff member will review your commission request shortly.',
+      defaultDesc: 'Commission request from welcome message'
+    }
+  };
+
+  const config = typeConfig[ticketType];
+
   try {
-    const channelName = `🎨-commission-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
+    const channelName = `${config.icon}-${ticketType}-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
 
     const permissionOverwrites = [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-      { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+      {
+        id: user.id,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.AttachFiles,
+          PermissionFlagsBits.EmbedLinks
+        ]
+      }
     ];
 
     if (staffRoleId) {
       permissionOverwrites.push({
         id: staffRoleId,
-        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.ManageMessages,
+          PermissionFlagsBits.AttachFiles
+        ]
       });
     }
 
@@ -170,114 +219,190 @@ async function handleOpenCommission(interaction) {
       permissionOverwrites
     });
 
+    // Save to database
+    const description = config.defaultDesc;
+    await createTicket({
+      guildId: guild.id,
+      channelId: ticketChannel.id,
+      userId: user.id,
+      userTag: user.tag,
+      type: ticketType,
+      description
+    });
+
     const embed = new EmbedBuilder()
-      .setTitle('🎨 Commission Request Opened')
-      .setDescription(`A staff member will review your commission request shortly.`)
-      .setColor('#ff9900')
+      .setTitle(`${config.icon} ${config.label} Ticket Opened`)
+      .setDescription(config.description)
+      .setColor(config.color)
       .addFields(
-        { name: 'Status', value: 'Pending Review', inline: true },
-        { name: 'User', value: `${user.tag}`, inline: true }
+        { name: 'Type', value: config.label, inline: true },
+        { name: 'User', value: `${user.tag} (<@${user.id}>)`, inline: true },
+        { name: 'Status', value: '🟢 Open', inline: true }
       )
-      .setFooter({ text: `Commission ID: ${ticketChannel.id}` })
+      .setFooter({ text: `Ticket ID: ${ticketChannel.id}` })
       .setTimestamp();
 
-    const closeButton = new ActionRowBuilder().addComponents(
+    const staffRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`close_ticket_${ticketChannel.id}`)
-        .setLabel('Close Request')
+        .setLabel('Close Ticket')
         .setStyle(ButtonStyle.Danger)
-        .setEmoji('🔒')
+        .setEmoji('🔒'),
+      new ButtonBuilder()
+        .setCustomId(`claim_ticket_${ticketChannel.id}`)
+        .setLabel('Claim Ticket')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('👤')
     );
 
-    await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [closeButton] });
+    await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [staffRow] });
     await interaction.reply({
-      content: `✅ Commission request created: ${ticketChannel}`,
+      content: `✅ ${config.label} ticket created: ${ticketChannel}`,
       ephemeral: true
     });
+
+    console.log(`[TICKET] ${ticketType.toUpperCase()} ticket opened by ${user.tag} — ${ticketChannel.name}`);
   } catch (error) {
-    console.error('[COMMISSION ERROR]', error);
+    console.error(`[${ticketType.toUpperCase()} TICKET ERROR]`, error);
     await interaction.reply({
-      content: 'Failed to create commission request. Please try again.',
+      content: `❌ Failed to create ${ticketType} ticket. Please try again.`,
       ephemeral: true
     });
   }
 }
 
-async function handleOpenSupport(interaction) {
-  const guild = interaction.guild;
-  const user = interaction.user;
+// =====================
+// CLOSE TICKET (Button)
+// =====================
+async function handleCloseTicketButton(interaction) {
+  const channel = interaction.channel;
+
+  // Verify this is a ticket channel
+  const ticket = await getTicketByChannel(channel.id);
+  if (!ticket) {
+    return interaction.reply({
+      content: '❌ This is not a ticket channel.',
+      ephemeral: true
+    });
+  }
+
+  // Check permissions
   const staffRoleId = process.env.STAFF_ROLE_ID;
+  const isStaff = staffRoleId && interaction.member.roles.cache.has(staffRoleId);
+  const isOwner = ticket.user_id === interaction.user.id;
+
+  if (!isStaff && !isOwner) {
+    return interaction.reply({
+      content: '❌ Only staff or the ticket owner can close this ticket.',
+      ephemeral: true
+    });
+  }
 
   try {
-    const channelName = `🆘-support-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
-
-    const permissionOverwrites = [
-      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-      { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
-    ];
-
-    if (staffRoleId) {
-      permissionOverwrites.push({
-        id: staffRoleId,
-        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
-      });
-    }
-
-    const ticketChannel = await guild.channels.create({
-      name: channelName,
-      type: ChannelType.GuildText,
-      permissionOverwrites
+    // Update database
+    await closeTicket({
+      channelId: channel.id,
+      closedBy: interaction.user.id,
+      closedByTag: interaction.user.tag
     });
 
-    const embed = new EmbedBuilder()
-      .setTitle('🆘 Support Ticket Opened')
-      .setDescription('A team member will assist you shortly.')
-      .setColor('#ff6600')
+    const closeEmbed = new EmbedBuilder()
+      .setTitle('🔒 Ticket Closed')
+      .setDescription(`This ticket has been closed by ${interaction.user.tag}`)
+      .setColor('#ff0000')
       .addFields(
-        { name: 'Status', value: 'Awaiting Response', inline: true },
-        { name: 'User', value: `${user.tag}`, inline: true }
+        { name: 'Closed By', value: `${interaction.user.tag} (<@${interaction.user.id}>)`, inline: true },
+        { name: 'Original User', value: `${ticket.user_tag} (<@${ticket.user_id}>)`, inline: true }
       )
-      .setFooter({ text: `Support Ticket ID: ${ticketChannel.id}` })
       .setTimestamp();
 
-    const closeButton = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`close_ticket_${ticketChannel.id}`)
-        .setLabel('Close Support')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji('🔒')
-    );
+    await channel.send({ embeds: [closeEmbed] });
 
-    await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [closeButton] });
     await interaction.reply({
-      content: `✅ Support ticket created: ${ticketChannel}`,
+      content: '✅ Ticket closed. This channel will be deleted in 10 seconds.',
       ephemeral: true
     });
+
+    console.log(`[TICKET] Closed by ${interaction.user.tag} — ${channel.name}`);
+
+    // Delete channel after delay
+    setTimeout(async () => {
+      try {
+        await channel.delete('Ticket closed');
+        await deleteTicket(channel.id);
+      } catch (err) {
+        console.error('[TICKET DELETE ERROR]', err);
+      }
+    }, 10000);
+
   } catch (error) {
-    console.error('[SUPPORT TICKET ERROR]', error);
+    console.error('[TICKET CLOSE ERROR]', error);
     await interaction.reply({
-      content: 'Failed to create support ticket. Please try again.',
+      content: '❌ Failed to close ticket.',
       ephemeral: true
     });
   }
 }
 
+// =====================
+// CLAIM TICKET
+// =====================
+async function handleClaimTicket(interaction) {
+  const staffRoleId = process.env.STAFF_ROLE_ID;
+
+  if (staffRoleId && !interaction.member.roles.cache.has(staffRoleId)) {
+    return interaction.reply({
+      content: '❌ Staff only.',
+      ephemeral: true
+    });
+  }
+
+  const channel = interaction.channel;
+  const ticket = await getTicketByChannel(channel.id);
+  if (!ticket) {
+    return interaction.reply({ content: '❌ Not a valid ticket channel.', ephemeral: true });
+  }
+
+  try {
+    const claimEmbed = new EmbedBuilder()
+      .setTitle('👤 Ticket Claimed')
+      .setDescription(`This ticket has been claimed by ${interaction.user.tag}`)
+      .setColor('#00ff88')
+      .addFields(
+        { name: 'Claimed By', value: `${interaction.user.tag} (<@${interaction.user.id}>)`, inline: true },
+        { name: 'Status', value: '🔵 In Progress', inline: true }
+      )
+      .setTimestamp();
+
+    await channel.send({ embeds: [claimEmbed] });
+    await interaction.reply({ content: '✅ Ticket claimed.', ephemeral: true });
+
+    console.log(`[TICKET] Claimed by ${interaction.user.tag} — ${channel.name}`);
+  } catch (error) {
+    console.error('[TICKET CLAIM ERROR]', error);
+    await interaction.reply({ content: '❌ Failed to claim ticket.', ephemeral: true });
+  }
+}
+
+// =====================
+// VISIT MARKETPLACE
+// =====================
 async function handleVisitMarketplace(interaction) {
   const marketplaceEmbed = new EmbedBuilder()
     .setTitle('🛍️ GLEECIN Marketplace')
-    .setDescription('Explore our curated collection of digital assets, scripts, and creative tools.')
+    .setDescription('Scripts, RP systems & exclusive releases — built for serious creators.')
     .setColor('#ff6b9d')
     .addFields(
       {
         name: '📦 Available Categories',
-        value: '• **Scripts** — HUD systems, vendors, security tools\n• **Skins & Clothing** — Fashion and avatars\n• **Animations** — Custom movements and gestures\n• **Interactive Systems** — Retail, doors, rezzing tools'
+        value: '• **Scripts** — HUD systems, vendors, security tools\n• **RP Systems** — Interactive roleplay mechanics\n• **Exclusive Releases** — Limited drops and custom builds\n• **Interactive Tools** — Retail, doors, rezzing systems'
       },
       {
         name: '💳 How to Purchase',
         value: 'Use the marketplace link below to browse and buy directly.'
       }
     )
-    .setFooter({ text: 'Premium digital assets for creators' })
+    .setFooter({ text: 'Premium digital assets for Second Life creators' })
     .setTimestamp();
 
   const marketplaceButton = new ActionRowBuilder().addComponents(
@@ -293,44 +418,4 @@ async function handleVisitMarketplace(interaction) {
     components: [marketplaceButton],
     ephemeral: true
   });
-}
-
-async function handleCloseTicket(interaction) {
-  const channel = interaction.channel;
-  
-  if (!channel.name.includes('ticket') && !channel.name.includes('commission') && !channel.name.includes('support')) {
-    return interaction.reply({
-      content: '❌ This button only works in support channels.',
-      ephemeral: true
-    });
-  }
-
-  try {
-    const closeEmbed = new EmbedBuilder()
-      .setTitle('🔒 Support Request Closed')
-      .setDescription(`This request has been closed by ${interaction.user.tag}`)
-      .setColor('#ff0000')
-      .setTimestamp();
-
-    await channel.send({ embeds: [closeEmbed] });
-    
-    // Rename to indicate closed status
-    const oldName = channel.name;
-    if (!oldName.includes('closed')) {
-      await channel.setName(`closed-${oldName.slice(0, 85)}`).catch(() => {});
-    }
-
-    await interaction.reply({
-      content: '✅ Support request closed. This channel will be archived shortly.',
-      ephemeral: true
-    });
-
-    console.log(`[CLOSED] ${channel.name} closed by ${interaction.user.tag}`);
-  } catch (error) {
-    console.error('[CLOSE TICKET ERROR]', error);
-    await interaction.reply({
-      content: 'Failed to close ticket. Please contact an administrator.',
-      ephemeral: true
-    });
-  }
 }

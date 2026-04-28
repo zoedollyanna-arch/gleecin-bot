@@ -6,6 +6,7 @@
 
 import pg from 'pg';
 import 'dotenv/config';
+import { initTicketsTable } from './models/ticket.js';
 
 const { Pool } = pg;
 
@@ -40,6 +41,10 @@ export async function initDatabase() {
     // Test connection
     await query('SELECT NOW()');
     console.log('✅ [DB] Connected to PostgreSQL');
+
+    // Initialize tables
+    await initTicketsTable();
+
     return true;
   } catch (error) {
     console.error('❌ [DB] Connection failed:', error.message);
