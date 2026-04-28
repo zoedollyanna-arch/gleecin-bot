@@ -23,7 +23,7 @@ import paymentRoutes from './routes/payment.js';
 import adminRoutes from './routes/admin.js';
 import { isAuthenticated, checkRole } from './middleware/auth.js';
 import { initializeDatabase } from './db/database.js';
-import { initDatabase as initBotDatabase } from '../src/database/connection.js';
+import { initDatabase as initBotDatabase } from '../../src/database/connection.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -116,7 +116,7 @@ bot.commands = new Collection();
 // Load bot commands
 async function loadBotCommands() {
   try {
-    const commandsPath = path.join(__dirname, '..', 'src', 'commands');
+    const commandsPath = path.join(__dirname, '..', '..', 'src', 'commands');
     const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
 
     for (const file of commandFiles) {
@@ -139,7 +139,7 @@ async function loadBotCommands() {
 // Load bot events
 async function loadBotEvents() {
   try {
-    const eventsPath = path.join(__dirname, '..', 'src', 'events');
+    const eventsPath = path.join(__dirname, '..', '..', 'src', 'events');
     const eventFiles = fs.readdirSync(eventsPath).filter(f => f.endsWith('.js'));
 
     for (const file of eventFiles) {
