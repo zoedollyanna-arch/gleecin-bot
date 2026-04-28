@@ -283,3 +283,78 @@ See DEPLOYMENT_CHECKLIST.md for complete setup guide.
 **All Commands Ready** ✅
 **Scripting Academy Launch**: May 1st, 2026 🎓
 **Last Updated**: April 27, 2026
+
+---
+
+# 🚀 Deployment Quick Reference
+
+## One-Click Deploy to Render
+
+1. **Create Admin User**
+   ```sql
+   INSERT INTO users (discord_id, username, is_admin, tier)
+   VALUES ('1197552066269282306', 'zoedollyanna', true, 'advanced');
+   ```
+
+2. **Push to GitHub**
+   ```bash
+   git push origin main
+   ```
+
+3. **Connect to Render**
+   - Go to render.com
+   - Click "New Web Service"
+   - Select your GitHub repo
+   - Build command: `npm install`
+   - Start command: `npm start`
+
+4. **Add Environment Variables**
+   - DATABASE_URL
+   - DISCORD_TOKEN
+   - DISCORD_CLIENT_ID
+   - DISCORD_CLIENT_SECRET
+   - SESSION_SECRET
+   - (See RENDER_DEPLOYMENT.md for full list)
+
+5. **Deploy**
+   - Render auto-deploys from main branch
+   - Website serves at https://your-render-url.onrender.com
+   - Bot runs in background
+
+## Verify Deployment
+
+```bash
+# Website working?
+curl https://your-render-url.onrender.com
+
+# Admin panel?
+https://your-render-url.onrender.com/admin
+
+# Health check?
+curl https://your-render-url.onrender.com/health
+
+# Bot online?
+Check your Discord - bot should show online
+```
+
+## Local Development
+
+```bash
+# Install
+npm install
+
+# Run (website + bot)
+npm run dev
+
+# Test
+- Website: http://localhost:3000
+- Admin: http://localhost:3000/admin
+- Bot: Should be online in Discord
+```
+
+## Key Files
+
+- `render.yaml` - Render deployment config
+- `website/src/unified-server.js` - Main entry point
+- `website/create-admin-user.sql` - Admin setup
+- `RENDER_DEPLOYMENT.md` - Full deployment guide
