@@ -55,7 +55,6 @@ export default {
             .setDescription('ID of submission to approve')
             .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     ),
 
   async execute(interaction) {
@@ -232,6 +231,14 @@ async function handleList(interaction) {
 }
 
 async function handleApprove(interaction) {
+  // Check if user has admin/instructor permissions
+  if (!interaction.member?.permissions.has(PermissionFlagsBits.Administrator)) {
+    return interaction.reply({
+      content: '❌ Only administrators can approve submissions.',
+      ephemeral: true
+    });
+  }
+
   const submissionId = interaction.options.getString('submission_id');
 
   const approvalEmbed = new EmbedBuilder()

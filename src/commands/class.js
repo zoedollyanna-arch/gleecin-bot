@@ -35,7 +35,6 @@ export default {
             .setDescription('Announcement message')
             .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     )
     .addSubcommand(subcommand =>
       subcommand
@@ -241,6 +240,14 @@ async function handleResources(interaction) {
 }
 
 async function handleAnnounce(interaction) {
+  // Check if user has admin/instructor permissions
+  if (!interaction.member?.permissions.has(PermissionFlagsBits.Administrator)) {
+    return interaction.reply({
+      content: '❌ Only administrators can post announcements.',
+      ephemeral: true
+    });
+  }
+
   const message = interaction.options.getString('message');
 
   try {
