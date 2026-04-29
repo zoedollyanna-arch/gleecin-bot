@@ -66,10 +66,36 @@
             box-shadow: 0 8px 20px rgba(88, 101, 242, 0.5);
         }
 
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
         .error {
             background-color: rgba(255, 77, 77, 0.1);
             border: 1px solid var(--error-color);
             color: var(--error-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .ratelimit-warning {
+            background-color: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .retry-success {
+            background-color: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+            color: #155724;
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 1rem;
@@ -84,6 +110,29 @@
             text-align: center;
             font-size: 0.9rem;
             color: var(--text-color);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--accent-cyan);
+        }
+
+        .spinner {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .back-link {
@@ -115,18 +164,95 @@
             </div>
         <% } %>
 
-        <a href="/auth/login" class="btn btn-discord">
+        <% if (ratelimit) { %>
+            <div class="ratelimit-warning">
+                <strong>🌐 Discord Rate Limited</strong><br>
+                Discord's login service is temporarily busy. Please wait 5-10 minutes and try again.
+                <br><small>This is a global Discord limit and affects everyone.</small>
+            </div>
+        <% } %>
+
+        <% if (retry) { %>
+            <div class="retry-success">
+                ✅ Session cleared. You can now retry login safely.
+            </div>
+        <% } %>
+
+        <button id="discordLogin" class="btn btn-discord" onclick="startLogin()">
             🔗 Login with Discord
-        </a>
+        </button>
+
+        <div id="loadingSpinner" class="loading">
+            <div class="spinner"></div>
+            Authenticating with Discord... Please wait.
+        </div>
 
         <div class="info">
             <strong>Discord OAuth</strong><br>
             No password needed. Sign in securely with your Discord account.
         </div>
 
+        <% if (ratelimit) { %>
+            <a href="/auth/retry" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; margin-top: 1rem;">
+                🔄 Retry Login Now
+            </a>
+        <% } %>
+
         <div class="back-link">
             <a href="/">← Back to Home</a>
         </div>
     </div>
+
+    <script>
+        // OAuth login with polling and loading states
+        let loginTimeout;
+        let pollInterval;
+
+        function startLogin() {
+            const btn = document.getElementById('discordLogin');
+            const spinner = document.getElementById('loadingSpinner');
+            
+            btn.disabled = true;
+            btn.innerHTML = '🔗 Connecting to Discord...';
+            spinner.style.display = 'block';
+
+            // Start polling auth status
+            pollAuthStatus();
+            
+            // Fallback timeout (60s)
+            loginTimeout = setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = '🔗 Login with Discord';
+                spinner.style.display = 'none';
+                clearInterval(pollInterval);
+                alert('Login taking longer than expected. Please try again or wait a few minutes.');
+            }, 60000);
+        }
+
+        async function pollAuthStatus() {
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/auth/status');
+                    const data = await response.json();
+                    
+                    if (data.authenticated) {
+                        // Auto-redirect on success
+                        clearInterval(pollInterval);
+                        clearTimeout(loginTimeout);
+                        window.location.href = '/dashboard';
+                    }
+                } catch (e) {
+                    // Continue polling during Discord redirect
+                }
+            }, 2000); // Poll every 2 seconds
+        }
+
+        // Auto-focus button if retry param
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('retry') === 'true') {
+            document.getElementById('discordLogin').focus();
+        }
+    </script>
 </body>
 </html>
+

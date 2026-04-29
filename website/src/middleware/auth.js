@@ -1,5 +1,3 @@
-
-
 /**
  * Authentication Middleware
  * Handles Discord OAuth verification and role-based access
@@ -8,6 +6,8 @@
 import axios from 'axios';
 
 const { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, GUILD_ID } = process.env;
+const MAX_WAIT_TIME = 30000; // 30 seconds max wait per attempt for rate limits
+const BASE_DELAY = 1000;
 
 /**
  * Middleware: Check if user is authenticated
@@ -72,12 +72,39 @@ export function checkRole(requiredRole) {
 }
 
 /**
+ * Shared rate limit retry helper
+ */
+async function handleRateLimit(error, attempt, maxRetries, operation) {
+  const isRateLimit = error.response?.status === 429;
+  if (!isRateLimit || attempt >= maxRetries) {
+    throw error;
+  }
+
+  const retryAfter = error.response?.headers?.['retry-after'];
+  let delay;
+
+  if (retryAfter) {
+    const waitMs = parseInt(retryAfter, 10) * 1000;
+    if (waitMs > MAX_WAIT_TIME) {
+      const minutes = Math.round(waitMs / 60000);
+      throw new Error(`Discord global rate limit (${operation}). Try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+    }
+    delay = waitMs;
+    console.warn(`[${operation}] Rate limited, respecting Retry-After: ${retryAfter}s (attempt ${attempt}/${maxRetries})`);
+  } else {
+    delay = BASE_DELAY * Math.pow(2, attempt - 1);
+    console.warn(`[${operation}] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`);
+  }
+
+  await new Promise(resolve => setTimeout(resolve, delay));
+}
+
+/**
  * Verify Discord OAuth token
  * Includes retry logic for rate limits
  */
 export async function verifyDiscordToken(token) {
-  const MAX_RETRIES = 3;
-  const BASE_DELAY = 1000;
+  const MAX_RETRIES = 2;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -88,17 +115,11 @@ export async function verifyDiscordToken(token) {
       });
       return response.data;
     } catch (error) {
-      const isRateLimit = error.response?.status === 429;
-      if (isRateLimit && attempt < MAX_RETRIES) {
-        const retryAfter = error.response?.headers?.['retry-after'];
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
-        console.warn(`[TOKEN VERIFY] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      throw new Error('Invalid Discord token');
+      await handleRateLimit(error, attempt, MAX_RETRIES, 'TOKEN VERIFY');
+      continue;
     }
   }
+  throw new Error('Invalid Discord token (max retries exceeded)');
 }
 
 /**
@@ -106,8 +127,7 @@ export async function verifyDiscordToken(token) {
  * Includes retry logic for rate limits
  */
 export async function refreshDiscordToken(refreshToken) {
-  const MAX_RETRIES = 3;
-  const BASE_DELAY = 1000;
+  const MAX_RETRIES = 2;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -129,18 +149,126 @@ export async function refreshDiscordToken(refreshToken) {
 
       return response.data;
     } catch (error) {
-      const isRateLimit = error.response?.status === 429;
-      if (isRateLimit && attempt < MAX_RETRIES) {
-        const retryAfter = error.response?.headers?.['retry-after'];
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
-        console.warn(`[TOKEN REFRESH] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      console.error('[TOKEN REFRESH ERROR]', error.response?.data || error.message);
-      throw new Error('Failed to refresh Discord token');
+      await handleRateLimit(error, attempt, MAX_RETRIES, 'TOKEN REFRESH');
+      continue;
     }
   }
+  throw new Error('Failed to refresh Discord token (max retries exceeded)');
+}
+
+/**
+ * Generate Discord OAuth URL
+ */
+export function getDiscordOAuthURL(redirectUri, state) {
+  const params = new URLSearchParams({
+    client_id: DISCORD_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'identify email guilds.members.read',
+    prompt: 'none'
+  });
+
+  if (state) {
+    params.append('state', state);
+  }
+
+  return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+}
+
+/**
+ * Exchange Discord OAuth code for token
+ * Includes retry logic with exponential backoff for rate limits
+ * Respects Discord's Retry-After header for global rate limits
+ */
+export async function exchangeOAuthCode(code, redirectUri) {
+  const MAX_RETRIES = 2;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await axios.post(
+        'https://discord.com/api/oauth2/token',
+        new URLSearchParams({
+          client_id: DISCORD_CLIENT_ID,
+          client_secret: DISCORD_CLIENT_SECRET,
+          code: code,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+          scope: 'identify email guilds.members.read'
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      await handleRateLimit(error, attempt, MAX_RETRIES, 'OAUTH');
+      continue;
+    }
+  }
+  throw new Error('Failed to exchange OAuth code (max retries exceeded)');
+}
+
+/**
+ * Get user info from Discord
+ * Includes retry logic for rate limits
+ */
+export async function getDiscordUserInfo(token) {
+  const MAX_RETRIES = 2;
+
+  // First, get user data with retry logic
+  let user;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const userResponse = await axios.get('https://discord.com/api/users/@me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      user = userResponse.data;
+      break;
+    } catch (error) {
+      await handleRateLimit(error, attempt, MAX_RETRIES, 'OAUTH USER');
+      continue;
+    }
+  }
+
+  // Then, get guild member data with retry logic
+  let member = null;
+  if (GUILD_ID) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const memberResponse = await axios.get(
+          `https://discord.com/api/users/@me/guilds/${GUILD_ID}/member`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        member = memberResponse.data;
+        break;
+      } catch (error) {
+        if (error.response?.status === 404) {
+          throw new Error('User is not in the GLEECIN guild');
+        }
+        await handleRateLimit(error, attempt, MAX_RETRIES, 'OAUTH MEMBER');
+        continue;
+      }
+    }
+  }
+
+  if (!member) {
+    throw new Error('User is not in the GLEECIN guild');
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    discriminator: user.discriminator,
+    email: user.email,
+    avatar: user.avatar,
+    roles: member.roles || [],
+    joinedAt: member.joined_at
+  };
 }
 
 /**
@@ -148,17 +276,14 @@ export async function refreshDiscordToken(refreshToken) {
  * Includes retry logic for rate limits
  */
 export async function verifyUserRole(user, requiredRole) {
-  const MAX_RETRIES = 3;
-  const BASE_DELAY = 1000;
-
   try {
     if (!user.token || !GUILD_ID) {
       console.error('[AUTH] Missing token or guild ID');
       return false;
     }
 
-    // Check if user is in guild with retry logic
     let member = null;
+    const MAX_RETRIES = 2;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         const memberResponse = await axios.get(
@@ -172,20 +297,12 @@ export async function verifyUserRole(user, requiredRole) {
         member = memberResponse.data;
         break;
       } catch (error) {
-        const isRateLimit = error.response?.status === 429;
-        if (isRateLimit && attempt < MAX_RETRIES) {
-          const retryAfter = error.response?.headers?.['retry-after'];
-          const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
-          console.warn(`[ROLE VERIFY] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        // For 404, user is not in guild
         if (error.response?.status === 404) {
           console.log('[AUTH] User not in guild');
           return false;
         }
-        throw error;
+        await handleRateLimit(error, attempt, MAX_RETRIES, 'ROLE VERIFY');
+        continue;
       }
     }
     
@@ -194,12 +311,10 @@ export async function verifyUserRole(user, requiredRole) {
       return false;
     }
 
-    // If no specific role required, just verify they're in the guild
     if (!requiredRole) {
       return true;
     }
 
-    // Verify user has required role (role names are in user.roles)
     const hasRequiredRole = user.roles.includes(requiredRole);
     
     if (!hasRequiredRole) {
@@ -230,155 +345,3 @@ export function getUserTier(user) {
   return 'free';
 }
 
-/**
- * Generate Discord OAuth URL
- */
-export function getDiscordOAuthURL(redirectUri, state) {
-  const params = new URLSearchParams({
-    client_id: DISCORD_CLIENT_ID,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'identify email guilds.members.read',
-    prompt: 'none'
-  });
-
-  if (state) {
-    params.append('state', state);
-  }
-
-  return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
-}
-
-/**
- * Exchange Discord OAuth code for token
- * Includes retry logic with exponential backoff for rate limits
- * Respects Discord's Retry-After header for global rate limits
- */
-export async function exchangeOAuthCode(code, redirectUri) {
-  const MAX_RETRIES = 5;
-  const BASE_DELAY = 1000; // 1 second
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await axios.post(
-        'https://discord.com/api/oauth2/token',
-        new URLSearchParams({
-          client_id: DISCORD_CLIENT_ID,
-          client_secret: DISCORD_CLIENT_SECRET,
-          code: code,
-          grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
-          scope: 'identify email guilds.members.read'
-        }).toString(),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        }
-      );
-
-      return response.data;
-    } catch (error) {
-      const isRateLimit = error.response?.status === 429;
-      const isLastAttempt = attempt === MAX_RETRIES;
-
-      if (isRateLimit && !isLastAttempt) {
-        // Check for Retry-After header (Discord tells us exactly how long to wait)
-        const retryAfter = error.response?.headers?.['retry-after'];
-        let delay;
-
-        if (retryAfter) {
-          // Retry-After is in seconds, convert to ms
-          delay = parseInt(retryAfter, 10) * 1000;
-          console.warn(`[OAUTH] Rate limited, respecting Retry-After: ${retryAfter}s (attempt ${attempt}/${MAX_RETRIES})`);
-        } else {
-          // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-          delay = BASE_DELAY * Math.pow(2, attempt - 1);
-          console.warn(`[OAUTH] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
-        }
-
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-
-      console.error('[OAUTH ERROR]', error.response?.data || error.message);
-      throw new Error('Failed to exchange OAuth code');
-    }
-  }
-}
-
-/**
- * Get user info from Discord
- * Includes retry logic for rate limits
- */
-export async function getDiscordUserInfo(token) {
-  const MAX_RETRIES = 3;
-  const BASE_DELAY = 1000;
-
-  // First, get user data with retry logic
-  let user;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const userResponse = await axios.get('https://discord.com/api/users/@me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      user = userResponse.data;
-      break;
-    } catch (error) {
-      const isRateLimit = error.response?.status === 429;
-      if (isRateLimit && attempt < MAX_RETRIES) {
-        const retryAfter = error.response?.headers?.['retry-after'];
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
-        console.warn(`[OAUTH] User fetch rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  // Then, get guild member data with retry logic
-  let member = null;
-  if (GUILD_ID) {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const memberResponse = await axios.get(
-          `https://discord.com/api/users/@me/guilds/${GUILD_ID}/member`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-        member = memberResponse.data;
-        break;
-      } catch (error) {
-        // If 404, user is not in guild - this is a logic error, not rate limit
-        if (error.response?.status === 404) {
-          throw new Error('User is not in the GLEECIN guild');
-        }
-        const isRateLimit = error.response?.status === 429;
-        if (isRateLimit && attempt < MAX_RETRIES) {
-          const retryAfter = error.response?.headers?.['retry-after'];
-          const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
-          console.warn(`[OAUTH] Member fetch rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        throw error;
-      }
-    }
-  }
-
-  if (!member) {
-    throw new Error('User is not in the GLEECIN guild');
-  }
-
-  return {
-    id: user.id,
-    username: user.username,
-    discriminator: user.discriminator,
-    email: user.email,
-    avatar: user.avatar,
-    roles: member.roles || [],
-    joinedAt: member.joined_at
-  };
-}

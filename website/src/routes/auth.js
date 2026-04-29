@@ -68,8 +68,15 @@ router.get('/callback', async (req, res) => {
     res.redirect(redirectTo);
   } catch (error) {
     console.error('[OAUTH CALLBACK ERROR]', error.message);
+    
+    // Check for rate limit errors and provide better UX
+    if (error.message.includes('Discord global rate limit') || error.message.includes('rate limit')) {
+      return res.redirect('/login?ratelimit');
+    }
+    
     res.redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
+
 });
 
 /**
@@ -107,8 +114,20 @@ router.get('/user', (req, res) => {
 });
 
 /**
+ * GET /auth/retry
+ * Clear stale session and retry login
+ */
+router.get('/retry', (req, res) => {
+  if (req.session) {
+    req.session.oauthState = null;
+    // Don't destroy full session, just clear OAuth state
+  }
+  res.redirect('/login?retry=true');
+});
+
+/**
  * GET /auth/status
- * Check authentication status
+ * Check authentication status (used by frontend polling)
  */
 router.get('/status', (req, res) => {
   if (req.session?.user) {
@@ -120,5 +139,6 @@ router.get('/status', (req, res) => {
     res.json({ authenticated: false });
   }
 });
+
 
 export default router;
