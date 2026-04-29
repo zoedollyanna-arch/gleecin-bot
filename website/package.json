@@ -1,0 +1,33 @@
+{
+  "name": "gleecin-academy",
+  "version": "1.0.0",
+  "description": "Production-ready LSL scripting platform with admin dashboard",
+  "main": "src/unified-server.js",
+  "scripts": {
+    "dev": "node src/unified-server.js",
+    "start": "NODE_ENV=production node src/unified-server.js",
+    "db:migrate": "node src/db/migrate.js",
+    "seed:scripts": "node seed-lsl-scripts.js",
+    "admin": "node src/admin-dashboard.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "discord.js": "^14.26.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "express-session": "^1.18.0",
+    "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.15.2",
+    "pg": "^8.12.0",
+    "pg-pool": "^3.6.2",
+    "uuid": "^10.0.0",
+    "validator": "^13.12.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "type": "module"
+}

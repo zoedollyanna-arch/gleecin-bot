@@ -41,16 +41,28 @@ router.get('/login', (req, res) => {
 /**
  * GET /dashboard
  * Main dashboard - requires authentication
+ * Admin → /admin, else → student dashboard
  */
-router.get('/dashboard', isAuthenticated, (req, res) => {
+router.get('/dashboard', isAuthenticated, async (req, res) => {
   const user = req.session.user;
-  const tier = getUserTier(user);
-
-  res.render('dashboard', {
-    user,
-    tier,
-    title: 'Dashboard - GLEECIN Academy'
-  });
+  
+  try {
+    const dbUser = await get('SELECT is_admin FROM users WHERE discord_id = $1', [user.id]);
+    
+    if (dbUser?.is_admin) {
+      return res.redirect('/admin');
+    }
+    
+    const tier = getUserTier(user);
+    res.render('dashboard', {
+      user,
+      tier,
+      title: 'Dashboard - GLEECIN Academy'
+    });
+  } catch (error) {
+    console.error('[DASHBOARD ERROR]', error);
+    res.status(500).render('error', { error: 'Dashboard load failed', user });
+  }
 });
 
 /**
