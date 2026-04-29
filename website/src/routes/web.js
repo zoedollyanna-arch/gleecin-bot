@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { isAuthenticated, getUserTier } from '../middleware/auth.js';
+import { get } from '../db/database.js';
 
 const router = express.Router();
 

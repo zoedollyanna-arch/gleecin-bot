@@ -250,6 +250,133 @@ const migrations = [
     )
   `,
 
+  // Session Requests (1-on-1 requests)
+  `
+    CREATE TABLE session_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed')),
+      requested_date TIMESTAMP,
+      approved_by INTEGER REFERENCES users(id),
+      scheduled_at TIMESTAMP,
+      completed_at TIMESTAMP,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  // Support Messages (Messaging System)
+  `
+    CREATE TABLE messages (
+      id SERIAL PRIMARY KEY,
+      sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      subject TEXT,
+      content TEXT NOT NULL,
+      is_read BOOLEAN DEFAULT false,
+      is_reply BOOLEAN DEFAULT false,
+      parent_message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  // Quizzes
+  `
+    CREATE TABLE quizzes (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      lesson_id INTEGER REFERENCES lessons(id) ON DELETE SET NULL,
+      difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')),
+      passing_score INTEGER DEFAULT 70,
+      time_limit_minutes INTEGER,
+      price_tier TEXT DEFAULT 'free' CHECK (price_tier IN ('free', 'paid', 'advanced')),
+      created_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  // Quiz Questions
+  `
+    CREATE TABLE quiz_questions (
+      id SERIAL PRIMARY KEY,
+      quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+      question_text TEXT NOT NULL,
+      question_type TEXT CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'code')),
+      options JSONB,
+      correct_answer TEXT,
+      explanation TEXT,
+      points INTEGER DEFAULT 1,
+      order_index INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  // Quiz Attempts
+  `
+    CREATE TABLE quiz_attempts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+      score INTEGER,
+      passed BOOLEAN DEFAULT false,
+      answers JSONB,
+      time_spent_seconds INTEGER,
+      attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  // Student Reviews
+  `
+    CREATE TABLE reviews (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+      content TEXT,
+      is_public BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP
+    )
+  `,
+
+  // Coding Activities/Exercises
+  `
+    CREATE TABLE activities (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      type TEXT CHECK (type IN ('exercise', 'project', 'mini_challenge')),
+      difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')),
+      starter_code TEXT,
+      starter_explanation TEXT,
+      solution_code TEXT,
+      test_cases JSONB,
+      resources TEXT[],
+      hints TEXT[],
+      price_tier TEXT DEFAULT 'free' CHECK (price_tier IN ('free', 'paid', 'advanced')),
+      created_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  // Activity Submissions
+  `
+    CREATE TABLE activity_submissions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+      submitted_code TEXT,
+      status TEXT CHECK (status IN ('draft', 'submitted', 'passed', 'failed', 'needs_review')),
+      test_results JSONB,
+      feedback TEXT,
+      mentor_id INTEGER REFERENCES users(id),
+      submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      reviewed_at TIMESTAMP
+    )
+  `,
+
   // Indexes for performance
   `CREATE INDEX IF NOT EXISTS idx_users_tier ON users(tier)`,
   `CREATE INDEX IF NOT EXISTS idx_enrollments_user ON enrollments(user_id)`,
@@ -258,7 +385,17 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_lessons_tier ON lessons(price_tier)`,
   `CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`,
-  `CREATE INDEX IF NOT EXISTS idx_lesson_progress_user ON lesson_progress(user_id)`
+  `CREATE INDEX IF NOT EXISTS idx_lesson_progress_user ON lesson_progress(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_session_requests_user ON session_requests(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_session_requests_status ON session_requests(status)`,
+  `CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_messages_read ON messages(is_read)`,
+  `CREATE INDEX IF NOT EXISTS idx_quizzes_lesson ON quizzes(lesson_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_activity_submissions_user ON activity_submissions(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_activity_submissions_status ON activity_submissions(status)`,
+  `CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id)`
 ];
 
 /**

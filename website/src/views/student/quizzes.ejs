@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Quizzes</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .student-container {
+      background: linear-gradient(135deg, #0F0F14 0%, #1a1a22 100%);
+      color: #EAEAEA;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .student-header {
+      background: #1a1a22;
+      border-bottom: 2px solid #7B61FF;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+    }
+
+    .student-header h1 {
+      color: #7B61FF;
+      margin: 0;
+      font-size: 2em;
+    }
+
+    .student-nav {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .student-nav a {
+      background: #0F0F14;
+      color: #00D1FF;
+      padding: 10px 15px;
+      border-radius: 6px;
+      text-decoration: none;
+      border: 1px solid #7B61FF;
+      transition: all 0.3s;
+    }
+
+    .student-nav a:hover {
+      background: #7B61FF;
+      color: #0F0F14;
+    }
+
+    .content-section {
+      background: #1a1a22;
+      border: 2px solid #7B61FF;
+      border-radius: 8px;
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+
+    .content-section h2 {
+      color: #7B61FF;
+      margin-top: 0;
+    }
+
+    .quizzes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .quiz-card {
+      background: #0F0F14;
+      border: 1px solid #7B61FF;
+      border-radius: 8px;
+      padding: 20px;
+      transition: all 0.3s;
+    }
+
+    .quiz-card:hover {
+      border-color: #00D1FF;
+      transform: translateY(-5px);
+    }
+
+    .quiz-title {
+      color: #00D1FF;
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 0 0 10px 0;
+    }
+
+    .quiz-meta {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 0.85em;
+      color: #999;
+    }
+
+    .tier-badge {
+      background: rgba(123, 97, 255, 0.2);
+      color: #7B61FF;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .quiz-description {
+      color: #EAEAEA;
+      margin: 10px 0;
+      font-size: 0.9em;
+    }
+
+    .attempts-info {
+      background: rgba(123, 97, 255, 0.1);
+      border-left: 3px solid #7B61FF;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    .score-badge {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .btn {
+      background: #7B61FF;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.3s;
+    }
+
+    .btn:hover {
+      background: #6a4df5;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    @media (max-width: 768px) {
+      .student-nav {
+        flex-direction: column;
+      }
+
+      .student-nav a {
+        width: 100%;
+        text-align: center;
+      }
+
+      .quizzes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="student-container">
+    <div class="student-header">
+      <h1>📝 Interactive Quizzes</h1>
+      <p style="margin: 10px 0 0 0; color: #999;">Test your knowledge with interactive quizzes</p>
+      <div class="student-nav">
+        <a href="/dashboard">📊 Dashboard</a>
+        <a href="/student/sessions">📅 Sessions</a>
+        <a href="/student/messages">💬 Messages</a>
+        <a href="/student/lessons">🎓 Lessons</a>
+        <a href="/student/activities">💻 Activities</a>
+        <a href="/student/quizzes" style="background: #7B61FF; color: #0F0F14;">📝 Quizzes</a>
+        <a href="/auth/logout" style="background: #ff6b6b; color: white; border: 1px solid #ff6b6b;">🚪 Logout</a>
+      </div>
+    </div>
+
+    <div class="content-section">
+      <h2>Available Quizzes</h2>
+      
+      <% if (quizzes && quizzes.length > 0) { %>
+        <div class="quizzes-grid">
+          <% quizzes.forEach(quiz => { %>
+            <div class="quiz-card">
+              <h3 class="quiz-title"><%= quiz.title %></h3>
+              <div class="quiz-meta">
+                <span class="tier-badge"><%= quiz.price_tier.toUpperCase() %></span>
+                <span><%= quiz.question_count %> Questions</span>
+              </div>
+              
+              <p class="quiz-description"><%= quiz.description %></p>
+              
+              <% if (attemptMap[quiz.id] && attemptMap[quiz.id].length > 0) { %>
+                <div class="attempts-info">
+                  <strong>Previous Attempts:</strong> <%= attemptMap[quiz.id].length %>
+                  <% const bestScore = Math.max(...attemptMap[quiz.id].map(a => a.score || 0)); %>
+                  <% if (bestScore > 0) { %>
+                    <span class="score-badge">Best: <%= bestScore %>%</span>
+                  <% } %>
+                </div>
+              <% } %>
+              
+              <div style="margin-top: 15px;">
+                <button class="btn" onclick="startQuiz(<%= quiz.id %>)">
+                  <%= attemptMap[quiz.id] && attemptMap[quiz.id].length > 0 ? 'Retake Quiz' : 'Start Quiz' %>
+                </button>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div class="empty-state">
+          <p>📭 No quizzes available yet!</p>
+          <p>Check back later for new quizzes.</p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    function startQuiz(quizId) {
+      alert('Quiz interface coming soon! Quiz ID: ' + quizId);
+    }
+  </script>
+</body>
+</html>

@@ -15,7 +15,7 @@ export async function isAdmin(req, res, next) {
 
   try {
     const user = await get(
-      'SELECT is_admin FROM users WHERE id = $1',
+      'SELECT id, is_admin FROM users WHERE discord_id = $1',
       [req.session.user.id]
     );
 
@@ -41,7 +41,7 @@ export async function adminOnly(req, res, next) {
 
   try {
     const user = await get(
-      'SELECT is_admin FROM users WHERE id = $1',
+      'SELECT id, is_admin FROM users WHERE discord_id = $1',
       [req.session.user.id]
     );
 

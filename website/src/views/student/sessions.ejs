@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Session Requests</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .student-container {
+      background: linear-gradient(135deg, #0F0F14 0%, #1a1a22 100%);
+      color: #EAEAEA;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .student-header {
+      background: #1a1a22;
+      border-bottom: 2px solid #7B61FF;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+    }
+
+    .student-header h1 {
+      color: #7B61FF;
+      margin: 0;
+      font-size: 2em;
+    }
+
+    .student-nav {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .student-nav a {
+      background: #0F0F14;
+      color: #00D1FF;
+      padding: 10px 15px;
+      border-radius: 6px;
+      text-decoration: none;
+      border: 1px solid #7B61FF;
+      transition: all 0.3s;
+    }
+
+    .student-nav a:hover {
+      background: #7B61FF;
+      color: #0F0F14;
+    }
+
+    .content-section {
+      background: #1a1a22;
+      border: 2px solid #7B61FF;
+      border-radius: 8px;
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+
+    .content-section h2 {
+      color: #7B61FF;
+      margin-top: 0;
+    }
+
+    .request-card {
+      background: #0F0F14;
+      border: 1px solid #7B61FF;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+    }
+
+    .request-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 15px;
+    }
+
+    .request-title {
+      color: #00D1FF;
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-weight: bold;
+    }
+
+    .status-pending {
+      background: rgba(255, 122, 0, 0.2);
+      color: #FF7A00;
+    }
+
+    .status-approved {
+      background: rgba(0, 209, 255, 0.2);
+      color: #00D1FF;
+    }
+
+    .status-rejected {
+      background: rgba(255, 0, 0, 0.2);
+      color: #ff6b6b;
+    }
+
+    .status-completed {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+    }
+
+    .request-meta {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 15px 0;
+      font-size: 0.9em;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      color: #999;
+      font-size: 0.8em;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      color: #EAEAEA;
+      margin-top: 3px;
+    }
+
+    .request-description {
+      background: rgba(123, 97, 255, 0.1);
+      border-left: 3px solid #7B61FF;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+
+    .btn {
+      background: #7B61FF;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    .btn:hover {
+      background: #6a4df5;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      color: #7B61FF;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      background: #0F0F14;
+      border: 1px solid #7B61FF;
+      color: #EAEAEA;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    @media (max-width: 768px) {
+      .student-nav {
+        flex-direction: column;
+      }
+
+      .student-nav a {
+        width: 100%;
+        text-align: center;
+      }
+
+      .request-meta {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="student-container">
+    <div class="student-header">
+      <h1>📅 My Session Requests</h1>
+      <p style="margin: 10px 0 0 0; color: #999;">Request and manage 1-on-1 sessions with instructors</p>
+      <div class="student-nav">
+        <a href="/dashboard">📊 Dashboard</a>
+        <a href="/student/sessions" style="background: #7B61FF; color: #0F0F14;">📅 Sessions</a>
+        <a href="/student/messages">💬 Messages</a>
+        <a href="/student/lessons">🎓 Lessons</a>
+        <a href="/student/activities">💻 Activities</a>
+        <a href="/student/quizzes">📝 Quizzes</a>
+        <a href="/auth/logout" style="background: #ff6b6b; color: white; border: 1px solid #ff6b6b;">🚪 Logout</a>
+      </div>
+    </div>
+
+    <div class="content-section">
+      <h2>Request New Session</h2>
+      <form id="session-form">
+        <div class="form-group">
+          <label for="title">Session Title</label>
+          <input type="text" id="title" name="title" placeholder="e.g., Help with LSL movement scripts" required>
+        </div>
+        <div class="form-group">
+          <label for="requested_date">Preferred Date (Optional)</label>
+          <input type="datetime-local" id="requested_date" name="requested_date">
+        </div>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" placeholder="Describe what you'd like help with..." required></textarea>
+        </div>
+        <button type="submit" class="btn">Submit Request</button>
+      </form>
+    </div>
+
+    <div class="content-section">
+      <h2>My Requests</h2>
+      
+      <% if (sessions && sessions.length > 0) { %>
+        <% sessions.forEach(session => { %>
+          <div class="request-card">
+            <div class="request-header">
+              <h3 class="request-title"><%= session.title %></h3>
+              <span class="status-badge status-<%= session.status %>">
+                <%= session.status.toUpperCase() %>
+              </span>
+            </div>
+
+            <div class="request-meta">
+              <div class="meta-item">
+                <span class="meta-label">Requested</span>
+                <span class="meta-value"><%= new Date(session.created_at).toLocaleString() %></span>
+              </div>
+              <% if (session.scheduled_at) { %>
+                <div class="meta-item">
+                  <span class="meta-label">Scheduled For</span>
+                  <span class="meta-value"><%= new Date(session.scheduled_at).toLocaleString() %></span>
+                </div>
+              <% } %>
+            </div>
+
+            <div class="request-description">
+              <p><%= session.description %></p>
+            </div>
+
+            <% if (session.notes) { %>
+              <div class="request-description">
+                <p><strong>Notes:</strong> <%= session.notes %></p>
+              </div>
+            <% } %>
+          </div>
+        <% }); %>
+      <% } else { %>
+        <div class="empty-state">
+          <p>📭 No session requests yet!</p>
+          <p>Use the form above to request your first session.</p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('session-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const title = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+      const requested_date = document.getElementById('requested_date').value;
+
+      try {
+        const res = await fetch('/student/sessions/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, requested_date })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          alert('Session request submitted!');
+          location.reload();
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    });
+  </script>
+</body>
+</html>

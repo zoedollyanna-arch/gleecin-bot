@@ -407,4 +407,179 @@ router.get('/logs', adminOnly, async (req, res) => {
   }
 });
 
+// ---- SESSION REQUESTS ----
+
+/**
+ * GET /admin/session-requests
+ * View and manage 1-on-1 session requests
+ */
+router.get('/session-requests', adminOnly, async (req, res) => {
+  try {
+    const requests = await all(`
+      SELECT sr.*, u.username, u.email
+      FROM session_requests sr
+      JOIN users u ON sr.user_id = u.id
+      ORDER BY sr.status ASC, sr.created_at DESC
+    `);
+
+    res.render('admin/session-requests', {
+      user: req.session.user,
+      requests,
+      title: 'Session Requests'
+    });
+  } catch (error) {
+    console.error('[SESSION REQUESTS ERROR]', error);
+    res.status(500).render('error', { error: error.message, user: req.session.user });
+  }
+});
+
+/**
+ * POST /admin/session-requests/:id/approve
+ * Approve a session request
+ */
+router.post('/session-requests/:id/approve', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { scheduled_at, notes } = req.body;
+
+    await run(
+      `UPDATE session_requests 
+       SET status = $1, approved_by = $2, scheduled_at = $3, notes = $4 
+       WHERE id = $5`,
+      ['approved', req.user.id, scheduled_at, notes || '', id]
+    );
+
+    await run(
+      'INSERT INTO admin_logs (admin_id, action, target_user_id, details) VALUES ($1, $2, $3, $4)',
+      [req.user.id, 'approve_session', null, JSON.stringify({ requestId: id })]
+    );
+
+    res.json({ success: true, message: 'Session request approved' });
+  } catch (error) {
+    console.error('[APPROVE SESSION ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /admin/session-requests/:id/reject
+ * Reject a session request
+ */
+router.post('/session-requests/:id/reject', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    await run(
+      `UPDATE session_requests 
+       SET status = $1, notes = $2 
+       WHERE id = $3`,
+      ['rejected', notes || '', id]
+    );
+
+    await run(
+      'INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, $2, $3)',
+      [req.user.id, 'reject_session', JSON.stringify({ requestId: id })]
+    );
+
+    res.json({ success: true, message: 'Session request rejected' });
+  } catch (error) {
+    console.error('[REJECT SESSION ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /admin/session-requests/:id/complete
+ * Mark session as completed
+ */
+router.post('/session-requests/:id/complete', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    await run(
+      `UPDATE session_requests 
+       SET status = $1, completed_at = NOW(), notes = $2 
+       WHERE id = $3`,
+      ['completed', notes || '', id]
+    );
+
+    res.json({ success: true, message: 'Session marked as completed' });
+  } catch (error) {
+    console.error('[COMPLETE SESSION ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ---- MESSAGES ----
+
+/**
+ * GET /admin/messages
+ * View support messages/tickets
+ */
+router.get('/messages', adminOnly, async (req, res) => {
+  try {
+    const messages = await all(`
+      SELECT m.*, 
+        u_sender.username as sender_name,
+        u_recipient.username as recipient_name
+      FROM messages m
+      JOIN users u_sender ON m.sender_id = u_sender.id
+      JOIN users u_recipient ON m.recipient_id = u_recipient.id
+      WHERE m.is_reply = false
+      ORDER BY m.is_read ASC, m.created_at DESC
+    `);
+
+    const unread = await get(
+      `SELECT COUNT(*) as count FROM messages 
+       WHERE is_read = false AND recipient_id = $1`,
+      [req.user.id]
+    );
+
+    res.render('admin/messages', {
+      user: req.session.user,
+      messages,
+      unreadCount: unread.count,
+      title: 'Support Messages'
+    });
+  } catch (error) {
+    console.error('[MESSAGES ERROR]', error);
+    res.status(500).render('error', { error: error.message, user: req.session.user });
+  }
+});
+
+/**
+ * POST /admin/messages/:id/reply
+ * Reply to a message
+ */
+router.post('/messages/:id/reply', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+
+    const originalMessage = await get('SELECT sender_id FROM messages WHERE id = $1', [id]);
+
+    if (!originalMessage) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    const replyId = await run(
+      `INSERT INTO messages (sender_id, recipient_id, subject, content, is_reply, parent_message_id, created_at)
+       VALUES ($1, $2, $3, $4, true, $5, NOW()) RETURNING id`,
+      [req.user.id, originalMessage.sender_id, 'Re: Support', content, id]
+    );
+
+    await run(
+      'UPDATE messages SET is_read = true WHERE id = $1',
+      [id]
+    );
+
+    res.json({ success: true, replyId: replyId.id });
+  } catch (error) {
+    console.error('[REPLY MESSAGE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

@@ -21,6 +21,7 @@ import apiRoutes from './routes/api.js';
 import webRoutes from './routes/web.js';
 import paymentRoutes from './routes/payment.js';
 import adminRoutes from './routes/admin.js';
+import studentRoutes from './routes/student.js';
 import { isAuthenticated, checkRole } from './middleware/auth.js';
 import { initializeDatabase } from './db/database.js';
 import { initDatabase as initBotDatabase } from '../../src/database/connection.js';
@@ -76,6 +77,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/auth', authRoutes);
 app.use('/payment', paymentRoutes);
 app.use('/admin', adminRoutes);
+app.use('/student', studentRoutes);
 app.use('/', webRoutes);
 app.use('/api', apiRoutes);
 
