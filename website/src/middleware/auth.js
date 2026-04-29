@@ -73,69 +73,121 @@ export function checkRole(requiredRole) {
 
 /**
  * Verify Discord OAuth token
+ * Includes retry logic for rate limits
  */
 export async function verifyDiscordToken(token) {
-  try {
-    const response = await axios.get('https://discord.com/api/users/@me', {
-      headers: {
-        Authorization: `Bearer ${token}`
+  const MAX_RETRIES = 3;
+  const BASE_DELAY = 1000;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await axios.get('https://discord.com/api/users/@me', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      if (isRateLimit && attempt < MAX_RETRIES) {
+        const retryAfter = error.response?.headers?.['retry-after'];
+        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
+        console.warn(`[TOKEN VERIFY] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
       }
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error('Invalid Discord token');
+      throw new Error('Invalid Discord token');
+    }
   }
 }
 
 /**
  * Refresh Discord OAuth token using refresh token
+ * Includes retry logic for rate limits
  */
 export async function refreshDiscordToken(refreshToken) {
-  try {
-    const response = await axios.post(
-      'https://discord.com/api/oauth2/token',
-      new URLSearchParams({
-        client_id: DISCORD_CLIENT_ID,
-        client_secret: DISCORD_CLIENT_SECRET,
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        scope: 'identify email guilds.members.read'
-      }).toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    );
+  const MAX_RETRIES = 3;
+  const BASE_DELAY = 1000;
 
-    return response.data;
-  } catch (error) {
-    console.error('[TOKEN REFRESH ERROR]', error.response?.data || error.message);
-    throw new Error('Failed to refresh Discord token');
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await axios.post(
+        'https://discord.com/api/oauth2/token',
+        new URLSearchParams({
+          client_id: DISCORD_CLIENT_ID,
+          client_secret: DISCORD_CLIENT_SECRET,
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          scope: 'identify email guilds.members.read'
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      if (isRateLimit && attempt < MAX_RETRIES) {
+        const retryAfter = error.response?.headers?.['retry-after'];
+        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
+        console.warn(`[TOKEN REFRESH] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      console.error('[TOKEN REFRESH ERROR]', error.response?.data || error.message);
+      throw new Error('Failed to refresh Discord token');
+    }
   }
 }
 
 /**
  * Verify user is in guild and has correct role
+ * Includes retry logic for rate limits
  */
 export async function verifyUserRole(user, requiredRole) {
+  const MAX_RETRIES = 3;
+  const BASE_DELAY = 1000;
+
   try {
     if (!user.token || !GUILD_ID) {
       console.error('[AUTH] Missing token or guild ID');
       return false;
     }
 
-    // Check if user is in guild
-    const memberResponse = await axios.get(
-      `https://discord.com/api/users/@me/guilds/${GUILD_ID}/member`,
-      {
-        headers: {
-          Authorization: `Bearer ${user.token}`
+    // Check if user is in guild with retry logic
+    let member = null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const memberResponse = await axios.get(
+          `https://discord.com/api/users/@me/guilds/${GUILD_ID}/member`,
+          {
+            headers: {
+              Authorization: `Bearer ${user.token}`
+            }
+          }
+        );
+        member = memberResponse.data;
+        break;
+      } catch (error) {
+        const isRateLimit = error.response?.status === 429;
+        if (isRateLimit && attempt < MAX_RETRIES) {
+          const retryAfter = error.response?.headers?.['retry-after'];
+          const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
+          console.warn(`[ROLE VERIFY] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
         }
+        // For 404, user is not in guild
+        if (error.response?.status === 404) {
+          console.log('[AUTH] User not in guild');
+          return false;
+        }
+        throw error;
       }
-    );
-
-    const member = memberResponse.data;
+    }
     
     if (!member) {
       console.log('[AUTH] User not in guild');
@@ -200,9 +252,10 @@ export function getDiscordOAuthURL(redirectUri, state) {
 /**
  * Exchange Discord OAuth code for token
  * Includes retry logic with exponential backoff for rate limits
+ * Respects Discord's Retry-After header for global rate limits
  */
 export async function exchangeOAuthCode(code, redirectUri) {
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 5;
   const BASE_DELAY = 1000; // 1 second
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -230,9 +283,20 @@ export async function exchangeOAuthCode(code, redirectUri) {
       const isLastAttempt = attempt === MAX_RETRIES;
 
       if (isRateLimit && !isLastAttempt) {
-        // Exponential backoff: 1s, 2s, 4s
-        const delay = BASE_DELAY * Math.pow(2, attempt - 1);
-        console.warn(`[OAUTH] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+        // Check for Retry-After header (Discord tells us exactly how long to wait)
+        const retryAfter = error.response?.headers?.['retry-after'];
+        let delay;
+
+        if (retryAfter) {
+          // Retry-After is in seconds, convert to ms
+          delay = parseInt(retryAfter, 10) * 1000;
+          console.warn(`[OAUTH] Rate limited, respecting Retry-After: ${retryAfter}s (attempt ${attempt}/${MAX_RETRIES})`);
+        } else {
+          // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+          delay = BASE_DELAY * Math.pow(2, attempt - 1);
+          console.warn(`[OAUTH] Rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+        }
+
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -245,39 +309,76 @@ export async function exchangeOAuthCode(code, redirectUri) {
 
 /**
  * Get user info from Discord
+ * Includes retry logic for rate limits
  */
 export async function getDiscordUserInfo(token) {
-  try {
-    const [userData, guildMemberData] = await Promise.all([
-      axios.get('https://discord.com/api/users/@me', {
+  const MAX_RETRIES = 3;
+  const BASE_DELAY = 1000;
+
+  // First, get user data with retry logic
+  let user;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const userResponse = await axios.get('https://discord.com/api/users/@me', {
         headers: { Authorization: `Bearer ${token}` }
-      }),
-      GUILD_ID ? axios.get(
-        `https://discord.com/api/users/@me/guilds/${GUILD_ID}/member`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      ).catch(() => null) : Promise.resolve(null)
-    ]);
-
-    const user = userData.data;
-    const member = guildMemberData?.data;
-
-    if (!member) {
-      throw new Error('User is not in the GLEECIN guild');
+      });
+      user = userResponse.data;
+      break;
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      if (isRateLimit && attempt < MAX_RETRIES) {
+        const retryAfter = error.response?.headers?.['retry-after'];
+        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
+        console.warn(`[OAUTH] User fetch rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
     }
-
-    return {
-      id: user.id,
-      username: user.username,
-      discriminator: user.discriminator,
-      email: user.email,
-      avatar: user.avatar,
-      roles: member.roles || [],
-      joinedAt: member.joined_at
-    };
-  } catch (error) {
-    console.error('[USER INFO ERROR]', error.message);
-    throw error;
   }
+
+  // Then, get guild member data with retry logic
+  let member = null;
+  if (GUILD_ID) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const memberResponse = await axios.get(
+          `https://discord.com/api/users/@me/guilds/${GUILD_ID}/member`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        member = memberResponse.data;
+        break;
+      } catch (error) {
+        // If 404, user is not in guild - this is a logic error, not rate limit
+        if (error.response?.status === 404) {
+          throw new Error('User is not in the GLEECIN guild');
+        }
+        const isRateLimit = error.response?.status === 429;
+        if (isRateLimit && attempt < MAX_RETRIES) {
+          const retryAfter = error.response?.headers?.['retry-after'];
+          const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : BASE_DELAY * Math.pow(2, attempt - 1);
+          console.warn(`[OAUTH] Member fetch rate limited, retrying in ${delay}ms (attempt ${attempt}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  if (!member) {
+    throw new Error('User is not in the GLEECIN guild');
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    discriminator: user.discriminator,
+    email: user.email,
+    avatar: user.avatar,
+    roles: member.roles || [],
+    joinedAt: member.joined_at
+  };
 }
