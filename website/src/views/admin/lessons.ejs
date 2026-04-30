@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <form class="admin-form" action="/admin/lessons" method="post" enctype="multipart/form-data">
+    <form class="admin-form" action="/admin/lessons/create" method="post" enctype="multipart/form-data">
       <div class="admin-form-grid">
         <label class="admin-field">
           <span>Title</span>
@@ -20,15 +20,39 @@
           <span>Slug</span>
           <input name="slug" type="text" placeholder="intro-to-node">
         </label>
+        <label class="admin-field">
+          <span>Level</span>
+          <select name="level" required>
+            <option value="">Select level</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Duration</span>
+          <input name="duration" type="text" placeholder="45 minutes" required>
+        </label>
+        <label class="admin-field">
+          <span>Tier</span>
+          <select name="tier" required>
+            <option value="">Select tier</option>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </label>
         <label class="admin-field admin-field-full">
           <span>Lesson description</span>
-          <textarea name="description" rows="4"></textarea>
+          <textarea name="description" rows="4" required></textarea>
         </label>
         <label class="admin-field">
           <span>Video source</span>
           <select name="video_source" data-lesson-video-source>
             <option value="upload">Upload video file</option>
-            <option value="url">Video URL</option>
+            <option value="youtube">YouTube URL</option>
+            <option value="vimeo">Vimeo URL</option>
+            <option value="google_drive">Google Drive URL</option>
           </select>
         </label>
         <label class="admin-field" data-lesson-video-upload>

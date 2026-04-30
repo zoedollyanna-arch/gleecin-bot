@@ -5,7 +5,7 @@
     <div>
       <p class="admin-eyebrow">Operations overview</p>
       <h1>Admin dashboard</h1>
-      <p class="admin-muted">Track lesson progress, student completion, challenge submissions, and inbox activity in one place.</p>
+      <p class="admin-muted">Track lesson progress, student completion, challenge submissions, inbox activity, and admin tools in one place.</p>
     </div>
     <div class="admin-hero-stats">
       <article class="admin-stat-card">
@@ -17,9 +17,42 @@
         <strong><%= stats?.pending_messages || 0 %></strong>
       </article>
       <article class="admin-stat-card">
-        <span class="admin-stat-label">Challenge submissions</span>
-        <strong><%= stats?.completed_lessons || 0 %></strong>
+        <span class="admin-stat-label">Certificates</span>
+        <strong><%= stats?.issued_certs || 0 %></strong>
       </article>
+    </div>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Admin tools</h2>
+      <span class="admin-muted">Quick access to the previous admin areas</span>
+    </div>
+    <div class="admin-grid admin-grid-3">
+      <a class="admin-info-card admin-link" href="/admin/scripts">
+        <h3>Scripts</h3>
+        <p class="admin-muted"><%= stats?.total_scripts || 0 %> scripts</p>
+      </a>
+      <a class="admin-info-card admin-link" href="/admin/lessons">
+        <h3>Lessons</h3>
+        <p class="admin-muted"><%= stats?.total_lessons || 0 %> lessons</p>
+      </a>
+      <a class="admin-info-card admin-link" href="/admin/challenges">
+        <h3>Challenges</h3>
+        <p class="admin-muted">Review submissions and completions</p>
+      </a>
+      <a class="admin-info-card admin-link" href="/admin/session-requests">
+        <h3>Sessions</h3>
+        <p class="admin-muted">Approve, reject, and complete requests</p>
+      </a>
+      <a class="admin-info-card admin-link" href="/admin/schedules">
+        <h3>Schedules</h3>
+        <p class="admin-muted">Manage announcements and scheduled sessions</p>
+      </a>
+      <a class="admin-info-card admin-link" href="/admin/logs">
+        <h3>Logs</h3>
+        <p class="admin-muted">View recent admin actions</p>
+      </a>
     </div>
   </section>
 
@@ -45,7 +78,7 @@
                 <tr>
                   <td><%= item.student_name || item.student || 'Student' %></td>
                   <td><%= item.lesson_title || item.lesson || 'Lesson' %></td>
-                  <td><span class="admin-pill admin-pill-<%= (item.status || 'in-progress').toLowerCase().replace(/[^a-z0-9]+/g, '-') %>"><%= item.status || 'In progress' %></span></td>
+                  <td><span class="admin-pill"><%= item.status || 'In progress' %></span></td>
                   <td><%= item.completed_at ? new Date(item.completed_at).toLocaleString() : '—' %></td>
                 </tr>
               <% }) %>

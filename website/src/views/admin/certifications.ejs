@@ -44,7 +44,7 @@
     <div class="admin-panel-header">
       <h2>Issued certificates</h2>
     </div>
-    <% if (Array.isArray(certifications) && certifications.length) { %>
+    <% if (Array.isArray(certs) && certs.length) { %>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -57,7 +57,7 @@
             </tr>
           </thead>
           <tbody>
-            <% certifications.forEach((certification) => { %>
+            <% certs.forEach((certification) => { %>
               <tr>
                 <td><%= certification.student_name || certification.student || 'Student' %></td>
                 <td><%= certification.title || 'Certificate' %></td>
