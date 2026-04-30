@@ -46,19 +46,23 @@ router.get('/login', (req, res) => {
  */
 router.get('/dashboard', isAuthenticated, async (req, res) => {
   const user = req.session.user;
-  
+  const preview = String(req.query.preview || '').toLowerCase();
+
   try {
     const dbUser = await get('SELECT is_admin FROM users WHERE discord_id = $1', [user.discord_id || user.id]);
-    
-    if (dbUser?.is_admin) {
+    const isAdminUser = !!dbUser?.is_admin;
+    const isStudentPreview = isAdminUser && preview === 'student';
+
+    if (isAdminUser && !isStudentPreview) {
       return res.redirect('/admin');
     }
-    
+
     const tier = getUserTier(user);
     res.render('dashboard', {
       user,
       tier,
-      title: 'Dashboard - GLEECIN Academy'
+      previewMode: isStudentPreview,
+      title: isStudentPreview ? 'Student Preview - GLEECIN Academy' : 'Dashboard - GLEECIN Academy'
     });
   } catch (error) {
     console.error('[DASHBOARD ERROR]', error);
