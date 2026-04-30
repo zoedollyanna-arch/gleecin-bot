@@ -26,20 +26,24 @@
   <section class="admin-panel">
     <div class="admin-panel-header">
       <h2>Admin tools</h2>
-      <span class="admin-muted">Quick access to the previous admin areas</span>
+      <span class="admin-muted">Quick access to the same live content students see</span>
     </div>
     <div class="admin-grid admin-grid-3">
       <a class="admin-info-card admin-link" href="/admin/scripts">
         <h3>Scripts</h3>
-        <p class="admin-muted"><%= stats?.total_scripts || 0 %> scripts</p>
+        <p class="admin-muted"><%= stats?.total_scripts || 0 %> total · <%= stats?.public_scripts || 0 %> public</p>
+      </a>
+      <a class="admin-info-card admin-link" href="/admin/challenges">
+        <h3>Challenges</h3>
+        <p class="admin-muted"><%= stats?.total_challenges || 0 %> total challenge records</p>
+      </a>
+      <a class="admin-info-card admin-link" href="/admin/quizzes">
+        <h3>Quizzes</h3>
+        <p class="admin-muted"><%= stats?.total_quizzes || 0 %> total quiz records</p>
       </a>
       <a class="admin-info-card admin-link" href="/admin/lessons">
         <h3>Lessons</h3>
         <p class="admin-muted"><%= stats?.total_lessons || 0 %> lessons</p>
-      </a>
-      <a class="admin-info-card admin-link" href="/admin/challenges">
-        <h3>Challenges</h3>
-        <p class="admin-muted">Review submissions and completions</p>
       </a>
       <a class="admin-info-card admin-link" href="/admin/session-requests">
         <h3>Sessions</h3>
@@ -49,10 +53,74 @@
         <h3>Schedules</h3>
         <p class="admin-muted">Manage announcements and scheduled sessions</p>
       </a>
-      <a class="admin-info-card admin-link" href="/admin/logs">
-        <h3>Logs</h3>
-        <p class="admin-muted">View recent admin actions</p>
-      </a>
+    </div>
+  </section>
+
+  <section class="admin-grid admin-grid-3">
+    <div class="admin-panel">
+      <div class="admin-panel-header">
+        <h2>Recent scripts</h2>
+        <a class="admin-link" href="/admin/scripts">Manage scripts</a>
+      </div>
+      <% if (Array.isArray(recentScripts) && recentScripts.length) { %>
+        <div class="admin-list">
+          <% recentScripts.forEach((script) => { %>
+            <article class="admin-list-item">
+              <div>
+                <strong><%= script.title %></strong>
+                <p class="admin-muted"><%= script.category || 'uncategorized' %> · <%= script.author || 'Admin' %></p>
+              </div>
+              <span class="admin-pill"><%= String(script.price_tier || 'free').toUpperCase() %></span>
+            </article>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <p class="admin-empty">No scripts found.</p>
+      <% } %>
+    </div>
+
+    <div class="admin-panel">
+      <div class="admin-panel-header">
+        <h2>Recent challenges</h2>
+        <a class="admin-link" href="/admin/challenges">Manage challenges</a>
+      </div>
+      <% if (Array.isArray(recentChallenges) && recentChallenges.length) { %>
+        <div class="admin-list">
+          <% recentChallenges.forEach((challenge) => { %>
+            <article class="admin-list-item">
+              <div>
+                <strong><%= challenge.title %></strong>
+                <p class="admin-muted"><%= challenge.difficulty || '—' %> · <%= challenge.completion_count ?? 0 %> completions</p>
+              </div>
+              <span class="admin-pill"><%= String(challenge.price_tier || 'free').toUpperCase() %></span>
+            </article>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <p class="admin-empty">No challenges found.</p>
+      <% } %>
+    </div>
+
+    <div class="admin-panel">
+      <div class="admin-panel-header">
+        <h2>Recent quizzes</h2>
+        <a class="admin-link" href="/admin/quizzes">Manage quizzes</a>
+      </div>
+      <% if (Array.isArray(recentQuizzes) && recentQuizzes.length) { %>
+        <div class="admin-list">
+          <% recentQuizzes.forEach((quiz) => { %>
+            <article class="admin-list-item">
+              <div>
+                <strong><%= quiz.title %></strong>
+                <p class="admin-muted"><%= quiz.lesson_title || 'Unlinked' %> · <%= quiz.question_count ?? 0 %> questions</p>
+              </div>
+              <span class="admin-pill"><%= String(quiz.price_tier || 'free').toUpperCase() %></span>
+            </article>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <p class="admin-empty">No quizzes found.</p>
+      <% } %>
     </div>
   </section>
 

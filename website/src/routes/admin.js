@@ -65,9 +65,10 @@ router.get('/', adminOnly, async (req, res) => {
     const stats = await get(`
       SELECT 
         (SELECT COUNT(*) FROM users) AS total_users,
-        (SELECT COUNT(*) FROM users WHERE tier = 'paid' OR tier = 'advanced') AS paid_users,
+        (SELECT COUNT(*) FROM users WHERE tier IN ('paid', 'advanced')) AS paid_users,
         (SELECT COUNT(*) FROM payments WHERE status = 'pending') AS pending_payments,
         (SELECT COUNT(*) FROM scripts) AS total_scripts,
+        (SELECT COUNT(*) FROM scripts WHERE is_public = true) AS public_scripts,
         (SELECT COUNT(*) FROM lessons) AS total_lessons,
         (SELECT COUNT(*) FROM challenges) AS total_challenges,
         (SELECT COUNT(*) FROM quizzes) AS total_quizzes,
@@ -77,6 +78,38 @@ router.get('/', adminOnly, async (req, res) => {
         (SELECT COUNT(*) FROM sessions) AS total_sessions,
         (SELECT COUNT(*) FROM sessions WHERE status = 'pending') AS pending_sessions
     `, [req.session.user.id]);
+
+    const recentScripts = await all(`
+      SELECT s.id, s.title, s.category, s.price_tier, s.is_public, s.download_count, s.view_count, s.created_at, u.username AS author
+      FROM scripts s
+      LEFT JOIN users u ON s.author_id = u.id
+      ORDER BY s.created_at DESC
+      LIMIT 10
+    `);
+
+    const recentChallenges = await all(`
+      SELECT c.id, c.title, c.difficulty, c.level, c.price_tier, c.created_at,
+        COUNT(cs.id)::int AS submission_count,
+        COALESCE(SUM(CASE WHEN cs.status = 'passed' THEN 1 ELSE 0 END), 0)::int AS completion_count
+      FROM challenges c
+      LEFT JOIN challenge_submissions cs ON cs.challenge_id = c.id
+      GROUP BY c.id, c.title, c.difficulty, c.level, c.price_tier, c.created_at
+      ORDER BY c.created_at DESC
+      LIMIT 10
+    `);
+
+    const recentQuizzes = await all(`
+      SELECT q.id, q.title, q.price_tier, q.created_at, l.title AS lesson_title,
+        COUNT(DISTINCT qq.id)::int AS question_count,
+        COUNT(DISTINCT qa.id)::int AS attempt_count
+      FROM quizzes q
+      LEFT JOIN lessons l ON q.lesson_id = l.id
+      LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
+      LEFT JOIN quiz_attempts qa ON qa.quiz_id = q.id
+      GROUP BY q.id, q.title, q.price_tier, q.created_at, l.title
+      ORDER BY q.created_at DESC
+      LIMIT 10
+    `);
 
     const recentPayments = await all(`
       SELECT p.*, u.username 
@@ -116,6 +149,9 @@ router.get('/', adminOnly, async (req, res) => {
     res.render('admin/dashboard', {
       user: req.session.user,
       stats: stats || {},
+      recentScripts,
+      recentChallenges,
+      recentQuizzes,
       recentPayments,
       recentProgress,
       recentSessions,

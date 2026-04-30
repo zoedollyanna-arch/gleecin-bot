@@ -94,8 +94,9 @@ router.get('/scripts', async (req, res) => {
 
     let query = `
       SELECT id, title, description, category, version, language,
-             author_id, download_count, view_count, is_public, price_tier,
-             created_at, updated_at
+             author_id, code, explanation, use_cases, common_mistakes,
+             tags, download_count, view_count, file_url, is_public,
+             price_tier, created_at, updated_at
       FROM scripts
       WHERE (is_public = true OR $2 = true)
         AND (price_tier = 'free'
@@ -115,7 +116,7 @@ router.get('/scripts', async (req, res) => {
 
     if (search) {
       const safeSearch = validator.trim(String(search)).substring(0, 100);
-      query += ` AND (title ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+      query += ` AND (title ILIKE $${paramIndex} OR description ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`;
       params.push(`%${safeSearch}%`);
       paramIndex += 1;
     }
