@@ -2,6 +2,8 @@
 class LearningModule {
     constructor() {
         this.currentChallengeId = null;
+        this.challenges = [];
+        this.filteredChallenges = [];
         this.init();
     }
 
@@ -9,6 +11,7 @@ class LearningModule {
         this.setupEventListeners();
         this.setupCodeEditor();
         this.bindModalControls();
+        this.loadChallenges();
     }
 
     setupEventListeners() {
@@ -86,15 +89,71 @@ class LearningModule {
         }
     }
 
+    async loadChallenges() {
+        const container = document.getElementById('challenges-container');
+        if (!container) return;
+
+        try {
+            const response = await fetch('/api/challenges', { credentials: 'include' });
+            const challenges = await response.json();
+
+            this.challenges = Array.isArray(challenges) ? challenges : [];
+            this.filteredChallenges = [...this.challenges];
+            this.renderChallenges(this.filteredChallenges);
+        } catch (error) {
+            console.error('[CHALLENGES LOAD ERROR]', error);
+            container.innerHTML = '<div class="student-empty-state"><p>Failed to load challenges.</p></div>';
+        }
+    }
+
+    renderChallenges(challenges) {
+        const container = document.getElementById('challenges-container');
+        if (!container) return;
+
+        if (!challenges.length) {
+            container.innerHTML = '<div class="student-empty-state"><p>No challenges available yet.</p></div>';
+            return;
+        }
+
+        container.innerHTML = challenges.map((challenge) => this.renderChallengeCard(challenge)).join('');
+    }
+
+    renderChallengeCard(challenge) {
+        const title = this.escapeHtml(challenge.title || 'Challenge');
+        const description = this.escapeHtml(challenge.description || '');
+        const difficulty = this.escapeHtml(challenge.difficulty || challenge.level || 'Beginner');
+        const category = this.escapeHtml(challenge.category || 'general');
+        const starterCode = this.escapeHtml(challenge.starter_code || '');
+
+        return `
+            <article class="student-card challenge-card" data-challenge-id="${challenge.id}" data-category="${category}" data-difficulty="${difficulty.toLowerCase()}" data-starter-code="${starterCode}">
+                <div class="student-card__topline">
+                    <h2>${title}</h2>
+                    <span class="student-badge">${difficulty}</span>
+                </div>
+                <p class="challenge-description">${description}</p>
+                <div class="challenge-stats">
+                    <span class="stat">Real DB data</span>
+                    <span class="stat">${this.escapeHtml(String(challenge.price_tier || 'free').toUpperCase())}</span>
+                </div>
+                <button class="btn-secondary start-challenge" type="button">Start challenge</button>
+            </article>
+        `;
+    }
+
     openChallengeModal(card) {
         const modal = document.getElementById('challenge-modal');
-        const title = card.querySelector('.challenge-header h3')?.textContent || 'Challenge';
-        const difficulty = card.querySelector('.difficulty')?.textContent || 'Beginner';
+        const title = card.querySelector('.student-card__topline h2')?.textContent || 'Challenge';
+        const difficulty = card.querySelector('.student-badge')?.textContent || 'Beginner';
         const description = card.querySelector('.challenge-description')?.textContent || '';
 
-        document.getElementById('modal-challenge-title').textContent = title;
-        document.getElementById('modal-difficulty').textContent = difficulty;
-        document.getElementById('modal-description').textContent = description;
+        const modalTitle = document.getElementById('modal-challenge-title');
+        const modalDifficulty = document.getElementById('modal-difficulty');
+        const modalDescription = document.getElementById('modal-description');
+
+        if (modalTitle) modalTitle.textContent = title;
+        if (modalDifficulty) modalDifficulty.textContent = difficulty;
+        if (modalDescription) modalDescription.textContent = description;
 
         if (modal) {
             modal.style.display = 'block';
@@ -102,7 +161,7 @@ class LearningModule {
 
         const editor = document.getElementById('code-editor');
         if (editor && !editor.value.trim()) {
-            editor.value = this.getStarterCode(card.dataset.challengeId);
+            editor.value = card.dataset.starterCode || this.getStarterCode(card.dataset.challengeId);
         }
     }
 
@@ -114,27 +173,8 @@ class LearningModule {
     }
 
     getStarterCode(challengeId) {
-        if (String(challengeId) === '1') {
-            return `default
-{
-    state_entry()
-    {
-        llSay(0, "Hello World");
-    }
-}`;
-        }
-
-        if (String(challengeId) === '2') {
-            return `default
-{
-    touch_start(integer total_number)
-    {
-        llSetPos(llGetPos() + <0.0, 0.0, 1.0>);
-    }
-}`;
-        }
-
-        return `default
+        const challenge = this.challenges.find((entry) => String(entry.id) === String(challengeId));
+        return challenge?.starter_code || `default
 {
     state_entry()
     {
@@ -150,7 +190,7 @@ class LearningModule {
     selectChallenge(challengeId) {
         this.currentChallengeId = challengeId;
 
-        document.querySelectorAll('.challenge-card').forEach(card => {
+        document.querySelectorAll('.challenge-card').forEach((card) => {
             card.classList.remove('selected');
         });
 
@@ -164,13 +204,15 @@ class LearningModule {
         const difficulty = document.getElementById('difficulty-filter')?.value || 'all';
         const category = document.getElementById('category-filter')?.value || 'all';
 
-        document.querySelectorAll('.challenge-card').forEach((card) => {
-            const cardDifficulty = card.querySelector('.difficulty')?.textContent?.toLowerCase() || '';
-            const cardCategory = card.dataset.category || '';
-            const matchesDifficulty = difficulty === 'all' || cardDifficulty.includes(difficulty);
-            const matchesCategory = category === 'all' || cardCategory.includes(category);
-            card.style.display = matchesDifficulty && matchesCategory ? '' : 'none';
+        this.filteredChallenges = this.challenges.filter((challenge) => {
+            const challengeDifficulty = String(challenge.difficulty || challenge.level || '').toLowerCase();
+            const challengeCategory = String(challenge.category || '').toLowerCase();
+            const matchesDifficulty = difficulty === 'all' || challengeDifficulty.includes(difficulty);
+            const matchesCategory = category === 'all' || challengeCategory.includes(category);
+            return matchesDifficulty && matchesCategory;
         });
+
+        this.renderChallenges(this.filteredChallenges);
     }
 
     runTests() {
@@ -202,7 +244,7 @@ class LearningModule {
         if (!container || !list) return;
 
         container.style.display = 'block';
-        list.innerHTML = results.map(result => `<div class="test-result-item ${result.passed ? 'passed' : 'failed'}">${result.message}</div>`).join('');
+        list.innerHTML = results.map((result) => `<div class="test-result-item ${result.passed ? 'passed' : 'failed'}">${result.message}</div>`).join('');
     }
 
     async submitChallenge() {
@@ -234,8 +276,16 @@ class LearningModule {
                 this.showNotification(result.error || 'Submission failed', 'error');
             }
         } catch (error) {
+            console.error('[CHALLENGE SUBMIT ERROR]', error);
             this.showNotification('Failed to submit challenge', 'error');
         }
+    }
+
+    escapeHtml(text) {
+        const value = String(text ?? '');
+        const div = document.createElement('div');
+        div.textContent = value;
+        return div.innerHTML;
     }
 
     showNotification(message, type = 'info') {

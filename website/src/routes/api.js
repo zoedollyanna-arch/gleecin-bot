@@ -299,6 +299,36 @@ router.post('/lessons/:id/progress', isAuthenticated, submitLimiter, async (req,
   }
 });
 
+  // ============ QUIZZES ============
+
+router.get('/quizzes', isAuthenticated, async (req, res) => {
+  try {
+    const tier = getUserTier(req.session.user);
+
+    const quizzes = await all(`
+      SELECT q.id, q.title, q.description, q.lesson_id, q.difficulty, q.passing_score,
+             q.time_limit_minutes, q.price_tier, q.created_by, q.created_at,
+             l.title AS lesson_title,
+             COUNT(DISTINCT qq.id)::int AS question_count,
+             COUNT(DISTINCT qa.id)::int AS attempt_count
+      FROM quizzes q
+      LEFT JOIN lessons l ON q.lesson_id = l.id
+      LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
+      LEFT JOIN quiz_attempts qa ON qa.quiz_id = q.id
+      WHERE q.price_tier = 'free'
+         OR (q.price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
+         OR (q.price_tier = 'advanced' AND $1 = 'advanced')
+      GROUP BY q.id, l.title
+      ORDER BY q.created_at DESC
+    `, [tier]);
+
+    res.json(quizzes);
+  } catch (error) {
+    console.error('[QUIZZES ERROR]', error);
+    res.status(500).json({ error: 'Failed to fetch quizzes' });
+  }
+});
+
 // ============ CHALLENGES ============
 
 router.get('/challenges', isAuthenticated, async (req, res) => {

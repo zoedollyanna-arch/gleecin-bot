@@ -69,11 +69,22 @@ router.post('/sessions/request', isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const topic = String(title).trim();
+    const adminNotes = String(description).trim();
+    const preferredTime = requested_date || null;
+
     const result = await run(
-      `INSERT INTO session_requests (user_id, title, description, requested_date, created_at)
-       VALUES ($1, $2, $3, $4, NOW()) RETURNING id`,
-      [dbUser.id, title, description, requested_date || null]
+      `INSERT INTO sessions (student_id, admin_id, topic, preferred_time, duration, status, admin_notes, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id`,
+      [dbUser.id, null, topic, preferredTime, null, 'pending', adminNotes]
     );
+
+    console.log('[SESSIONS] created session request', {
+      sessionId: result.id,
+      studentId: dbUser.id,
+      topic,
+      preferredTime
+    });
 
     res.json({ success: true, sessionId: result.id });
   } catch (error) {
@@ -313,21 +324,28 @@ router.get('/quizzes', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
     const tier = getUserTier(user);
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
 
     if (!dbUser) {
       return res.status(404).render('error', { error: 'User not found', user });
     }
 
     const quizzes = await all(`
-      SELECT q.*, 
-        COUNT(DISTINCT qq.id) as question_count
+      SELECT q.id, q.title, q.description, q.lesson_id, q.difficulty, q.passing_score,
+             q.time_limit_minutes, q.price_tier, q.created_by, q.created_at,
+             l.title AS lesson_title,
+             COUNT(DISTINCT qq.id)::int AS question_count,
+             COUNT(DISTINCT qa.id)::int AS attempt_count
       FROM quizzes q
-      LEFT JOIN quiz_questions qq ON q.id = qq.quiz_id
-      WHERE q.price_tier = 'free' OR q.price_tier = $1
-      GROUP BY q.id
+      LEFT JOIN lessons l ON q.lesson_id = l.id
+      LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
+      LEFT JOIN quiz_attempts qa ON qa.quiz_id = q.id AND qa.user_id = $2
+      WHERE q.price_tier = 'free'
+         OR (q.price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
+         OR (q.price_tier = 'advanced' AND $1 = 'advanced')
+      GROUP BY q.id, l.title
       ORDER BY q.created_at DESC
-    `, [tier]);
+    `, [tier, dbUser.id]);
 
     const attempts = await all(`
       SELECT * FROM quiz_attempts
@@ -336,9 +354,9 @@ router.get('/quizzes', isAuthenticated, async (req, res) => {
     `, [dbUser.id]);
 
     const attemptMap = {};
-    attempts.forEach(a => {
-      if (!attemptMap[a.quiz_id]) attemptMap[a.quiz_id] = [];
-      attemptMap[a.quiz_id].push(a);
+    attempts.forEach((attempt) => {
+      if (!attemptMap[attempt.quiz_id]) attemptMap[attempt.quiz_id] = [];
+      attemptMap[attempt.quiz_id].push(attempt);
     });
 
     res.render('student/quizzes', {

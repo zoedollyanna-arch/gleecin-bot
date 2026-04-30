@@ -41,44 +41,9 @@
 
         <section class="student-panel">
             <div class="student-card-grid" id="challenges-container">
-                <article class="student-card challenge-card" data-challenge-id="1">
-                    <div class="student-card__topline">
-                        <h2>Hello world script</h2>
-                        <span class="student-badge">Beginner</span>
-                    </div>
-                    <p class="challenge-description">Create a simple script that displays "Hello World" in chat when triggered.</p>
-                    <div class="challenge-stats">
-                        <span class="stat">124 attempts</span>
-                        <span class="stat">89% success</span>
-                    </div>
-                    <button class="btn-secondary start-challenge">Start challenge</button>
-                </article>
-
-                <article class="student-card challenge-card" data-challenge-id="2">
-                    <div class="student-card__topline">
-                        <h2>Basic movement script</h2>
-                        <span class="student-badge">Intermediate</span>
-                    </div>
-                    <p class="challenge-description">Create a script that allows an object to move forward when touched.</p>
-                    <div class="challenge-stats">
-                        <span class="stat">87 attempts</span>
-                        <span class="stat">65% success</span>
-                    </div>
-                    <button class="btn-secondary start-challenge">Start challenge</button>
-                </article>
-
-                <article class="student-card challenge-card" data-challenge-id="3">
-                    <div class="student-card__topline">
-                        <h2>Interactive door system</h2>
-                        <span class="student-badge">Advanced</span>
-                    </div>
-                    <p class="challenge-description">Build a door system that opens and closes based on proximity and includes sound effects.</p>
-                    <div class="challenge-stats">
-                        <span class="stat">45 attempts</span>
-                        <span class="stat">42% success</span>
-                    </div>
-                    <button class="btn-secondary start-challenge">Start challenge</button>
-                </article>
+                <div class="student-empty-state" id="challenges-loading">
+                    <p>Loading challenges...</p>
+                </div>
             </div>
         </section>
 

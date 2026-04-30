@@ -690,8 +690,22 @@ router.post('/schedules/:id/publish', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await run(`UPDATE schedules SET published = true, published_at = NOW(), updated_by = $1, updated_at = NOW() WHERE id = $2`, [req.session.user.id, id]);
+    console.log('[SCHEDULES] published schedule', { scheduleId: id, adminId: req.session.user.id });
     res.json({ success: true });
   } catch (error) {
+    console.error('[SCHEDULE PUBLISH ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/schedules/:id/delete', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await run('DELETE FROM schedules WHERE id = $1', [id]);
+    console.log('[SCHEDULES] deleted schedule', { scheduleId: id, changes: deleted.changes, adminId: req.session.user.id });
+    res.json({ success: true, deleted: deleted.changes });
+  } catch (error) {
+    console.error('[SCHEDULE DELETE ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -730,8 +744,9 @@ router.post('/sessions/:id/update', isAdmin, async (req, res) => {
 router.post('/sessions/:id/delete', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    await run('DELETE FROM sessions WHERE id = $1', [id]);
-    res.json({ success: true });
+    const deleted = await run('DELETE FROM sessions WHERE id = $1', [id]);
+    console.log('[SESSIONS] deleted session', { sessionId: id, changes: deleted.changes, adminId: req.session.user.id });
+    res.json({ success: true, deleted: deleted.changes });
   } catch (error) {
     console.error('[SESSION DELETE ERROR]', error);
     res.status(500).json({ error: error.message });
