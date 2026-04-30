@@ -36,6 +36,16 @@ const {
   GUILD_ID
 } = process.env;
 
+const resolvedPort = Number(PORT);
+const portValue = Number.isFinite(resolvedPort) ? resolvedPort : 3000;
+const candidatePorts = Array.from(new Set([
+  portValue,
+  3000,
+  5001,
+  5002,
+  3001
+])).filter((port) => Number.isInteger(port) && port > 0);
+
 // ============================================
 // EXPRESS WEBSITE SETUP
 // ============================================
@@ -231,15 +241,34 @@ async function startup() {
     await loadBotEvents();
 
     // Start Express server FIRST so Render detects the port immediately
-    app.listen(PORT, () => {
-      console.log(`
+    const startServer = async () => {
+      for (const port of candidatePorts) {
+        try {
+          await new Promise((resolve, reject) => {
+            const server = app.listen(port, () => {
+              console.log(`
 ╔══════════════════════════════════════════╗
-║  🎓 GLEECIN Academy Portal               ║
-║  Website: http://localhost:${PORT}${PORT === 3000 ? '        ' : '      '}║
+║  GLEECIN Academy Portal                 ║
+║  Website: http://localhost:${port}${port === 3000 ? '        ' : '      '}║
 ║  Status: RUNNING                         ║
 ╚══════════════════════════════════════════╝
-      `);
-    });
+              `);
+              resolve(server);
+            });
+            server.on('error', reject);
+          });
+          return;
+        } catch (error) {
+          if (error.code !== 'EADDRINUSE') {
+            throw error;
+          }
+          console.warn(`[WEBSITE] Port ${port} is in use, trying next option...`);
+        }
+      }
+      throw new Error(`No available port found. Tried: ${candidatePorts.join(', ')}`);
+    };
+
+    await startServer();
 
     // Login to Discord (runs in background after server is up)
     if (!DISCORD_TOKEN) {

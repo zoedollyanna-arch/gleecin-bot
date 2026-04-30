@@ -92,8 +92,8 @@
 
     <div class="container">
         <div class="welcome-section">
-            <h1>Welcome back, <%= user.username %>! 👋</h1>
-            <p>You're on track with your scripting education. Let's continue learning!</p>
+            <h1>Welcome back, <%= user.username %></h1>
+            <p>Your learning workspace is ready. Continue with classes, lessons, challenges, quizzes, and support.</p>
             <div class="tier-badge tier-<%= tier %>">
                 Tier: <strong><%= tier.toUpperCase() %></strong>
             </div>
@@ -101,57 +101,64 @@
 
         <div class="dashboard-grid">
             <div class="card">
-                <h3>📚 Enrolled Classes</h3>
+                <h3>Enrolled classes</h3>
                 <p>Manage your active classes and syllabus access.</p>
                 <ul style="list-style: none; margin: 1rem 0; padding: 0;">
-                    <li>• View enrolled classes</li>
-                    <li>• Request enrollment from class detail pages</li>
-                    <li>• Open live lesson content and schedules</li>
+                    <li>View enrolled classes</li>
+                    <li>Request enrollment from class detail pages</li>
+                    <li>Open live lesson content and schedules</li>
                 </ul>
-                <a href="/classes" class="btn btn-primary card-btn">View Classes</a>
+                <a href="/classes" class="btn btn-primary card-btn">View classes</a>
             </div>
 
             <div class="card">
-                <h3>🎥 Lessons</h3>
-                <p>Access recorded classes and tutorials</p>
+                <h3>Lessons</h3>
+                <p>Access recorded classes and tutorials.</p>
                 <p style="font-size: 0.9rem; color: #aaa;">Tier-based lesson access</p>
-                <a href="/lessons" class="btn btn-primary card-btn">Watch Lessons</a>
+                <a href="/lessons" class="btn btn-primary card-btn">Watch lessons</a>
             </div>
 
             <div class="card">
-                <h3>💻 Challenges</h3>
-                <p>Practice with interactive coding challenges</p>
+                <h3>Challenges</h3>
+                <p>Practice with interactive coding challenges.</p>
                 <p style="font-size: 0.9rem; color: #aaa;">Real challenge editor with test submission</p>
-                <a href="/learning" class="btn btn-primary card-btn">Start Challenge</a>
+                <a href="/learning" class="btn btn-primary card-btn">Start challenges</a>
             </div>
 
             <div class="card">
-                <h3>💬 Inbox</h3>
+                <h3>Quizzes</h3>
+                <p>Review interactive quizzes tied to your learning progress.</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Assignments and attempts stay in sync</p>
+                <a href="/student/quizzes" class="btn btn-primary card-btn">Open quizzes</a>
+            </div>
+
+            <div class="card">
+                <h3>Inbox</h3>
                 <p>Read support messages and message staff.</p>
                 <p style="font-size: 0.9rem; color: #aaa;">Direct access to student inbox</p>
-                <a href="/student/messages" class="btn btn-primary card-btn">Open Inbox</a>
+                <a href="/student/messages" class="btn btn-primary card-btn">Open inbox</a>
             </div>
 
             <div class="card">
-                <h3>📅 Schedule</h3>
-                <p>View upcoming classes and announcements</p>
+                <h3>Schedule</h3>
+                <p>View upcoming classes and announcements.</p>
                 <p style="font-size: 0.9rem; color: #aaa;">Live schedule and event actions</p>
-                <a href="/schedule" class="btn btn-primary card-btn">View Schedule</a>
+                <a href="/schedule" class="btn btn-primary card-btn">View schedule</a>
             </div>
 
             <div class="card">
-                <h3>🏆 Certifications</h3>
+                <h3>Certificates</h3>
                 <p>Track earned certificates and completion milestones.</p>
                 <p style="font-size: 0.9rem; color: #aaa;">Production certificate workflow</p>
-                <a href="/certification" class="btn btn-primary card-btn">View Progress</a>
+                <a href="/certification" class="btn btn-primary card-btn">View progress</a>
             </div>
         </div>
 
-        <h2 class="section-title">Student Overview</h2>
+        <h2 class="section-title">Student overview</h2>
         <div class="progress-item">
             <div>
                 <strong>Classes</strong>
-                <span style="float: right; color: var(--primary);">Live</span>
+                <span style="float: right; color: var(--accent-cyan);">Live</span>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill" style="width: 100%"></div>
@@ -161,7 +168,7 @@
         <div class="progress-item">
             <div>
                 <strong>Lessons</strong>
-                <span style="float: right; color: var(--primary);">Available</span>
+                <span style="float: right; color: var(--accent-cyan);">Available</span>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill" style="width: 100%"></div>
@@ -171,7 +178,7 @@
         <div class="progress-item">
             <div>
                 <strong>Challenges</strong>
-                <span style="float: right; color: var(--primary);">Interactive</span>
+                <span style="float: right; color: var(--accent-cyan);">Interactive</span>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill" style="width: 100%"></div>

@@ -1,0 +1,181 @@
+<%- include('../partials/admin-header', { title: 'Quiz Management' }) %>
+
+<main class="admin-shell">
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <div>
+        <p class="admin-eyebrow">Quiz management</p>
+        <h1>Quizzes</h1>
+        <p class="admin-muted">Create quizzes, edit question counts, and review student attempts from the same admin workflow.</p>
+      </div>
+    </div>
+
+    <form class="admin-form" id="createQuizForm">
+      <div class="admin-form-grid">
+        <label class="admin-field">
+          <span>Title</span>
+          <input name="title" type="text" placeholder="Quiz title" required>
+        </label>
+        <label class="admin-field">
+          <span>Lesson</span>
+          <select name="lesson_id">
+            <option value="">Unlinked</option>
+            <% if (Array.isArray(lessons) && lessons.length) { %>
+              <% lessons.forEach((lesson) => { %>
+                <option value="<%= lesson.id %>"><%= lesson.title %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Difficulty</span>
+          <select name="difficulty">
+            <option value="">Select difficulty</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Tier</span>
+          <select name="price_tier" required>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Passing score</span>
+          <input name="passing_score" type="number" min="1" max="100" value="70">
+        </label>
+        <label class="admin-field">
+          <span>Time limit minutes</span>
+          <input name="time_limit_minutes" type="number" min="1" placeholder="Optional">
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Description</span>
+          <textarea name="description" rows="4" placeholder="Quiz description"></textarea>
+        </label>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-btn admin-btn-primary" type="submit">Create quiz</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Quizzes</h2>
+    </div>
+
+    <% if (Array.isArray(quizzes) && quizzes.length) { %>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Quiz</th>
+              <th>Lesson</th>
+              <th>Tier</th>
+              <th>Questions</th>
+              <th>Attempts</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% quizzes.forEach((quiz) => { %>
+              <tr>
+                <td>
+                  <strong><%= quiz.title %></strong>
+                  <p class="admin-muted"><%= quiz.description || 'No description' %></p>
+                </td>
+                <td><%= quiz.lesson_title || 'Unlinked' %></td>
+                <td><span class="admin-pill"><%= String(quiz.price_tier || 'free').toUpperCase() %></span></td>
+                <td><%= quiz.question_count ?? 0 %></td>
+                <td><%= quiz.attempt_count ?? 0 %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="admin-empty">No quizzes created yet.</p>
+    <% } %>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Recent questions</h2>
+    </div>
+
+    <% if (Array.isArray(questions) && questions.length) { %>
+      <div class="admin-list">
+        <% questions.forEach((question) => { %>
+          <article class="admin-list-item">
+            <div>
+              <strong><%= question.quiz_title %></strong>
+              <p class="admin-muted"><%= question.question_text %></p>
+            </div>
+            <span class="admin-pill"><%= question.question_type || 'question' %></span>
+          </article>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="admin-empty">No questions added yet.</p>
+    <% } %>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Recent attempts</h2>
+    </div>
+
+    <% if (Array.isArray(attempts) && attempts.length) { %>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Quiz</th>
+              <th>Score</th>
+              <th>Passed</th>
+              <th>Attempted</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% attempts.forEach((attempt) => { %>
+              <tr>
+                <td><%= attempt.student_name || 'Student' %></td>
+                <td><%= attempt.quiz_title || 'Quiz' %></td>
+                <td><%= attempt.score ?? 0 %></td>
+                <td><span class="admin-pill"><%= attempt.passed ? 'Yes' : 'No' %></span></td>
+                <td><%= attempt.attempted_at ? new Date(attempt.attempted_at).toLocaleString() : '—' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="admin-empty">No quiz attempts yet.</p>
+    <% } %>
+  </section>
+</main>
+
+<script>
+  document.getElementById('createQuizForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    const res = await fetch('/admin/quizzes/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert('Quiz created');
+      location.reload();
+    } else {
+      alert(json.error || 'Failed');
+    }
+  });
+</script>
+
+<%- include('../partials/admin-footer') %>

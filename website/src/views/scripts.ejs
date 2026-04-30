@@ -9,54 +9,62 @@
 <body class="scripts-page">
     <%- include('partials/header'); %>
     
-    <main class="scripts-container">
-        <div class="scripts-header">
-            <h1>Script Library</h1>
-            <p>Browse, search, and download community-created scripts for your projects.</p>
-        </div>
-
-        <div class="scripts-search-bar">
-            <input type="text" id="search-input" placeholder="Search scripts by title, description, or tags..." class="search-input">
-            
-            <div class="advanced-filters">
-                <select id="language-filter" class="filter-select">
-                    <option value="all">All Languages</option>
-                    <option value="lsl">LSL (Linden Scripting Language)</option>
-                    <option value="javascript">JavaScript</option>
-                    <option value="python">Python</option>
-                </select>
-                
-                <select id="category-filter" class="filter-select">
-                    <option value="all">All Categories</option>
-                    <option value="ui">UI Elements</option>
-                    <option value="movement">Movement</option>
-                    <option value="physics">Physics</option>
-                    <option value="animations">Animations</option>
-                    <option value="utilities">Utilities</option>
-                    <option value="games">Games</option>
-                </select>
-                
-                <button id="apply-filters" class="btn-primary">Apply Filters</button>
+    <main class="student-page scripts-page__content">
+        <section class="student-panel">
+            <div class="student-panel__header">
+                <div>
+                    <h1>Script library</h1>
+                    <p>Browse, search, and download community-created scripts for your projects.</p>
+                </div>
             </div>
-        </div>
 
-        <div class="tags-container">
-            <span class="tag active" data-tag="all">All Tags</span>
-            <span class="tag" data-tag="beginner">Beginner</span>
-            <span class="tag" data-tag="intermediate">Intermediate</span>
-            <span class="tag" data-tag="advanced">Advanced</span>
-            <span class="tag" data-tag="free">Free</span>
-            <span class="tag" data-tag="premium">Premium</span>
-            <span class="tag" data-tag="popular">Popular</span>
-        </div>
-
-        <div class="scripts-grid" id="scripts-container">
-            <div class="empty-state" id="scripts-loading">
-                <p>Loading scripts...</p>
+            <div class="scripts-search-bar">
+                <input type="text" id="search-input" placeholder="Search scripts by title, description, or tags..." class="search-input">
+                
+                <div class="advanced-filters">
+                    <select id="language-filter" class="filter-select">
+                        <option value="all">All languages</option>
+                        <option value="lsl">LSL</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                    </select>
+                    
+                    <select id="category-filter" class="filter-select">
+                        <option value="all">All categories</option>
+                        <option value="ui">UI elements</option>
+                        <option value="movement">Movement</option>
+                        <option value="physics">Physics</option>
+                        <option value="animations">Animations</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="games">Games</option>
+                    </select>
+                    
+                    <button id="apply-filters" class="btn-primary">Apply filters</button>
+                </div>
             </div>
-        </div>
 
-        <div class="pagination" id="pagination-container"></div>
+            <div class="tags-container">
+                <span class="tag active" data-tag="all">All tags</span>
+                <span class="tag" data-tag="beginner">Beginner</span>
+                <span class="tag" data-tag="intermediate">Intermediate</span>
+                <span class="tag" data-tag="advanced">Advanced</span>
+                <span class="tag" data-tag="free">Free</span>
+                <span class="tag" data-tag="premium">Premium</span>
+                <span class="tag" data-tag="popular">Popular</span>
+            </div>
+        </section>
+
+        <section class="student-panel">
+            <div class="scripts-grid" id="scripts-container">
+                <div class="student-empty-state" id="scripts-loading">
+                    <p>Loading scripts...</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="student-panel">
+            <div class="pagination" id="pagination-container"></div>
+        </section>
     </main>
 
     <%- include('partials/footer'); %>

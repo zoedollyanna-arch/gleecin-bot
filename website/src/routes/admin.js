@@ -63,8 +63,10 @@ router.get('/', adminOnly, async (req, res) => {
         (SELECT COUNT(*) FROM users) AS total_users,
         (SELECT COUNT(*) FROM users WHERE tier = 'paid' OR tier = 'advanced') AS paid_users,
         (SELECT COUNT(*) FROM payments WHERE status = 'pending') AS pending_payments,
-        (SELECT COUNT(*) FROM scripts) AS total_scripts,
+        (SELECT COUNT(*) FROM scripts WHERE is_public = true) AS total_scripts,
         (SELECT COUNT(*) FROM lessons) AS total_lessons,
+        (SELECT COUNT(*) FROM challenges) AS total_challenges,
+        (SELECT COUNT(*) FROM quizzes) AS total_quizzes,
         (SELECT COUNT(*) FROM certifications) AS issued_certs,
         (SELECT COUNT(*) FROM lesson_progress WHERE completed = true) AS completed_lessons,
         (SELECT COUNT(*) FROM messages WHERE recipient_id = $1 AND is_read = false) AS pending_messages
@@ -208,6 +210,44 @@ router.post('/payments/:paymentId/reject', isAdmin, async (req, res) => {
   }
 });
 
+router.get('/scripts', adminOnly, async (req, res) => {
+  try {
+    const scripts = await all(`SELECT s.*, u.username AS author FROM scripts s LEFT JOIN users u ON s.author_id = u.id ORDER BY s.created_at DESC`);
+    res.render('admin/scripts', { user: req.session.user, scripts, title: 'Script Management' });
+  } catch (error) {
+    console.error('[SCRIPTS LIST ERROR]', error);
+    res.status(500).render('error', { error: error.message, user: req.session.user });
+  }
+});
+
+router.post('/scripts/:id/update', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, category, tier, code, explanation, use_cases, common_mistakes, language, version, tags, is_public } = req.body;
+    await run(
+      `UPDATE scripts
+       SET title = $1, description = $2, category = $3, price_tier = $4, code = $5, explanation = $6,
+           use_cases = $7, common_mistakes = $8, language = $9, version = $10, tags = $11, is_public = $12, updated_at = NOW()
+       WHERE id = $13`,
+      [title, description, category, tier, code, explanation, use_cases, common_mistakes, language || null, version || null, tags ? String(tags).split(',').map((tag) => tag.trim()).filter(Boolean) : [], is_public !== 'false', id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[SCRIPT UPDATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/scripts/:id/delete', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await run('DELETE FROM scripts WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[SCRIPT DELETE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 router.get('/scripts', adminOnly, async (req, res) => {
   try {
     const scripts = await all(`SELECT s.*, u.username AS author FROM scripts s LEFT JOIN users u ON s.author_id = u.id ORDER BY s.created_at DESC`);
@@ -444,6 +484,95 @@ router.get('/challenges', adminOnly, async (req, res) => {
   res.render('admin/challenges', { user: req.session.user, challenges, submissions, title: 'Challenge Management' });
 });
 
+router.get('/quizzes', adminOnly, async (req, res) => {
+  try {
+    const quizzes = await all(`
+      SELECT q.*, l.title AS lesson_title, u.username AS creator,
+        COUNT(DISTINCT qq.id)::int AS question_count,
+        COUNT(DISTINCT qa.id)::int AS attempt_count
+      FROM quizzes q
+      LEFT JOIN lessons l ON q.lesson_id = l.id
+      LEFT JOIN users u ON q.created_by = u.id
+      LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
+      LEFT JOIN quiz_attempts qa ON qa.quiz_id = q.id
+      GROUP BY q.id, l.title, u.username
+      ORDER BY q.created_at DESC
+    `);
+
+    const questions = await all(`
+      SELECT qq.*, q.title AS quiz_title
+      FROM quiz_questions qq
+      JOIN quizzes q ON qq.quiz_id = q.id
+      ORDER BY q.id DESC, qq.order_index ASC NULLS LAST, qq.created_at DESC
+    `);
+
+    const attempts = await all(`
+      SELECT qa.*, q.title AS quiz_title, u.username AS student_name
+      FROM quiz_attempts qa
+      JOIN quizzes q ON qa.quiz_id = q.id
+      JOIN users u ON qa.user_id = u.id
+      ORDER BY qa.attempted_at DESC
+      LIMIT 100
+    `);
+
+    res.render('admin/quizzes', { user: req.session.user, quizzes, questions, attempts, title: 'Quiz Management' });
+  } catch (error) {
+    console.error('[QUIZZES LIST ERROR]', error);
+    res.status(500).render('error', { error: error.message, user: req.session.user });
+  }
+});
+
+router.post('/quizzes/create', isAdmin, async (req, res) => {
+  try {
+    const { title, description, lesson_id, difficulty, passing_score, time_limit_minutes, price_tier } = req.body;
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    const created = await run(
+      `INSERT INTO quizzes (title, description, lesson_id, difficulty, passing_score, time_limit_minutes, price_tier, created_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING id`,
+      [title, description || null, lesson_id || null, difficulty || null, passing_score || 70, time_limit_minutes || null, price_tier || 'free', req.session.user.id]
+    );
+
+    res.json({ success: true, quizId: created.id });
+  } catch (error) {
+    console.error('[QUIZ CREATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/quizzes/:id/update', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, lesson_id, difficulty, passing_score, time_limit_minutes, price_tier } = req.body;
+
+    await run(
+      `UPDATE quizzes
+       SET title = $1, description = $2, lesson_id = $3, difficulty = $4, passing_score = $5,
+           time_limit_minutes = $6, price_tier = $7
+       WHERE id = $8`,
+      [title, description || null, lesson_id || null, difficulty || null, passing_score || 70, time_limit_minutes || null, price_tier || 'free', id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[QUIZ UPDATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/quizzes/:id/delete', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await run('DELETE FROM quizzes WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[QUIZ DELETE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/challenges/create', isAdmin, async (req, res) => {
   try {
     const { title, description, difficulty, starter_code, solution, explanation, level, price_tier } = req.body;
@@ -461,6 +590,17 @@ router.post('/challenges/:id/update', isAdmin, async (req, res) => {
     await run(`UPDATE challenges SET title=$1, description=$2, difficulty=$3, starter_code=$4, solution=$5, explanation=$6, level=$7, price_tier=$8 WHERE id=$9`, [title, description, difficulty, starter_code, solution, explanation, level, price_tier, id]);
     res.json({ success: true });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/challenges/:id/delete', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await run('DELETE FROM challenges WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[CHALLENGE DELETE ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -491,6 +631,24 @@ router.post('/schedules/announcement', isAdmin, async (req, res) => {
     await run(`INSERT INTO announcements (title, content, important, expires_at, created_at) VALUES ($1,$2,$3,$4,NOW())`, [title, content, important === 'true' || important === true, expires_at || null]);
     res.json({ success: true });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/schedules/create', isAdmin, async (req, res) => {
+  try {
+    const { title, instructor, scheduled_date, scheduled_time, capacity, description, class_id } = req.body;
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    const created = await run(
+      `INSERT INTO schedules (title, instructor, scheduled_date, scheduled_time, capacity, description, class_id, created_by, updated_by, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,NOW(),NOW()) RETURNING id`,
+      [title, instructor || null, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null, req.session.user.id]
+    );
+    res.json({ success: true, scheduleId: created.id });
+  } catch (error) {
+    console.error('[SCHEDULE CREATE ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });

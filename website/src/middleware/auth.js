@@ -17,7 +17,10 @@ const BASE_DELAY = 1000;
  */
 export async function isAuthenticated(req, res, next) {
   if (!req.session?.user) {
-    return res.status(401).json({ error: 'Unauthorized' }).end();
+    if (req.originalUrl.startsWith('/api/')) {
+      return res.status(401).json({ error: 'Unauthorized' }).end();
+    }
+    return res.redirect('/login');
   }
 
   // Check if token needs refresh (only once per hour to avoid rate limits)
@@ -38,8 +41,11 @@ export async function isAuthenticated(req, res, next) {
         req.session.user.tokenVerifiedAt = now;
       } catch (refreshError) {
         console.error('[AUTH REFRESH ERROR]', refreshError.message);
-        req.session.destroy();
-        return res.status(401).json({ error: 'Unauthorized' });
+        req.session.destroy(() => {});
+        if (req.originalUrl.startsWith('/api/')) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+        return res.redirect('/login');
       }
     }
   }
@@ -344,4 +350,3 @@ export function getUserTier(user) {
   
   return 'free';
 }
-

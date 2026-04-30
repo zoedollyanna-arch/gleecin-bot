@@ -1,24 +1,18 @@
-/* 🌈 Neon Creator / Coding Vibe Theme for GLEECIN Academy */
-/* More fun + modern learning platform */
-
 :root {
-    /* Theme Colors as specified */
-    --background-color: #0F0F14;
-    --text-color: #EAEAEA;
-    --accent-violet: #7B61FF;
-    --accent-cyan: #00D1FF;
-    --accent-orange: #FF7A00;
-    
-    /* Derived colors */
-    --card-background: #1A1A22;
-    --card-background-hover: #22222C;
-    --border-color: #2A2A35;
-    --border-color-hover: #3A3A45;
-    --success-color: #00D1FF;
-    --warning-color: #FF7A00;
-    --error-color: #FF4D4D;
-    --muted-text: #AAAAAA;
-    --input-background: #16161D;
+    --background-color: #0b1220;
+    --text-color: #e5e7eb;
+    --accent-violet: #7c3aed;
+    --accent-cyan: #06b6d4;
+    --accent-orange: #f97316;
+    --card-background: #111827;
+    --card-background-hover: #172033;
+    --border-color: #233044;
+    --border-color-hover: #334155;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    --muted-text: #94a3b8;
+    --input-background: #0f172a;
 }
 
 * {
@@ -32,7 +26,7 @@ html {
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: Inter, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--background-color);
     color: var(--text-color);
     line-height: 1.6;
@@ -228,8 +222,8 @@ textarea:focus {
 
 /* Navigation & Header */
 .site-header {
-    background: rgba(15, 15, 20, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(11, 18, 32, 0.95);
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
     padding: 1rem 0;
     position: sticky;
@@ -434,9 +428,126 @@ textarea:focus {
 .badge.success { background: var(--success-color); color: #0F0F14; }
 .badge.warning { background: var(--warning-color); color: #0F0F14; }
 
+/* Shared layout for student/admin pages */
+.student-page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    width: 100%;
+}
+
+.student-panel {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+.student-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.student-card-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.student-card,
+.student-review {
+    background: #0f172a;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.student-card__topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.student-card__actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.student-badge {
+    display: inline-flex;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #1f2937;
+    color: var(--text-color);
+    font-size: .8rem;
+    white-space: nowrap;
+}
+
+.student-badge--success { background: #064e3b; }
+.student-badge--muted { background: #1e293b; color: var(--muted-text); }
+
+.student-empty-state {
+    padding: 18px;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    color: var(--muted-text);
+    background: rgba(15, 23, 42, 0.75);
+}
+
+.student-progress {
+    margin-top: 12px;
+}
+
+.student-progress__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #1f2937;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.student-progress__bar span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet));
+}
+
+.student-review-list {
+    display: grid;
+    gap: 12px;
+}
+
+.student-page h1,
+.student-page h2,
+.student-page h3 {
+    margin-bottom: 0.75rem;
+}
+
+.student-page p {
+    color: var(--muted-text);
+}
+
+@media (max-width: 768px) {
+    .student-page { padding: 16px; }
+    .student-panel { padding: 18px; }
+    .student-panel__header,
+    .student-card__topline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
 /* Footer */
 .site-footer {
-    background: rgba(15, 15, 20, 0.95);
+    background: rgba(11, 18, 32, 0.95);
     border-top: 1px solid var(--border-color);
     padding: 2rem 0;
     margin-top: auto;
