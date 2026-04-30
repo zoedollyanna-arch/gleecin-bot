@@ -212,9 +212,9 @@
               <% } %>
               
               <div style="margin-top: 15px;">
-                <button class="btn" onclick="startActivity(<%= activity.id %>)">
+                <a class="btn" href="/learning?activity=<%= activity.id %>">
                   <%= submissionMap[activity.id] ? 'View Submission' : 'Start Activity' %>
-                </button>
+                </a>
               </div>
             </div>
           <% }); %>
@@ -229,9 +229,7 @@
   </div>
 
   <script>
-    function startActivity(activityId) {
-      alert('Activity interface coming soon! Activity ID: ' + activityId);
-    }
+    // Activities route to /learning with the selected activity id.
   </script>
 </body>
 </html>

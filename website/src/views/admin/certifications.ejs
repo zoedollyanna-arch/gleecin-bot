@@ -308,8 +308,8 @@
               </div>
 
               <div style="display: flex; gap: 5px;">
-                <button class="action-btn" onclick="viewCert('<%= cert.certificate_id %>')">👁️ View</button>
-                <button class="action-btn" onclick="toggleShare(<%= cert.id %>, <%= cert.shared %> ? 'false' : 'true' %>)">
+                <button class="action-btn" onclick="window.location.href='/certification'">👁️ View</button>
+                <button class="action-btn" onclick="window.location.href='/certification'">
                   <%= cert.shared ? '🔒 Private' : '🌐 Public' %>
                 </button>
               </div>
@@ -333,20 +333,14 @@
 
   <script>
     function viewCert(certId) {
-      // Open certificate viewer
-      window.open(`/certificate/${certId}`, '_blank');
+      window.location.href = '/certification';
     }
 
     function toggleShare(certId, isPublic) {
-      const action = isPublic ? 'make public' : 'make private';
-      if (confirm(`Are you sure you want to ${action} this certificate?`)) {
-        // TODO: Implement share toggle endpoint
-        alert('Share toggle feature coming soon!');
-      }
+      window.location.href = '/certification';
     }
 
     function downloadCert(pdfUrl, certId) {
-      // Open PDF in new tab or download
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = `certificate-${certId}.pdf`;

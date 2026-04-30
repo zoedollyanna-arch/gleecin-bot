@@ -356,8 +356,8 @@
                 </span>
               </div>
 
-              <button class="action-btn" onclick="editLesson(<%= lesson.id %>)">✏️ Edit</button>
-              <button class="action-btn delete" onclick="deleteLesson(<%= lesson.id %>)">🗑️ Delete</button>
+              <button class="action-btn" onclick="window.location.href='/learning?lesson=<%= lesson.id %>'">✏️ View</button>
+              <button class="action-btn delete" onclick="window.location.href='/learning?lesson=<%= lesson.id %>'">🗑️ Open</button>
             </div>
           <% }); %>
         </div>
@@ -398,13 +398,11 @@
     });
 
     function editLesson(lessonId) {
-      alert('Edit feature coming soon!');
+      window.location.href = `/learning?lesson=${lessonId}`;
     }
 
     function deleteLesson(lessonId) {
-      if (confirm('Are you sure you want to delete this lesson?')) {
-        alert('Delete feature coming soon!');
-      }
+      window.location.href = `/learning?lesson=${lessonId}`;
     }
   </script>
 </body>

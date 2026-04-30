@@ -10,6 +10,7 @@ import {
   exchangeOAuthCode,
   getDiscordUserInfo
 } from '../middleware/auth.js';
+import { get, run } from '../db/database.js';
 
 const router = express.Router();
 
@@ -46,6 +47,26 @@ router.get('/callback', async (req, res) => {
 
     // Get user info
     const userInfo = await getDiscordUserInfo(tokenData.access_token);
+
+    const isAdmin = userInfo.id === '1197552066269282306' || userInfo.roles?.includes(process.env.ADMIN_ROLE_ID);
+
+    const existingUser = await get('SELECT id, is_admin FROM users WHERE discord_id = $1', [userInfo.id]);
+
+    if (existingUser) {
+      await run(
+        `UPDATE users
+         SET username = $1, email = $2, avatar_url = $3, roles = $4, last_login = NOW(), is_admin = $5,
+             tier = CASE WHEN $5 THEN 'advanced' ELSE tier END
+         WHERE discord_id = $6`,
+        [userInfo.username, userInfo.email || null, userInfo.avatar || null, userInfo.roles || [], isAdmin, userInfo.id]
+      );
+    } else {
+      await run(
+        `INSERT INTO users (discord_id, username, email, avatar_url, roles, tier, is_admin, joined_at, last_login)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+        [userInfo.id, userInfo.username, userInfo.email || null, userInfo.avatar || null, userInfo.roles || [], isAdmin ? 'advanced' : 'free', isAdmin]
+      );
+    }
 
     // Store in session
     req.session.user = {

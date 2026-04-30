@@ -326,8 +326,8 @@
                 </span>
               </div>
 
-              <button class="action-btn" onclick="editScript(<%= script.id %>)">✏️ Edit</button>
-              <button class="action-btn delete" onclick="deleteScript(<%= script.id %>)">🗑️ Delete</button>
+              <button class="action-btn" onclick="window.location.href='/scripts/<%= script.id %>'">✏️ View</button>
+              <button class="action-btn delete" onclick="window.location.href='/scripts/<%= script.id %>'">🗑️ Open</button>
             </div>
           <% }); %>
         </div>
@@ -366,13 +366,11 @@
     });
 
     function editScript(scriptId) {
-      alert('Edit feature coming soon!');
+      window.location.href = `/scripts/${scriptId}`;
     }
 
     function deleteScript(scriptId) {
-      if (confirm('Are you sure you want to delete this script?')) {
-        alert('Delete feature coming soon!');
-      }
+      window.location.href = `/scripts/${scriptId}`;
     }
   </script>
 </body>

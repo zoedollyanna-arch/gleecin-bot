@@ -446,12 +446,12 @@ router.post('/session-requests/:id/approve', isAdmin, async (req, res) => {
       `UPDATE session_requests 
        SET status = $1, approved_by = $2, scheduled_at = $3, notes = $4 
        WHERE id = $5`,
-      ['approved', req.user.id, scheduled_at, notes || '', id]
+      ['approved', req.session.user.id, scheduled_at, notes || '', id]
     );
 
     await run(
       'INSERT INTO admin_logs (admin_id, action, target_user_id, details) VALUES ($1, $2, $3, $4)',
-      [req.user.id, 'approve_session', null, JSON.stringify({ requestId: id })]
+      [req.session.user.id, 'approve_session', null, JSON.stringify({ requestId: id })]
     );
 
     res.json({ success: true, message: 'Session request approved' });
@@ -479,7 +479,7 @@ router.post('/session-requests/:id/reject', isAdmin, async (req, res) => {
 
     await run(
       'INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, $2, $3)',
-      [req.user.id, 'reject_session', JSON.stringify({ requestId: id })]
+      [req.session.user.id, 'reject_session', JSON.stringify({ requestId: id })]
     );
 
     res.json({ success: true, message: 'Session request rejected' });
@@ -534,7 +534,7 @@ router.get('/messages', adminOnly, async (req, res) => {
     const unread = await get(
       `SELECT COUNT(*) as count FROM messages 
        WHERE is_read = false AND recipient_id = $1`,
-      [req.user.id]
+      [req.session.user.id]
     );
 
     res.render('admin/messages', {
@@ -567,7 +567,7 @@ router.post('/messages/:id/reply', isAdmin, async (req, res) => {
     const replyId = await run(
       `INSERT INTO messages (sender_id, recipient_id, subject, content, is_reply, parent_message_id, created_at)
        VALUES ($1, $2, $3, $4, true, $5, NOW()) RETURNING id`,
-      [req.user.id, originalMessage.sender_id, 'Re: Support', content, id]
+      [req.session.user.id, originalMessage.sender_id, 'Re: Support', content, id]
     );
 
     await run(

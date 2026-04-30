@@ -256,7 +256,6 @@
       </div>
     </div>
 
-    <!-- Admin Activity Logs -->
     <div class="content-section">
       <h2>📋 Admin Activity Logs</h2>
 
@@ -272,7 +271,7 @@
         </select>
       </div>
 
-      <% if (logs && logs.length > 0) %>
+      <% if (logs && logs.length > 0) { %>
         <table class="logs-table">
           <thead>
             <tr>
@@ -323,21 +322,20 @@
         </table>
 
         <div class="pagination">
-          <button onclick="alert('Previous page feature coming soon!')">← Previous</button>
+          <button disabled>← Previous</button>
           <span style="color: #999; padding: 10px 15px;">Page 1 of 1</span>
-          <button onclick="alert('Next page feature coming soon!')">Next →</button>
+          <button disabled>Next →</button>
         </div>
-      <% } else %>
+      <% } else { %>
         <div class="empty-state">
           <p>📭 No admin logs yet</p>
           <p>Activity logs will appear here as admins perform actions</p>
         </div>
-      <% end %>
+      <% } %>
     </div>
   </div>
 
   <script>
-    // Filter functionality
     document.getElementById('adminFilter').addEventListener('keyup', filterLogs);
     document.getElementById('actionFilter').addEventListener('change', filterLogs);
 
@@ -349,17 +347,14 @@
       rows.forEach(row => {
         const admin = row.dataset.admin;
         const action = row.dataset.action;
-
         const adminMatch = admin.includes(adminFilter);
         const actionMatch = !actionFilter || action === actionFilter;
-
         row.style.display = (adminMatch && actionMatch) ? '' : 'none';
       });
     }
 
     function showDetails(logId) {
-      // TODO: Implement detailed log viewer
-      alert('Detailed log viewer coming soon!');
+      window.location.href = '/admin/logs';
     }
   </script>
 </body>

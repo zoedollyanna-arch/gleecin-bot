@@ -208,9 +208,9 @@
               <% } %>
               
               <div style="margin-top: 15px;">
-                <button class="btn" onclick="startQuiz(<%= quiz.id %>)">
+                <a class="btn" href="/learning?quiz=<%= quiz.id %>">
                   <%= attemptMap[quiz.id] && attemptMap[quiz.id].length > 0 ? 'Retake Quiz' : 'Start Quiz' %>
-                </button>
+                </a>
               </div>
             </div>
           <% }); %>
@@ -225,9 +225,7 @@
   </div>
 
   <script>
-    function startQuiz(quizId) {
-      alert('Quiz interface coming soon! Quiz ID: ' + quizId);
-    }
+    // Intentionally left minimal: quiz actions route to /learning with the selected quiz id.
   </script>
 </body>
 </html>

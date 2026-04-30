@@ -223,10 +223,9 @@ router.get('/scripts', async (req, res) => {
     let query = `
 
       SELECT id, title, description, category, version, language,
-
-             author_id, download_count, is_public, price_tier,
-
-             created_at, updated_at
+             code, explanation, use_cases, common_mistakes,
+             author_id, download_count, view_count, is_public, price_tier,
+             tags, file_url, thumbnail_url, created_at, updated_at
 
       FROM scripts
 
@@ -320,9 +319,10 @@ router.get('/scripts/category/:category', async (req, res) => {
 
     const scripts = await all(`
 
-      SELECT id, title, description, category, version,
-
-             author_id, download_count, price_tier
+      SELECT id, title, description, category, version, language,
+             code, explanation, use_cases, common_mistakes,
+             author_id, download_count, view_count, price_tier,
+             tags, file_url, thumbnail_url
 
       FROM scripts
 
@@ -379,11 +379,12 @@ router.get('/scripts/:id', async (req, res) => {
 
 
     const script = await get(
-
-      'SELECT * FROM scripts WHERE id = $1 AND is_public = true',
-
+      `SELECT id, title, description, category, version, language,
+              code, explanation, use_cases, common_mistakes,
+              author_id, download_count, view_count, is_public, price_tier,
+              tags, file_url, thumbnail_url, created_at, updated_at
+       FROM scripts WHERE id = $1 AND is_public = true`,
       [parseInt(id)]
-
     );
 
 

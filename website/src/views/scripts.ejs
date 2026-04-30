@@ -51,84 +51,8 @@
         </div>
 
         <div class="scripts-grid" id="scripts-container">
-            <!-- Scripts will be loaded dynamically -->
-            <div class="script-card" data-script-id="1">
-                <div class="script-header">
-                    <h3>Hello World Display</h3>
-                    <div class="script-meta">
-                        <span class="language-badge lsl">LSL</span>
-                        <span class="tag beginner">Beginner</span>
-                    </div>
-                </div>
-                <p class="script-description">A simple script that displays "Hello World" in local chat when an object is touched.</p>
-                
-                <div class="script-preview">
-                    <pre><code class="language-lsl">// Hello World Script
-default {
-    touch_start(integer total_number) {
-        llSay(0, "Hello World!");
-    }
-}</code></pre>
-                </div>
-                
-                <div class="script-stats">
-                    <span class="stat"><i class="fas fa-download"></i> 245 downloads</span>
-                    <span class="stat"><i class="fas fa-eye"></i> 1.2K views</span>
-                    <span class="stat"><i class="fas fa-star"></i> 4.8 rating</span>
-                </div>
-                
-                <div class="script-actions">
-                    <button class="btn-secondary copy-code" data-script-id="1">
-                        <i class="fas fa-copy"></i> Copy Code
-                    </button>
-                    <button class="btn-primary download-script" data-script-id="1">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                </div>
-            </div>
-            
-            <div class="script-card" data-script-id="2">
-                <div class="script-header">
-                    <h3>Basic Movement Controller</h3>
-                    <div class="script-meta">
-                        <span class="language-badge lsl">LSL</span>
-                        <span class="tag intermediate">Intermediate</span>
-                    </div>
-                </div>
-                <p class="script-description">Control object movement with keyboard input using llSetKeyframedMotion.</p>
-                
-                <div class="script-preview">
-                    <pre><code class="language-lsl">// Basic Movement Script
-vector speed = <1.0, 0.0, 0.0>;
-integer moving = FALSE;
-
-default {
-    state_entry() {
-        llSetTimerEvent(0.1);
-    }
-    
-    timer() {
-        if (moving) {
-            // Movement logic here
-        }
-    }
-}</code></pre>
-                </div>
-                
-                <div class="script-stats">
-                    <span class="stat"><i class="fas fa-download"></i> 189 downloads</span>
-                    <span class="stat"><i class="fas fa-eye"></i> 856 views</span>
-                    <span class="stat"><i class="fas fa-star"></i> 4.6 rating</span>
-                </div>
-                
-                <div class="script-actions">
-                    <button class="btn-secondary copy-code" data-script-id="2">
-                        <i class="fas fa-copy"></i> Copy Code
-                    </button>
-                    <button class="btn-primary download-script" data-script-id="2">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                </div>
+            <div class="empty-state" id="scripts-loading">
+                <p>Loading scripts...</p>
             </div>
         </div>
 

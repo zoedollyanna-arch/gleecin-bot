@@ -172,7 +172,7 @@ router.post('/messages/:id/mark-read', isAuthenticated, async (req, res) => {
 router.get('/lessons', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
-    const tier = require('../middleware/auth.js').getUserTier(user);
+    const tier = getUserTier(user);
     const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
 
     if (!dbUser) {
@@ -220,7 +220,7 @@ router.get('/lessons/:id', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.session.user;
-    const tier = require('../middleware/auth.js').getUserTier(user);
+    const tier = getUserTier(user);
 
     const lesson = await get('SELECT * FROM lessons WHERE id = $1', [id]);
 
@@ -258,7 +258,7 @@ router.get('/lessons/:id', isAuthenticated, async (req, res) => {
 router.get('/activities', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
-    const tier = require('../middleware/auth.js').getUserTier(user);
+    const tier = getUserTier(user);
     const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
 
     if (!dbUser) {
@@ -301,7 +301,7 @@ router.get('/activities', isAuthenticated, async (req, res) => {
 router.get('/quizzes', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
-    const tier = require('../middleware/auth.js').getUserTier(user);
+    const tier = getUserTier(user);
     const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
 
     if (!dbUser) {

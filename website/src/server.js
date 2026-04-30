@@ -78,7 +78,7 @@ app.get('/health', (req, res) => {
 
 // ---- 404 Handler ----
 app.use((req, res) => {
-  res.status(404).render('404', { user: req.user });
+  res.status(404).render('404', { user: req.session?.user });
 });
 
 // ---- Error Handler ----
@@ -86,7 +86,7 @@ app.use((err, req, res, next) => {
   console.error('[ERROR]', err);
   res.status(err.status || 500).render('error', {
     error: err.message || 'Internal Server Error',
-    user: req.user
+    user: req.session?.user
   });
 });
 

@@ -2,6 +2,7 @@
 class ScriptLibrary {
     constructor() {
         this.scripts = [];
+        this.filteredScripts = [];
         this.init();
     }
 
@@ -11,34 +12,36 @@ class ScriptLibrary {
     }
 
     setupEventListeners() {
-        // Search functionality
-        const searchInput = document.getElementById('script-search');
+        const searchInput = document.getElementById('search-input');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.filterScripts(e.target.value);
-            });
+            searchInput.addEventListener('input', (e) => this.filterScripts(e.target.value));
         }
 
-        // Filter by category
         const categoryFilter = document.getElementById('category-filter');
         if (categoryFilter) {
-            categoryFilter.addEventListener('change', (e) => {
-                this.filterByCategory(e.target.value);
-            });
+            categoryFilter.addEventListener('change', () => this.applyFilters());
         }
 
-        // Filter by language
         const languageFilter = document.getElementById('language-filter');
         if (languageFilter) {
-            languageFilter.addEventListener('change', (e) => {
-                this.filterByLanguage(e.target.value);
-            });
+            languageFilter.addEventListener('change', () => this.applyFilters());
         }
 
-        // Copy to clipboard buttons
+        const applyFiltersButton = document.getElementById('apply-filters');
+        if (applyFiltersButton) {
+            applyFiltersButton.addEventListener('click', () => this.applyFilters());
+        }
+
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('copy-button')) {
-                this.copyToClipboard(e.target.dataset.scriptId);
+            const copyButton = e.target.closest('.copy-code');
+            const downloadButton = e.target.closest('.download-script');
+
+            if (copyButton) {
+                this.copyToClipboard(copyButton.dataset.scriptId);
+            }
+
+            if (downloadButton) {
+                this.downloadScript(downloadButton.dataset.scriptId);
             }
         });
     }
@@ -46,22 +49,22 @@ class ScriptLibrary {
     async loadScripts() {
         try {
             const params = new URLSearchParams(window.location.search);
-            const category = params.get('category') || '';
-            
+            const category = params.get('category');
+
             let url = '/api/scripts';
             if (category) {
                 url += `?category=${encodeURIComponent(category)}`;
             }
-            
-            const response = await fetch(url, {
-                credentials: 'include'
-            });
-            this.scripts = await response.json();
-            
-            this.displayScripts(this.scripts);
+
+            const response = await fetch(url, { credentials: 'include' });
+            const scripts = await response.json();
+
+            this.scripts = Array.isArray(scripts) ? scripts : [];
+            this.filteredScripts = [...this.scripts];
+            this.displayScripts(this.filteredScripts);
         } catch (error) {
             console.error('Error loading scripts:', error);
-            this.showNotification('Failed to load scripts', 'error');
+            this.renderEmptyState('Failed to load scripts');
         }
     }
 
@@ -69,154 +72,145 @@ class ScriptLibrary {
         const container = document.getElementById('scripts-container');
         if (!container) return;
 
-        if (scripts.length === 0) {
-            container.innerHTML = '<p>No scripts found.</p>';
+        if (!scripts.length) {
+            this.renderEmptyState('No scripts available yet.');
             return;
         }
 
-        container.innerHTML = scripts.map(script => this.renderScriptCard(script)).join('');
-        
-        // Apply syntax highlighting to all code blocks
-        this.applySyntaxHighlighting();
+        container.innerHTML = scripts.map((script) => this.renderScriptCard(script)).join('');
+        this.highlightCodeBlocks();
+    }
+
+    renderEmptyState(message) {
+        const container = document.getElementById('scripts-container');
+        if (!container) return;
+        container.innerHTML = `<div class="empty-state"><p>${this.escapeHtml(message)}</p></div>`;
     }
 
     renderScriptCard(script) {
+        const code = script.code || '';
+        const language = (script.language || 'lsl').toLowerCase();
+        const title = script.title || 'Untitled Script';
+        const description = script.description || 'No description provided.';
+        const category = script.category || 'general';
+        const priceTier = script.price_tier || 'free';
+        const tags = Array.isArray(script.tags) ? script.tags : [];
+        const viewCount = Number(script.view_count || 0);
+        const downloadCount = Number(script.download_count || 0);
+
         return `
-            <div class="script-card" data-script-id="${script.id}" data-category="${script.category}" data-language="${script.language}">
+            <article class="script-card" data-script-id="${script.id}" data-category="${this.escapeHtml(category)}" data-language="${this.escapeHtml(language)}">
                 <div class="script-header">
-                    <h2>${this.escapeHtml(script.name)}</h2>
-                    <span class="language-badge ${script.language.toLowerCase()}">${script.language}</span>
+                    <h3>${this.escapeHtml(title)}</h3>
+                    <div class="script-meta">
+                        <span class="language-badge ${this.escapeHtml(language)}">${this.escapeHtml(script.language || 'LSL')}</span>
+                        <span class="tag beginner">${this.escapeHtml(category)}</span>
+                        <span class="tier-badge ${this.escapeHtml(priceTier)}">${this.escapeHtml(priceTier.toUpperCase())}</span>
+                    </div>
                 </div>
-                <p class="script-description">${this.escapeHtml(script.description)}</p>
-                <div class="code-display" id="code-${script.id}">${this.escapeHtml(script.code)}</div>
-                <button class="copy-button" data-script-id="${script.id}">Copy Code</button>
+                <p class="script-description">${this.escapeHtml(description)}</p>
+                <div class="script-preview">
+                    <pre><code class="language-${this.escapeHtml(language)}">${this.escapeHtml(code)}</code></pre>
+                </div>
                 <div class="script-stats">
-                    <span>👁️ ${script.view_count} views</span>
-                    <span>⬇️ ${script.download_count} downloads</span>
-                    <span>⭐ ${script.rating}</span>
+                    <span class="stat">👁️ ${viewCount} views</span>
+                    <span class="stat">⬇️ ${downloadCount} downloads</span>
                 </div>
-                <div class="script-tags">
-                    ${script.tags ? script.tags.split(',').map(tag => `<span class="tag">${this.escapeHtml(tag.trim())}</span>`).join('') : ''}
+                <div class="script-actions">
+                    <button class="btn-secondary copy-code" data-script-id="${script.id}">📋 Copy Code</button>
+                    <button class="btn-primary download-script" data-script-id="${script.id}">📥 Download</button>
                 </div>
-            </div>
+                ${tags.length ? `<div class="script-tags">${tags.map((tag) => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+            </article>
         `;
     }
 
-    applySyntaxHighlighting() {
-        // Simple syntax highlighting for LSL/JavaScript
-        document.querySelectorAll('.code-display').forEach(block => {
-            const code = block.textContent;
-            const highlighted = this.highlightCode(code);
-            block.innerHTML = highlighted;
-        });
-    }
-
-    highlightCode(code) {
-        if (!code) return '';
-
-        // Detect language (simplified)
-        const isLSL = code.includes('llSay') || code.includes('default') || code.includes('state');
-        const isJS = code.includes('function') || code.includes('const') || code.includes('let');
-
-        let highlighted = this.escapeHtml(code);
-
-        if (isLSL) {
-            // LSL keywords and functions
-            const lslKeywords = ['default', 'state', 'if', 'else', 'while', 'for', 'do', 'integer', 'float', 'string', 'key', 'vector', 'rotation', 'list', 'event', 'return'];
-            const lslFunctions = ['llSay', 'llWhisper', 'llShout', 'llOwnerSay', 'llSetPos', 'llGetPos', 'llSleep', 'llGiveMoney', 'llRegionSay', 'llInstantMessage'];
-            
-            lslKeywords.forEach(keyword => {
-                const regex = new RegExp(`\\b(${keyword})\\b`, 'g');
-                highlighted = highlighted.replace(regex, '<span class="keyword">$1</span>');
-            });
-
-            lslFunctions.forEach(func => {
-                const regex = new RegExp(`\\b(${func})\\b`, 'g');
-                highlighted = highlighted.replace(regex, '<span class="function">$1</span>');
-            });
-        } else if (isJS) {
-            // JavaScript keywords and common functions
-            const jsKeywords = ['function', 'const', 'let', 'var', 'if', 'else', 'while', 'for', 'return', 'class', 'import', 'export', 'async', 'await', 'try', 'catch', 'finally'];
-            const jsFunctions = ['console.log', 'setTimeout', 'setInterval', 'fetch', 'JSON.parse', 'JSON.stringify'];
-            
-            jsKeywords.forEach(keyword => {
-                const regex = new RegExp(`\\b(${keyword})\\b`, 'g');
-                highlighted = highlighted.replace(regex, '<span class="keyword">$1</span>');
-            });
-
-            jsFunctions.forEach(func => {
-                const regex = new RegExp(`\\b(${func})\\b`, 'g');
-                highlighted = highlighted.replace(regex, '<span class="function">$1</span>');
-            });
+    highlightCodeBlocks() {
+        if (window.hljs) {
+            document.querySelectorAll('pre code').forEach((block) => window.hljs.highlightElement(block));
         }
-
-        // Strings
-        highlighted = highlighted.replace(/(".*?"|'.*?')/g, '<span class="string">$1</span>');
-        
-        // Numbers
-        highlighted = highlighted.replace(/\b(\d+)\b/g, '<span class="number">$1</span>');
-        
-        // Comments
-        highlighted = highlighted.replace(/(\/\/[^\n]*)/g, '<span class="comment">$1</span>');
-        highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="comment">$1</span>');
-
-        return highlighted;
     }
 
     filterScripts(searchTerm) {
-        const filtered = this.scripts.filter(script => 
-            script.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            script.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (script.tags && script.tags.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-        this.displayScripts(filtered);
+        const term = (searchTerm || '').trim().toLowerCase();
+        this.filteredScripts = this.scripts.filter((script) => {
+            const title = (script.title || '').toLowerCase();
+            const description = (script.description || '').toLowerCase();
+            const tags = Array.isArray(script.tags) ? script.tags.join(' ').toLowerCase() : '';
+            return !term || title.includes(term) || description.includes(term) || tags.includes(term);
+        });
+        this.applyFilters(false);
     }
 
-    filterByCategory(category) {
-        const filtered = category === 'all' 
-            ? this.scripts 
-            : this.scripts.filter(script => script.category === category);
-        this.displayScripts(filtered);
-    }
+    applyFilters(resetSearch = true) {
+        const category = document.getElementById('category-filter')?.value || 'all';
+        const language = document.getElementById('language-filter')?.value || 'all';
+        const search = resetSearch ? (document.getElementById('search-input')?.value || '').trim().toLowerCase() : '';
 
-    filterByLanguage(language) {
-        const filtered = language === 'all' 
-            ? this.scripts 
-            : this.scripts.filter(script => script.language === language);
+        const filtered = this.scripts.filter((script) => {
+            const scriptCategory = (script.category || 'general').toLowerCase();
+            const scriptLanguage = (script.language || 'lsl').toLowerCase();
+            const title = (script.title || '').toLowerCase();
+            const description = (script.description || '').toLowerCase();
+            const tags = Array.isArray(script.tags) ? script.tags.join(' ').toLowerCase() : '';
+
+            const categoryMatch = category === 'all' || scriptCategory === category;
+            const languageMatch = language === 'all' || scriptLanguage === language;
+            const searchMatch = !search || title.includes(search) || description.includes(search) || tags.includes(search);
+
+            return categoryMatch && languageMatch && searchMatch;
+        });
+
+        this.filteredScripts = filtered;
         this.displayScripts(filtered);
     }
 
     async copyToClipboard(scriptId) {
+        const script = this.scripts.find((entry) => String(entry.id) === String(scriptId));
+        if (!script) {
+            this.showNotification('Script not found', 'error');
+            return;
+        }
+
+        const code = script.code || '';
+        if (!code.trim()) {
+            this.showNotification('No script code available', 'error');
+            return;
+        }
+
         try {
-            const script = this.scripts.find(s => s.id == scriptId);
-            if (script) {
-                await navigator.clipboard.writeText(script.code);
-                this.showNotification('Code copied to clipboard!', 'success');
-                
-                // Update download count
-                await this.updateDownloadCount(scriptId);
-            }
+            await navigator.clipboard.writeText(code);
+            this.showNotification('Code copied to clipboard!', 'success');
         } catch (error) {
             console.error('Error copying to clipboard:', error);
             this.showNotification('Failed to copy code', 'error');
         }
     }
 
-    async updateDownloadCount(scriptId) {
-        try {
-            await fetch(`/api/scripts/${scriptId}/download`, {
-                method: 'POST',
-                credentials: 'include'
-            });
-        } catch (error) {
-            console.error('Error updating download count:', error);
+    async downloadScript(scriptId) {
+        const script = this.scripts.find((entry) => String(entry.id) === String(scriptId));
+        if (!script) {
+            this.showNotification('Script not found', 'error');
+            return;
         }
+
+        const code = script.code || '';
+        const title = (script.title || 'script').replace(/\s+/g, '-').toLowerCase();
+        const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${title}.lsl`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
     }
 
     escapeHtml(text) {
-        if (!text) return '';
+        const value = String(text ?? '');
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = value;
         return div.innerHTML;
     }
 
@@ -225,14 +219,10 @@ class ScriptLibrary {
         notification.className = `notification ${type}`;
         notification.textContent = message;
         document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+        setTimeout(() => notification.remove(), 2500);
     }
 }
 
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new ScriptLibrary();
 });
