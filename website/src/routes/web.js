@@ -133,6 +133,24 @@ router.get('/learning', isAuthenticated, (req, res) => {
 });
 
 /**
+ * GET /challenges
+ * Public-facing challenges hub
+ */
+router.get('/challenges', (req, res) => {
+  const user = req.session?.user;
+  const isAuth = !!user;
+  const tier = isAuth ? getUserTier(user) : 'free';
+
+  res.render('learning', {
+    user,
+    tier,
+    isAuth,
+    pageCss: 'learning',
+    title: 'Challenges - GLEECIN Academy'
+  });
+});
+
+/**
  * GET /scripts
  * Script library - public access
  */

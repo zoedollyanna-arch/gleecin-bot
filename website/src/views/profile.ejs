@@ -11,7 +11,7 @@
     <main class="profile-container">
         <div class="profile-header">
             <div class="profile-avatar">
-                <img src="<%= user.avatar_url || '/images/default-avatar.jpg' %>" alt="<%= user.username %>">
+                <div class="profile-avatar-placeholder"><%= (user.username || 'U').charAt(0).toUpperCase() %></div>
             </div>
             <div class="profile-info">
                 <h1><%= user.username %></h1>
@@ -121,7 +121,7 @@
                 <!-- Certificates will be loaded dynamically -->
                 <div class="certificate-card">
                     <div class="certificate-preview">
-                        <img src="/images/certificates/scripting-fundamentals.jpg" alt="Scripting Fundamentals">
+                        <div class="certificate-preview-placeholder">SF</div>
                     </div>
                     <div class="certificate-info">
                         <h3>Scripting Fundamentals</h3>
