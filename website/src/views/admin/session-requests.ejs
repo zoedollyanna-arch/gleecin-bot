@@ -26,11 +26,14 @@
           <tbody>
             <% requests.forEach((request) => { %>
               <tr>
-                <td><%= request.username || 'Student' %></td>
-                <td><strong><%= request.title %></strong><p class="admin-muted"><%= request.description || '' %></p></td>
+                <td><%= request.student_name || request.username || 'Student' %></td>
+                <td>
+                  <strong><%= request.topic || request.title || 'Session' %></strong>
+                  <p class="admin-muted"><%= request.admin_notes || request.description || '' %></p>
+                </td>
                 <td><span class="admin-pill"><%= request.status || 'pending' %></span></td>
                 <td><%= request.created_at ? new Date(request.created_at).toLocaleString() : '—' %></td>
-                <td><%= request.scheduled_at ? new Date(request.scheduled_at).toLocaleString() : '—' %></td>
+                <td><%= request.scheduled_at ? new Date(request.scheduled_at).toLocaleString() : (request.preferred_time ? new Date(request.preferred_time).toLocaleString() : '—') %></td>
                 <td>
                   <div class="admin-row-actions">
                     <% if (request.status === 'pending') { %>

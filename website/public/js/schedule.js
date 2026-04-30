@@ -18,15 +18,15 @@ class SchedulePage {
 
         try {
             const response = await fetch('/api/schedule', { credentials: 'include' });
-            const schedule = await response.json();
+            const payload = await response.json();
 
-            if (!Array.isArray(schedule)) {
+            if (!payload || !Array.isArray(payload.schedules) || !Array.isArray(payload.announcements)) {
                 throw new Error('Invalid schedule response');
             }
 
-            this.scheduleItems = schedule;
-            this.renderSchedule(schedule, weekRows, eventsList);
-            this.renderAnnouncements(schedule, announcementsList);
+            this.scheduleItems = payload.schedules;
+            this.renderSchedule(payload.schedules, weekRows, eventsList);
+            this.renderAnnouncements(payload.announcements, announcementsList);
         } catch (error) {
             console.error('[SCHEDULE LOAD ERROR]', error);
             this.showNotification('Failed to load schedule data.', 'error');
@@ -62,24 +62,19 @@ class SchedulePage {
         }
     }
 
-    renderAnnouncements(schedule, announcementsList) {
+    renderAnnouncements(announcements, announcementsList) {
         if (!announcementsList) return;
 
-        const announcements = schedule
-            .filter((item) => item.published)
-            .slice(0, 5)
-            .map((item) => `
+        announcementsList.innerHTML = announcements.length
+            ? announcements.map((item) => `
                 <div class="announcement ${item.important ? 'important' : ''}">
-                    <div class="announcement-date">${this.formatDate(item.published_at || item.created_at) || 'Recently'}</div>
+                    <div class="announcement-date">${this.formatDate(item.created_at) || 'Recently'}</div>
                     <div class="announcement-content">
                         <h3>${this.escapeHtml(item.title || 'Announcement')}</h3>
-                        <p>${this.escapeHtml(item.description || 'Schedule update posted.')}</p>
+                        <p>${this.escapeHtml(item.content || 'Schedule update posted.')}</p>
                     </div>
                 </div>
-            `);
-
-        announcementsList.innerHTML = announcements.length
-            ? announcements.join('')
+            `).join('')
             : '<div class="announcement"><div class="announcement-content"><h3>No announcements yet</h3><p>Published updates will appear here.</p></div></div>';
     }
 

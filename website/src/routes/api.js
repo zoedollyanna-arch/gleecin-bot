@@ -497,7 +497,7 @@ router.post('/certifications/:id/share', isAuthenticated, async (req, res) => {
 
 router.get('/schedule', async (req, res) => {
   try {
-    const schedule = await all(`
+    const schedules = await all(`
       SELECT s.id, s.title, s.instructor, s.scheduled_date, s.scheduled_time, s.capacity,
              s.description, s.published, s.published_at, s.created_at, s.updated_at,
              c.name AS class_name
@@ -507,7 +507,15 @@ router.get('/schedule', async (req, res) => {
       LIMIT 20
     `);
 
-    res.json(schedule);
+    const announcements = await all(`
+      SELECT id, title, content, important, expires_at, created_at
+      FROM announcements
+      WHERE expires_at IS NULL OR expires_at > NOW()
+      ORDER BY important DESC, created_at DESC
+      LIMIT 20
+    `);
+
+    res.json({ schedules, announcements });
   } catch (error) {
     console.error('[SCHEDULE ERROR]', error);
     res.status(500).json({ error: 'Failed to fetch schedule' });

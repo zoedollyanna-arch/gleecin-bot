@@ -56,6 +56,10 @@ function buildLessonVideoData(req) {
   };
 }
 
+function getAdminActorId(req) {
+  return req.user?.id ?? req.session?.user?.id ?? null;
+}
+
 router.get('/', adminOnly, async (req, res) => {
   try {
     const stats = await get(`
@@ -395,7 +399,12 @@ router.get('/logs', adminOnly, async (req, res) => {
 
 router.get('/session-requests', adminOnly, async (req, res) => {
   try {
-    const requests = await all(`SELECT sr.*, u.username, u.email FROM session_requests sr JOIN users u ON sr.user_id = u.id ORDER BY sr.status ASC, sr.created_at DESC`);
+    const requests = await all(`
+      SELECT s.*, u.username, u.email
+      FROM sessions s
+      LEFT JOIN users u ON s.student_id = u.id
+      ORDER BY s.status ASC, s.created_at DESC
+    `);
     res.render('admin/session-requests', { user: req.session.user, requests, title: 'Session Requests' });
   } catch (error) {
     console.error('[SESSION REQUESTS ERROR]', error);
@@ -407,8 +416,12 @@ router.post('/session-requests/:id/approve', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { scheduled_at, notes } = req.body;
-    await run(`UPDATE session_requests SET status = $1, approved_by = $2, scheduled_at = $3, notes = $4 WHERE id = $5`, ['approved', req.session.user.id, scheduled_at, notes || '', id]);
+    await run(
+      `UPDATE sessions SET status = $1, approved_by = $2, scheduled_at = $3, notes = $4, updated_at = NOW() WHERE id = $5`,
+      ['approved', req.session.user.id, scheduled_at || null, notes || '', id]
+    );
     await run('INSERT INTO admin_logs (admin_id, action, target_user_id, details) VALUES ($1, $2, $3, $4)', [req.session.user.id, 'approve_session', null, JSON.stringify({ requestId: id })]);
+    console.log('[SESSIONS] approved session request', { sessionId: id, adminId: req.session.user.id, scheduled_at });
     res.json({ success: true, message: 'Session request approved' });
   } catch (error) {
     console.error('[APPROVE SESSION ERROR]', error);
@@ -420,8 +433,12 @@ router.post('/session-requests/:id/reject', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
-    await run(`UPDATE session_requests SET status = $1, notes = $2 WHERE id = $3`, ['rejected', notes || '', id]);
+    await run(
+      `UPDATE sessions SET status = $1, notes = $2, updated_at = NOW() WHERE id = $3`,
+      ['rejected', notes || '', id]
+    );
     await run('INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, $2, $3)', [req.session.user.id, 'reject_session', JSON.stringify({ requestId: id })]);
+    console.log('[SESSIONS] rejected session request', { sessionId: id, adminId: req.session.user.id });
     res.json({ success: true, message: 'Session request rejected' });
   } catch (error) {
     console.error('[REJECT SESSION ERROR]', error);
@@ -433,7 +450,11 @@ router.post('/session-requests/:id/complete', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
-    await run(`UPDATE session_requests SET status = $1, completed_at = NOW(), notes = $2 WHERE id = $3`, ['completed', notes || '', id]);
+    await run(
+      `UPDATE sessions SET status = $1, completed_at = NOW(), notes = $2, updated_at = NOW() WHERE id = $3`,
+      ['completed', notes || '', id]
+    );
+    console.log('[SESSIONS] completed session request', { sessionId: id, adminId: req.session.user.id });
     res.json({ success: true, message: 'Session marked as completed' });
   } catch (error) {
     console.error('[COMPLETE SESSION ERROR]', error);
@@ -678,6 +699,42 @@ router.post('/schedules/announcement', isAdmin, async (req, res) => {
     if (!title || !content) {
       return res.status(400).json({ error: 'Title and content are required' });
     }
+    const adminId = getAdminActorId(req);
+    await run(`INSERT INTO announcements (title, content, important, expires_at, created_at) VALUES ($1,$2,$3,$4,NOW())`, [title, content, important === 'true' || important === true, expires_at || null]);
+    await run('INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, $2, $3)', [adminId, 'create_announcement', JSON.stringify({ title })]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/schedules/:id', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const schedule = await get(`
+      SELECT s.*, c.name AS class_name
+      FROM schedules s
+      LEFT JOIN classes c ON s.class_id = c.id
+      WHERE s.id = $1
+    `, [id]);
+
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+
+    res.json({ success: true, schedule });
+  } catch (error) {
+    console.error('[SCHEDULE GET ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/schedules/announcement', isAdmin, async (req, res) => {
+  try {
+    const { title, content, important, expires_at } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
     await run(`INSERT INTO announcements (title, content, important, expires_at, created_at) VALUES ($1,$2,$3,$4,NOW())`, [title, content, important === 'true' || important === true, expires_at || null]);
     res.json({ success: true });
   } catch (error) {
@@ -688,13 +745,16 @@ router.post('/schedules/announcement', isAdmin, async (req, res) => {
 router.post('/schedules/create', isAdmin, async (req, res) => {
   try {
     const { title, instructor, scheduled_date, scheduled_time, capacity, description, class_id } = req.body;
+    const adminId = getAdminActorId(req);
+
     if (!title) {
       return res.status(400).json({ error: 'Title is required' });
     }
+
     const created = await run(
-      `INSERT INTO schedules (title, instructor, scheduled_date, scheduled_time, capacity, description, class_id, created_by, updated_by, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,NOW(),NOW()) RETURNING id`,
-      [title, instructor || null, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null, req.session.user.id]
+      `INSERT INTO schedules (title, instructor, scheduled_date, scheduled_time, capacity, description, class_id, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING id`,
+      [title, instructor || null, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null]
     );
     const scheduleRow = await get(`
       SELECT s.*, c.name AS class_name
@@ -702,7 +762,7 @@ router.post('/schedules/create', isAdmin, async (req, res) => {
       LEFT JOIN classes c ON s.class_id = c.id
       WHERE s.id = $1
     `, [created.id]);
-    console.log('[SCHEDULES] created schedule', { scheduleId: created.id, adminId: req.session.user.id, title, classId: class_id || null });
+    console.log('[SCHEDULES] created schedule', { scheduleId: created.id, adminId, title, classId: class_id || null });
     res.json({ success: true, scheduleId: created.id, schedule: scheduleRow });
   } catch (error) {
     console.error('[SCHEDULE CREATE ERROR]', error);
@@ -714,9 +774,15 @@ router.post('/schedules/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, instructor, scheduled_date, scheduled_time, capacity, description, class_id } = req.body;
+    const adminId = getAdminActorId(req);
+
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
     const updated = await run(
-      `UPDATE schedules SET title=$1, instructor=$2, scheduled_date=$3, scheduled_time=$4, capacity=$5, description=$6, class_id=$7, updated_by=$8, updated_at=NOW() WHERE id=$9`,
-      [title, instructor || null, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null, req.session.user.id, id]
+      `UPDATE schedules SET title=$1, instructor=$2, scheduled_date=$3, scheduled_time=$4, capacity=$5, description=$6, class_id=$7, updated_at=NOW() WHERE id=$8`,
+      [title, instructor || null, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null, id]
     );
     const scheduleRow = await get(`
       SELECT s.*, c.name AS class_name
@@ -724,7 +790,7 @@ router.post('/schedules/:id', isAdmin, async (req, res) => {
       LEFT JOIN classes c ON s.class_id = c.id
       WHERE s.id = $1
     `, [id]);
-    console.log('[SCHEDULES] updated schedule', { scheduleId: id, changes: updated.changes, adminId: req.session.user.id });
+    console.log('[SCHEDULES] updated schedule', { scheduleId: id, changes: updated.changes, adminId });
     res.json({ success: true, schedule: scheduleRow });
   } catch (error) {
     console.error('[SCHEDULE UPDATE ERROR]', error);
@@ -732,11 +798,13 @@ router.post('/schedules/:id', isAdmin, async (req, res) => {
   }
 });
 
+
 router.post('/schedules/:id/publish', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    await run(`UPDATE schedules SET published = true, published_at = NOW(), updated_by = $1, updated_at = NOW() WHERE id = $2`, [req.session.user.id, id]);
-    console.log('[SCHEDULES] published schedule', { scheduleId: id, adminId: req.session.user.id });
+    const adminId = getAdminActorId(req);
+    await run(`UPDATE schedules SET published = true, published_at = NOW(), updated_at = NOW() WHERE id = $1`, [id]);
+    console.log('[SCHEDULES] published schedule', { scheduleId: id, adminId });
     res.json({ success: true });
   } catch (error) {
     console.error('[SCHEDULE PUBLISH ERROR]', error);
@@ -747,8 +815,9 @@ router.post('/schedules/:id/publish', isAdmin, async (req, res) => {
 router.post('/schedules/:id/delete', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const adminId = getAdminActorId(req);
     const deleted = await run('DELETE FROM schedules WHERE id = $1', [id]);
-    console.log('[SCHEDULES] deleted schedule', { scheduleId: id, changes: deleted.changes, adminId: req.session.user.id });
+    console.log('[SCHEDULES] deleted schedule', { scheduleId: id, changes: deleted.changes, adminId });
     res.json({ success: true, deleted: deleted.changes });
   } catch (error) {
     console.error('[SCHEDULE DELETE ERROR]', error);
@@ -759,11 +828,12 @@ router.post('/schedules/:id/delete', isAdmin, async (req, res) => {
 router.post('/sessions/create', isAdmin, async (req, res) => {
   try {
     const { student_id, topic, preferred_time, duration, status, admin_notes } = req.body;
+    const adminId = req.user?.id ?? req.session?.user?.id;
     if (!student_id || !topic) return res.status(400).json({ error: 'Student and topic are required' });
     const created = await run(
       `INSERT INTO sessions (student_id, admin_id, topic, preferred_time, duration, status, admin_notes, created_at, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING id`,
-      [student_id, req.session.user.id, topic, preferred_time || null, duration || null, status || 'pending', admin_notes || '']
+      [student_id, adminId, topic, preferred_time || null, duration || null, status || 'pending', admin_notes || '']
     );
     const sessionRow = await get(
       `SELECT s.*, u.username AS student_name, a.username AS admin_name
@@ -773,7 +843,7 @@ router.post('/sessions/create', isAdmin, async (req, res) => {
        WHERE s.id = $1`,
       [created.id]
     );
-    console.log('[SESSIONS] created session', { sessionId: created.id, adminId: req.session.user.id, studentId: student_id, topic });
+    console.log('[SESSIONS] created session', { sessionId: created.id, adminId, studentId: student_id, topic });
     res.json({ success: true, sessionId: created.id, session: sessionRow });
   } catch (error) {
     console.error('[SESSION CREATE ERROR]', error);

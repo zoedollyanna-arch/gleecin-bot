@@ -8,9 +8,30 @@ import { get } from '../db/database.js';
 /**
  * Verify user is admin
  */
+async function ensureLocalAdminUser(req) {
+  const localAdmin = await get(
+    `INSERT INTO users (discord_id, username, is_admin)
+     VALUES ($1, $2, true)
+     ON CONFLICT (discord_id)
+     DO UPDATE SET username = EXCLUDED.username, is_admin = true
+     RETURNING id, username, is_admin`,
+    ['local-admin-bypass', 'Local Admin']
+  );
+
+  req.session = req.session || {};
+  req.session.user = {
+    id: localAdmin.id,
+    discord_id: 'local-admin-bypass',
+    username: localAdmin.username,
+    is_admin: localAdmin.is_admin,
+    roles: []
+  };
+  req.user = { id: localAdmin.id, is_admin: true };
+}
+
 export async function isAdmin(req, res, next) {
   if (process.env.LOCAL_ADMIN_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
-    req.user = { id: 'local-admin-bypass', is_admin: true };
+    await ensureLocalAdminUser(req);
     return next();
   }
 
@@ -41,17 +62,7 @@ export async function isAdmin(req, res, next) {
  */
 export async function adminOnly(req, res, next) {
   if (process.env.LOCAL_ADMIN_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
-    req.user = { id: 'local-admin-bypass', is_admin: true };
-    if (!req.session?.user) {
-      req.session = req.session || {};
-      req.session.user = {
-        id: 'local-admin-bypass',
-        discord_id: 'local-admin-bypass',
-        username: 'Local Admin',
-        is_admin: true,
-        roles: []
-      };
-    }
+    await ensureLocalAdminUser(req);
     return next();
   }
 

@@ -36,6 +36,8 @@ const migrations = [
   `DROP TABLE IF EXISTS lesson_progress CASCADE`,
   `DROP TABLE IF EXISTS lessons CASCADE`,
   `DROP TABLE IF EXISTS schedules CASCADE`,
+  `DROP TABLE IF EXISTS sessions CASCADE`,
+  `DROP TABLE IF EXISTS session_requests CASCADE`,
   `DROP TABLE IF EXISTS script_downloads CASCADE`,
   `DROP TABLE IF EXISTS scripts CASCADE`,
   `DROP TABLE IF EXISTS enrollments CASCADE`,
@@ -265,6 +267,26 @@ const migrations = [
   `,
 
   `
+    CREATE TABLE sessions (
+      id SERIAL PRIMARY KEY,
+      student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      topic TEXT NOT NULL,
+      preferred_time TIMESTAMP,
+      duration TEXT,
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed', 'scheduled', 'cancelled')),
+      admin_notes TEXT,
+      requested_date TIMESTAMP,
+      approved_by INTEGER REFERENCES users(id),
+      scheduled_at TIMESTAMP,
+      completed_at TIMESTAMP,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  `
     CREATE TABLE session_requests (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -393,6 +415,8 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`,
   `CREATE INDEX IF NOT EXISTS idx_lesson_progress_user ON lesson_progress(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_lesson_progress_lesson ON lesson_progress(lesson_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_sessions_student ON sessions(student_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)`,
   `CREATE INDEX IF NOT EXISTS idx_session_requests_user ON session_requests(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_session_requests_status ON session_requests(status)`,
   `CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`,

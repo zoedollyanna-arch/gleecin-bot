@@ -42,12 +42,15 @@ router.get('/sessions', isAuthenticated, async (req, res) => {
     }
 
     const sessions = await all(`
-      SELECT s.*, a.username AS admin_name
+      SELECT s.*, u.username AS student_name, a.username AS admin_name
       FROM sessions s
+      LEFT JOIN users u ON s.student_id = u.id
       LEFT JOIN users a ON s.admin_id = a.id
       WHERE s.student_id = $1
       ORDER BY s.updated_at DESC, s.created_at DESC
     `, [dbUser.id]);
+
+    console.log('[STUDENT] loaded sessions', { studentId: dbUser.id, count: sessions.length });
 
     res.render('student/sessions', {
       user,
@@ -84,9 +87,9 @@ router.post('/sessions/request', isAuthenticated, async (req, res) => {
     const preferredTime = requested_date || null;
 
     const result = await run(
-      `INSERT INTO sessions (student_id, admin_id, topic, preferred_time, duration, status, admin_notes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id`,
-      [dbUser.id, null, topic, preferredTime, null, 'pending', adminNotes]
+      `INSERT INTO sessions (student_id, admin_id, topic, preferred_time, duration, status, admin_notes, requested_date, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING id`,
+      [dbUser.id, null, topic, preferredTime, null, 'pending', adminNotes, preferredTime]
     );
 
     console.log('[SESSIONS] created session request', {
@@ -309,6 +312,8 @@ router.get('/activities', isAuthenticated, async (req, res) => {
       ORDER BY c.difficulty ASC, c.created_at DESC
     `, [tier]);
 
+    console.log('[STUDENT] loaded challenges', { studentId: dbUser.id, count: activities.length });
+
     const submissions = await all(`
       SELECT cs.*, c.title AS challenge_title
       FROM challenge_submissions cs
@@ -367,6 +372,8 @@ router.get('/quizzes', isAuthenticated, async (req, res) => {
       GROUP BY q.id, l.title
       ORDER BY q.created_at DESC
     `, [tier, dbUser.id]);
+
+    console.log('[STUDENT] loaded quizzes', { studentId: dbUser.id, count: quizzes.length });
 
     const attempts = await all(`
       SELECT * FROM quiz_attempts

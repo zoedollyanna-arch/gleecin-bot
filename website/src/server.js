@@ -97,11 +97,13 @@ async function start() {
     await initializeDatabase();
     console.log('[DB] ✅ Database ready');
 
-    app.listen(PORT, () => {
+    const portValue = Number.isFinite(Number(PORT)) ? Number(PORT) : 3000;
+
+    app.listen(portValue, () => {
       console.log(`
 ╔═══════════════════════════════════════╗
 ║   🎓 GLEECIN Academy Portal           ║
-║   Running on http://localhost:${PORT}   ║
+║   Running on http://localhost:${portValue}   ║
 ╚═══════════════════════════════════════╝
       `);
     });
