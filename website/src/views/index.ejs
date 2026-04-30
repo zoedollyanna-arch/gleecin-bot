@@ -8,50 +8,123 @@
     <%- include('partials/header') %>
 
     <section class="hero">
-        <h1>Premium Scripting Education</h1>
-        <p>Learn professional scripting from beginner to advanced | Access premium scripts & tools</p>
-        <% if (!isAuth) { %>
-            <a href="/auth/login" class="btn btn-primary" style="font-size: 1.1rem;">Start Learning Today</a>
+        <div class="hero-content">
+            <p class="hero-eyebrow">Production-ready academy platform</p>
+            <h1>Premium Scripting Education</h1>
+            <p>Learn professional scripting from beginner to advanced with real scripts, guided challenges, and tracked progress.</p>
+            <% if (!isAuth) { %>
+                <a href="/auth/login" class="btn btn-primary" style="font-size: 1.1rem;">Start Learning Today</a>
+            <% } else { %>
+                <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+            <% } %>
+        </div>
+
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <strong><%= stats.script_count || 0 %>+</strong>
+                <span>Scripts</span>
+            </div>
+            <div class="hero-stat">
+                <strong><%= stats.challenge_count || 0 %>+</strong>
+                <span>Challenges</span>
+            </div>
+            <div class="hero-stat">
+                <strong><%= stats.lesson_count || 0 %>+</strong>
+                <span>Lessons</span>
+            </div>
+            <div class="hero-stat">
+                <strong><%= stats.certification_count || 0 %>+</strong>
+                <span>Certificates</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-block">
+        <div class="section-header">
+            <h2>What you can do here</h2>
+            <p>Everything is connected to live content and production routes.</p>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <h3>🎓 Live Classes</h3>
+                <p>Learn from experienced instructors in live, interactive sessions.</p>
+            </div>
+
+            <div class="feature">
+                <h3>📚 Script Library</h3>
+                <p>Browse real Linden Scripting Language examples with explanations and downloads.</p>
+            </div>
+
+            <div class="feature">
+                <h3>💪 Interactive Challenges</h3>
+                <p>Practice with tracked coding challenges and progress-aware submissions.</p>
+            </div>
+
+            <div class="feature">
+                <h3>🏆 Certifications</h3>
+                <p>Earn recognized certificates as you complete lessons and quizzes.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-block">
+        <div class="section-header">
+            <h2>Featured scripts</h2>
+            <p>Recently published scripts from the production library.</p>
+        </div>
+
+        <% if (Array.isArray(featuredScripts) && featuredScripts.length) { %>
+            <div class="home-grid">
+                <% featuredScripts.forEach((script) => { %>
+                    <article class="home-card">
+                        <div class="home-card__meta">
+                            <span class="badge"><%= script.category %></span>
+                            <span class="badge"><%= script.language || 'LSL' %></span>
+                        </div>
+                        <h3><%= script.title %></h3>
+                        <p><%= script.description || 'No description available.' %></p>
+                        <a href="/scripts" class="btn btn-secondary">Open library</a>
+                    </article>
+                <% }) %>
+            </div>
         <% } else { %>
-            <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+            <div class="student-empty-state">
+                <p>No scripts available yet.</p>
+            </div>
         <% } %>
     </section>
 
-    <section class="features">
-        <div class="feature">
-            <h3>🎓 Live Classes</h3>
-            <p>Learn from experienced instructors in live, interactive sessions. Tuesdays & Thursdays.</p>
+    <section class="section-block">
+        <div class="section-header">
+            <h2>Featured challenges</h2>
+            <p>Current interactive challenges from the learning hub.</p>
         </div>
 
-        <div class="feature">
-            <h3>📚 Comprehensive Curriculum</h3>
-            <p>From fundamentals to advanced topics. 7-week program with hands-on projects.</p>
-        </div>
-
-        <div class="feature">
-            <h3>🛠️ Script Library</h3>
-            <p>Access hundreds of pre-built scripts organized by category with full documentation.</p>
-        </div>
-
-        <div class="feature">
-            <h3>🎥 Video Lessons</h3>
-            <p>Recorded classes and short tutorials available on-demand for all learning levels.</p>
-        </div>
-
-        <div class="feature">
-            <h3>💪 Interactive Challenges</h3>
-            <p>Practice with coding challenges and mini-projects to reinforce what you learn.</p>
-        </div>
-
-        <div class="feature">
-            <h3>🏆 Certifications</h3>
-            <p>Earn recognized certificates and in-world badges upon course completion.</p>
-        </div>
+        <% if (Array.isArray(featuredChallenges) && featuredChallenges.length) { %>
+            <div class="home-grid">
+                <% featuredChallenges.forEach((challenge) => { %>
+                    <article class="home-card">
+                        <div class="home-card__meta">
+                            <span class="badge"><%= challenge.difficulty || challenge.level || 'beginner' %></span>
+                            <span class="badge"><%= challenge.price_tier || 'free' %></span>
+                        </div>
+                        <h3><%= challenge.title %></h3>
+                        <p><%= challenge.description || 'No description available.' %></p>
+                        <a href="/learning" class="btn btn-secondary">Open challenges</a>
+                    </article>
+                <% }) %>
+            </div>
+        <% } else { %>
+            <div class="student-empty-state">
+                <p>No challenges available yet.</p>
+            </div>
+        <% } %>
     </section>
 
     <section class="cta-section">
-        <h2>Ready to Level Up Your Scripting Skills?</h2>
-        <p>Join hundreds of creators learning professional scripting at GLEECIN Academy</p>
+        <h2>Ready to level up your scripting skills?</h2>
+        <p>Join creators building real projects with production-ready tools.</p>
         <% if (!isAuth) { %>
             <a href="/auth/login" class="btn btn-primary">Login with Discord to Begin</a>
         <% } %>
@@ -62,9 +135,24 @@
         .hero {
             background: linear-gradient(135deg, rgba(123, 97, 255, 0.1), rgba(0, 209, 255, 0.1));
             padding: 4rem 2rem;
-            text-align: center;
             border-bottom: 1px solid var(--border-color);
             margin-top: 2rem;
+            display: grid;
+            gap: 2rem;
+        }
+
+        .hero-content {
+            text-align: center;
+            max-width: 820px;
+            margin: 0 auto;
+        }
+
+        .hero-eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent-cyan);
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
         }
 
         .hero h1 {
@@ -74,44 +162,92 @@
         }
 
         .hero p {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             margin-bottom: 2rem;
             color: var(--text-color);
         }
 
-        .features {
+        .hero-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            padding: 3rem 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .hero-stat {
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .hero-stat strong {
+            display: block;
+            font-size: 1.6rem;
+            color: var(--accent-cyan);
+        }
+
+        .section-block {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 3rem 2rem;
         }
 
-        .feature {
+        .section-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header h2 {
+            color: var(--accent-violet);
+            margin-bottom: 0.5rem;
+        }
+
+        .features,
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature,
+        .home-card {
             background: var(--card-background);
-            padding: 2rem;
+            padding: 1.5rem;
             border-radius: 12px;
             border: 1px solid var(--border-color);
-            transition: all 0.3s ease;
         }
 
-        .feature:hover {
-            border-color: var(--accent-violet);
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(123, 97, 255, 0.2);
-        }
-
-        .feature h3 {
+        .feature h3,
+        .home-card h3 {
             color: var(--accent-violet);
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .home-card__meta {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(123, 97, 255, 0.12);
+            color: var(--accent-cyan);
+            font-size: 0.8rem;
         }
 
         .cta-section {
             text-align: center;
-            padding: 2rem;
+            padding: 3rem 2rem 4rem;
             background: linear-gradient(135deg, rgba(123, 97, 255, 0.1), rgba(0, 209, 255, 0.1));
-            margin: 3rem 0;
+            margin-top: 3rem;
         }
 
         .cta-section h2 {

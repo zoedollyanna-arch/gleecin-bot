@@ -5,23 +5,137 @@
 
 import express from 'express';
 import { isAuthenticated, getUserTier } from '../middleware/auth.js';
-import { get } from '../db/database.js';
+import { get, all } from '../db/database.js';
 
 const router = express.Router();
+
+function getProfileDisplayName(user, dbUser) {
+  return dbUser?.username || user?.username || 'Member';
+}
+
+function getJoinedDate(user, dbUser) {
+  const raw = dbUser?.joined_at || user?.joinedAt || user?.joined_at || user?.created_at;
+  return raw ? new Date(raw) : null;
+}
+
+async function loadProfileData(user) {
+  const discordId = user.discord_id || user.id;
+  const dbUser = await get(
+    `SELECT
+        id,
+        username,
+        email,
+        avatar_url,
+        discord_id,
+        tier,
+        is_admin,
+        roles,
+        joined_at,
+        last_login
+     FROM users
+     WHERE discord_id = $1 OR id = $2`,
+    [discordId, user.id]
+  );
+
+  const userId = dbUser?.id || user.id;
+  const [certificateCount, lessonCount, challengeCount, scriptCount, recentActivity] = await Promise.all([
+    get('SELECT COUNT(*)::int AS count FROM certifications WHERE user_id = $1', [userId]),
+    get('SELECT COUNT(*)::int AS count FROM lesson_progress WHERE user_id = $1 AND completed = true', [userId]),
+    get('SELECT COUNT(*)::int AS count FROM challenge_submissions WHERE user_id = $1 AND status = $2', [userId, 'passed']),
+    get('SELECT COUNT(*)::int AS count FROM script_downloads WHERE user_id = $1', [userId]),
+    all(`
+      SELECT activity_type, title, created_at
+      FROM (
+        SELECT 'lesson' AS activity_type, l.title, lp.completed_at AS created_at
+        FROM lesson_progress lp
+        JOIN lessons l ON l.id = lp.lesson_id
+        WHERE lp.user_id = $1 AND lp.completed = true
+        UNION ALL
+        SELECT 'challenge' AS activity_type, c.title, cs.submitted_at AS created_at
+        FROM challenge_submissions cs
+        JOIN challenges c ON c.id = cs.challenge_id
+        WHERE cs.user_id = $1 AND cs.status IN ('passed', 'submitted')
+        UNION ALL
+        SELECT 'script' AS activity_type, s.title, sd.created_at
+        FROM script_downloads sd
+        JOIN scripts s ON s.id = sd.script_id
+        WHERE sd.user_id = $1
+      ) activity_feed
+      ORDER BY created_at DESC NULLS LAST
+      LIMIT 6
+    `, [userId])
+  ]);
+
+  return {
+    user: {
+      ...user,
+      username: getProfileDisplayName(user, dbUser),
+      email: dbUser?.email || user.email || '',
+      avatar_url: dbUser?.avatar_url || user.avatar_url || null,
+      tier: dbUser?.tier || getUserTier(user),
+      joined_at: dbUser?.joined_at || user.joinedAt || null,
+      is_admin: dbUser?.is_admin || false
+    },
+    dbUser,
+    stats: {
+      lessonsCompleted: lessonCount?.count || 0,
+      challengesSolved: challengeCount?.count || 0,
+      certificatesEarned: certificateCount?.count || 0,
+      scriptsDownloaded: scriptCount?.count || 0
+    },
+    recentActivity
+  };
+}
 
 /**
  * GET /
  * Homepage - Welcome page
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
-  
-  res.render('index', {
-    user,
-    isAuth,
-    title: 'GLEECIN Academy - Premium Scripting Education'
-  });
+
+  try {
+    const [stats, featuredScripts, featuredChallenges] = await Promise.all([
+      get(`
+        SELECT
+          (SELECT COUNT(*)::int FROM scripts WHERE is_public = true) AS script_count,
+          (SELECT COUNT(*)::int FROM challenges) AS challenge_count,
+          (SELECT COUNT(*)::int FROM lessons) AS lesson_count,
+          (SELECT COUNT(*)::int FROM certifications) AS certification_count
+      `),
+      all(`
+        SELECT id, title, description, category, language, price_tier, explanation
+        FROM scripts
+        WHERE is_public = true
+        ORDER BY created_at DESC
+        LIMIT 3
+      `),
+      all(`
+        SELECT id, title, description, difficulty, level, price_tier
+        FROM challenges
+        ORDER BY created_at DESC
+        LIMIT 3
+      `)
+    ]);
+
+    res.render('index', {
+      user,
+      isAuth,
+      stats: stats || {
+        script_count: 0,
+        challenge_count: 0,
+        lesson_count: 0,
+        certification_count: 0
+      },
+      featuredScripts: Array.isArray(featuredScripts) ? featuredScripts : [],
+      featuredChallenges: Array.isArray(featuredChallenges) ? featuredChallenges : [],
+      title: 'GLEECIN Academy - Premium Scripting Education'
+    });
+  } catch (error) {
+    console.error('[HOME ERROR]', error);
+    res.status(500).render('error', { error: 'Homepage failed to load', user });
+  }
 });
 
 /**
@@ -39,6 +153,30 @@ router.get('/login', (req, res) => {
   });
 });
 
+function buildPreviewStudentUser() {
+  return {
+    id: 'preview-student',
+    username: 'Preview Student',
+    discord_id: 'preview-student',
+    roles: [],
+    is_preview: true
+  };
+}
+
+/**
+ * GET /student-preview
+ * Public temporary preview of the student dashboard layout
+ */
+router.get('/student-preview', (req, res) => {
+  res.render('dashboard', {
+    user: buildPreviewStudentUser(),
+    tier: 'free',
+    previewMode: true,
+    previewPublic: true,
+    title: 'Student Preview - GLEECIN Academy'
+  });
+});
+
 /**
  * GET /dashboard
  * Main dashboard - requires authentication
@@ -49,7 +187,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
   const preview = String(req.query.preview || '').toLowerCase();
 
   try {
-    const dbUser = await get('SELECT is_admin FROM users WHERE discord_id = $1', [user.discord_id || user.id]);
+    const dbUser = await get('SELECT is_admin FROM users WHERE discord_id = $1 OR id = $2', [user.discord_id || user.id, user.id]);
     const isAdminUser = !!dbUser?.is_admin;
     const isStudentPreview = isAdminUser && preview === 'student';
 
@@ -62,6 +200,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
       user,
       tier,
       previewMode: isStudentPreview,
+      previewPublic: false,
       title: isStudentPreview ? 'Student Preview - GLEECIN Academy' : 'Dashboard - GLEECIN Academy'
     });
   } catch (error) {
@@ -77,7 +216,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
 router.get('/academy', (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
-  
+
   res.render('academy', {
     user,
     isAuth,
@@ -86,10 +225,6 @@ router.get('/academy', (req, res) => {
   });
 });
 
-/**
- * GET /classes
- * Available classes listing - requires authentication
- */
 router.get('/classes', isAuthenticated, (req, res) => {
   const user = req.session.user;
   const tier = getUserTier(user);
@@ -102,10 +237,6 @@ router.get('/classes', isAuthenticated, (req, res) => {
   });
 });
 
-/**
- * GET /class/:id
- * Individual class page - requires authentication
- */
 router.get('/class/:id', isAuthenticated, (req, res) => {
   const user = req.session.user;
   const { id } = req.params;
@@ -120,10 +251,6 @@ router.get('/class/:id', isAuthenticated, (req, res) => {
   });
 });
 
-/**
- * GET /learning
- * Interactive learning hub - requires authentication
- */
 router.get('/learning', isAuthenticated, (req, res) => {
   const user = req.session.user;
   const tier = getUserTier(user);
@@ -136,10 +263,6 @@ router.get('/learning', isAuthenticated, (req, res) => {
   });
 });
 
-/**
- * GET /challenges
- * Public-facing challenges hub
- */
 router.get('/challenges', (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
@@ -154,10 +277,6 @@ router.get('/challenges', (req, res) => {
   });
 });
 
-/**
- * GET /scripts
- * Script library - public access
- */
 router.get('/scripts', (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
@@ -172,10 +291,6 @@ router.get('/scripts', (req, res) => {
   });
 });
 
-/**
- * GET /scripts/:category
- * Scripts by category
- */
 router.get('/scripts/:category', (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
@@ -192,10 +307,6 @@ router.get('/scripts/:category', (req, res) => {
   });
 });
 
-/**
- * GET /lessons
- * Lesson vault with videos - requires authentication
- */
 router.get('/lessons', isAuthenticated, (req, res) => {
   const user = req.session.user;
   const tier = getUserTier(user);
@@ -208,10 +319,6 @@ router.get('/lessons', isAuthenticated, (req, res) => {
   });
 });
 
-/**
- * GET /tools
- * Tools and setup guides
- */
 router.get('/tools', (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
@@ -224,10 +331,6 @@ router.get('/tools', (req, res) => {
   });
 });
 
-/**
- * GET /support
- * Help and support center
- */
 router.get('/support', (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
@@ -240,10 +343,6 @@ router.get('/support', (req, res) => {
   });
 });
 
-/**
- * GET /schedule
- * Class schedule and announcements
- */
 router.get('/schedule', (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
@@ -256,26 +355,6 @@ router.get('/schedule', (req, res) => {
   });
 });
 
-/**
- * GET /marketplace
- * Marketplace storefront
- */
-router.get('/marketplace', (req, res) => {
-  const user = req.session?.user;
-  const isAuth = !!user;
-
-  res.render('marketplace', {
-    user,
-    isAuth,
-    pageCss: 'marketplace',
-    title: 'Marketplace - GLEECIN'
-  });
-});
-
-/**
- * GET /certification
- * Certification and badges
- */
 router.get('/certification', isAuthenticated, (req, res) => {
   const user = req.session.user;
 
@@ -286,20 +365,21 @@ router.get('/certification', isAuthenticated, (req, res) => {
   });
 });
 
-/**
- * GET /profile
- * User profile page
- */
-router.get('/profile', isAuthenticated, (req, res) => {
-  const user = req.session.user;
-  const tier = getUserTier(user);
-
-  res.render('profile', {
-    user,
-    tier,
-    pageCss: 'profile',
-    title: 'My Profile - GLEECIN Academy'
-  });
+router.get('/profile', isAuthenticated, async (req, res) => {
+  try {
+    const profileData = await loadProfileData(req.session.user);
+    res.render('profile', {
+      ...profileData,
+      pageCss: 'profile',
+      title: 'My Profile - GLEECIN Academy'
+    });
+  } catch (error) {
+    console.error('[PROFILE ERROR]', error);
+    res.status(500).render('error', {
+      error: 'Profile load failed',
+      user: req.session.user
+    });
+  }
 });
 
 export default router;
