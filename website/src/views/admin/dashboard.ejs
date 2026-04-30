@@ -10,15 +10,15 @@
     <div class="admin-hero-stats">
       <article class="admin-stat-card">
         <span class="admin-stat-label">Active lessons</span>
-        <strong><%= typeof activeLessons !== 'undefined' ? activeLessons : (lessons?.length || 0) %></strong>
+        <strong><%= stats?.total_lessons || 0 %></strong>
       </article>
       <article class="admin-stat-card">
         <span class="admin-stat-label">Pending messages</span>
-        <strong><%= typeof pendingMessages !== 'undefined' ? pendingMessages : (messages?.length || 0) %></strong>
+        <strong><%= stats?.pending_messages || 0 %></strong>
       </article>
       <article class="admin-stat-card">
         <span class="admin-stat-label">Challenge submissions</span>
-        <strong><%= typeof challengeSubmissions !== 'undefined' ? challengeSubmissions : (submissions?.length || 0) %></strong>
+        <strong><%= stats?.completed_lessons || 0 %></strong>
       </article>
     </div>
   </section>
@@ -88,15 +88,15 @@
     <div class="admin-grid admin-grid-3">
       <article class="admin-info-card">
         <h3>Issued certificates</h3>
-        <p class="admin-muted"><%= typeof issuedCertificates !== 'undefined' ? issuedCertificates : (certifications?.length || 0) %> total</p>
+        <p class="admin-muted"><%= stats?.issued_certs || 0 %> total</p>
       </article>
       <article class="admin-info-card">
         <h3>Pending review</h3>
-        <p class="admin-muted"><%= typeof pendingReviews !== 'undefined' ? pendingReviews : (reviewQueue?.length || 0) %> items</p>
+        <p class="admin-muted">0 items</p>
       </article>
       <article class="admin-info-card">
         <h3>Challenge completions</h3>
-        <p class="admin-muted"><%= typeof completedChallenges !== 'undefined' ? completedChallenges : (challengeCompletions?.length || 0) %> submissions</p>
+        <p class="admin-muted"><%= stats?.completed_lessons || 0 %> submissions</p>
       </article>
     </div>
   </section>
