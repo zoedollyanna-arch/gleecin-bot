@@ -1,6 +1,6 @@
 /**
  * Student Routes
- * Handles student dashboard, session requests, messaging, and learning
+ * Handles student dashboard, session requests, messaging, learning, and progress tracking
  */
 
 import express from 'express';
@@ -9,21 +9,30 @@ import { all, get, run } from '../db/database.js';
 
 const router = express.Router();
 
-/**
- * GET /student/sessions
- * View student's session requests
- */
+async function getDbUser(user) {
+  return get('SELECT id FROM users WHERE discord_id = $1', [user.discord_id || user.id]);
+}
+
+function mapRowsById(rows, key) {
+  const result = {};
+  rows.forEach((row) => {
+    result[row[key]] = row;
+  });
+  return result;
+}
+
 router.get('/sessions', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
 
     if (!dbUser) {
       return res.status(404).render('error', { error: 'User not found', user });
     }
 
     const sessions = await all(`
-      SELECT * FROM session_requests
+      SELECT *
+      FROM session_requests
       WHERE user_id = $1
       ORDER BY created_at DESC
     `, [dbUser.id]);

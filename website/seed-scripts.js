@@ -462,6 +462,11 @@ async function seedScripts() {
           `INSERT INTO scripts (title, description, category, language, author_id, code, explanation, 
            use_cases, common_mistakes, price_tier, tags, created_at) 
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+           ON CONFLICT (title) DO UPDATE SET
+           description = EXCLUDED.description,
+           code = EXCLUDED.code,
+           explanation = EXCLUDED.explanation,
+           updated_at = NOW()
            RETURNING id`,
           [
             script.title,

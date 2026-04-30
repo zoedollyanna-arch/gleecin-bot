@@ -1,351 +1,83 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Certification Management - Admin</title>
-  <link rel="stylesheet" href="/css/styles.css">
-  <style>
-    .admin-container {
-      background: linear-gradient(135deg, #0F0F14 0%, #1a1a22 100%);
-      color: #EAEAEA;
-      min-height: 100vh;
-      padding: 20px;
-    }
+<%- include('../partials/admin-header', { title: 'Certifications' }) %>
 
-    .admin-header {
-      background: #1a1a22;
-      border-bottom: 2px solid #7B61FF;
-      padding: 20px;
-      margin-bottom: 30px;
-      border-radius: 8px;
-    }
-
-    .admin-header h1 {
-      color: #7B61FF;
-      margin: 0;
-      font-size: 2em;
-    }
-
-    .admin-nav {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-      flex-wrap: wrap;
-    }
-
-    .admin-nav a {
-      background: #0F0F14;
-      color: #00D1FF;
-      padding: 10px 15px;
-      border-radius: 6px;
-      text-decoration: none;
-      border: 1px solid #7B61FF;
-      transition: all 0.3s;
-    }
-
-    .admin-nav a:hover,
-    .admin-nav a.active {
-      background: #7B61FF;
-      color: #0F0F14;
-    }
-
-    .content-section {
-      background: #1a1a22;
-      border: 2px solid #7B61FF;
-      border-radius: 8px;
-      padding: 25px;
-      margin-bottom: 30px;
-    }
-
-    .content-section h2 {
-      color: #7B61FF;
-      margin-top: 0;
-    }
-
-    .cert-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
-      margin-top: 20px;
-    }
-
-    .cert-card {
-      background: #0F0F14;
-      border: 2px solid #7B61FF;
-      border-radius: 8px;
-      padding: 20px;
-      transition: all 0.3s;
-    }
-
-    .cert-card:hover {
-      border-color: #00D1FF;
-      box-shadow: 0 0 15px rgba(0, 209, 255, 0.3);
-    }
-
-    .cert-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-
-    .cert-badge {
-      font-size: 2em;
-    }
-
-    .cert-info h3 {
-      color: #00D1FF;
-      margin: 0;
-      font-size: 1.1em;
-    }
-
-    .cert-info p {
-      color: #999;
-      margin: 3px 0;
-      font-size: 0.9em;
-    }
-
-    .cert-course {
-      background: rgba(123, 97, 255, 0.2);
-      color: #7B61FF;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 0.85em;
-      font-weight: bold;
-      margin-bottom: 10px;
-      display: inline-block;
-    }
-
-    .cert-dates {
-      color: #999;
-      font-size: 0.9em;
-      margin-bottom: 15px;
-    }
-
-    .cert-status {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(0, 209, 255, 0.2);
-      color: #00D1FF;
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 0.85em;
-    }
-
-    .status-badge.shared {
-      background: rgba(123, 97, 255, 0.2);
-      color: #7B61FF;
-    }
-
-    .status-badge.pending {
-      background: rgba(255, 122, 0, 0.2);
-      color: #FF7A00;
-    }
-
-    .action-btn {
-      background: #7B61FF;
-      color: #0F0F14;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85em;
-      font-weight: bold;
-      transition: all 0.3s;
-      margin-top: 5px;
-      margin-right: 5px;
-      width: calc(50% - 5px);
-    }
-
-    .action-btn:hover {
-      background: #00D1FF;
-      color: #0F0F14;
-    }
-
-    .action-btn.download {
-      background: #00D1FF;
-      color: #0F0F14;
-      width: 100%;
-      margin-right: 0;
-      margin-top: 10px;
-    }
-
-    .action-btn.download:hover {
-      background: #00B8D4;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
-
-    .stat-card {
-      background: #0F0F14;
-      border: 2px solid #7B61FF;
-      border-radius: 8px;
-      padding: 20px;
-      text-align: center;
-    }
-
-    .stat-number {
-      font-size: 2em;
-      color: #00D1FF;
-      font-weight: bold;
-      margin: 10px 0;
-    }
-
-    .stat-label {
-      color: #999;
-      font-size: 0.9em;
-    }
-
-    @media (max-width: 768px) {
-      .admin-nav {
-        flex-direction: column;
-      }
-
-      .admin-nav a {
-        width: 100%;
-        text-align: center;
-      }
-
-      .cert-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .action-btn {
-        width: 100%;
-        margin-right: 0;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="admin-container">
-    <div class="admin-header">
-      <h1>👨‍💼 Admin Dashboard</h1>
-      <p style="margin: 10px 0 0 0; color: #999;">Logged in as: <strong><%= user.username %></strong></p>
-      <div class="admin-nav">
-        <a href="/admin">📊 Dashboard</a>
-        <a href="/admin/users">👥 Users</a>
-        <a href="/admin/payments">💰 Payments</a>
-        <a href="/admin/scripts">📝 Scripts</a>
-        <a href="/admin/lessons">🎓 Lessons</a>
-        <a href="/admin/session-requests">📅 Sessions</a>
-        <a href="/admin/messages">💬 Messages</a>
-        <a href="/admin/certifications" class="active">🏆 Certificates</a>
-        <a href="/admin/logs">📋 Logs</a>
-        <a href="/auth/logout" style="background: #ff6b6b; color: white; border: 1px solid #ff6b6b;">🚪 Logout</a>
+<main class="admin-shell">
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <div>
+        <p class="admin-eyebrow">Certificates</p>
+        <h1>Certifications</h1>
+        <p class="admin-muted">Generate, upload, and manage completion certificates for students.</p>
       </div>
     </div>
 
-    <!-- Statistics -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Total Certificates</div>
-        <div class="stat-number"><%= certs && certs.length ? certs.length : 0 %></div>
+    <form class="admin-form" action="/admin/certifications" method="post" enctype="multipart/form-data">
+      <div class="admin-form-grid">
+        <label class="admin-field">
+          <span>Student</span>
+          <select name="user_id" required>
+            <option value="">Select a student</option>
+            <% if (Array.isArray(students)) { students.forEach((student) => { %>
+              <option value="<%= student.id %>"><%= student.name || student.username || student.email || student.id %></option>
+            <% }) } %>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Certificate title</span>
+          <input name="title" type="text" placeholder="Completion certificate">
+        </label>
+        <label class="admin-field">
+          <span>Certificate file</span>
+          <input name="certificate_file" type="file" accept=".pdf,image/*">
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Notes</span>
+          <textarea name="notes" rows="4"></textarea>
+        </label>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Shared Publicly</div>
-        <div class="stat-number"><%= certs && certs.filter(c => c.shared).length ? certs.filter(c => c.shared).length : 0 %></div>
+      <div class="admin-form-actions">
+        <button class="admin-btn admin-btn-primary" type="submit">Upload certificate</button>
       </div>
+    </form>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Issued certificates</h2>
     </div>
+    <% if (Array.isArray(certifications) && certifications.length) { %>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Issued</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% certifications.forEach((certification) => { %>
+              <tr>
+                <td><%= certification.student_name || certification.student || 'Student' %></td>
+                <td><%= certification.title || 'Certificate' %></td>
+                <td><span class="admin-pill"><%= certification.status || 'Issued' %></span></td>
+                <td><%= certification.created_at ? new Date(certification.created_at).toLocaleString() : '—' %></td>
+                <td>
+                  <div class="admin-row-actions">
+                    <% if (certification.file_url) { %><a class="admin-link" href="<%= certification.file_url %>" target="_blank" rel="noreferrer">View</a><% } %>
+                    <button class="admin-link-button" type="button" data-cert-regenerate="<%= certification.id %>">Regenerate</button>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="admin-empty">No certificates issued yet.</p>
+    <% } %>
+  </section>
+</main>
 
-    <!-- Certificate Management -->
-    <div class="content-section">
-      <h2>🏆 Certification Management</h2>
-
-      <% if (certs && certs.length > 0) { %>
-        <div class="cert-grid">
-          <% certs.forEach(cert => { %>
-            <div class="cert-card">
-              <div class="cert-header">
-                <div class="cert-badge">🏆</div>
-                <div class="cert-info">
-                  <h3><%= cert.username %></h3>
-                  <p>Cert ID: <%= cert.certificate_id.substring(0, 8) %>...</p>
-                </div>
-              </div>
-
-              <div class="cert-course">
-                <%= cert.course_name %>
-              </div>
-
-              <div class="cert-dates">
-                <strong>Issued:</strong> <%= new Date(cert.completion_date).toLocaleDateString() %>
-              </div>
-
-              <div class="cert-status">
-                <span class="status-badge">
-                  ✓ Issued
-                </span>
-                <% if (cert.shared) { %>
-                  <span class="status-badge shared">
-                    🌐 Public
-                  </span>
-                <% } else { %>
-                  <span class="status-badge pending">
-                    🔒 Private
-                  </span>
-                <% } %>
-              </div>
-
-              <div style="display: flex; gap: 5px;">
-                <button class="action-btn" onclick="window.location.href='/certification'">👁️ View</button>
-                <button class="action-btn" onclick="window.location.href='/certification'">
-                  <%= cert.shared ? '🔒 Private' : '🌐 Public' %>
-                </button>
-              </div>
-
-              <% if (cert.pdf_url) { %>
-                <button class="action-btn download" onclick="downloadCert('<%= cert.pdf_url %>', '<%= cert.certificate_id %>')">
-                  📥 Download PDF
-                </button>
-              <% } %>
-            </div>
-          <% }); %>
-        </div>
-      <% } else { %>
-        <div class="empty-state">
-          <p>📭 No certificates issued yet</p>
-          <p>Certificates will appear here when users complete courses</p>
-        </div>
-      <% } %>
-    </div>
-  </div>
-
-  <script>
-    function viewCert(certId) {
-      window.location.href = '/certification';
-    }
-
-    function toggleShare(certId, isPublic) {
-      window.location.href = '/certification';
-    }
-
-    function downloadCert(pdfUrl, certId) {
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `certificate-${certId}.pdf`;
-      link.click();
-    }
-  </script>
-</body>
-</html>
+<%- include('../partials/admin-footer') %>

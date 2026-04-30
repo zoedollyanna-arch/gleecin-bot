@@ -164,7 +164,7 @@
             </div>
         <% } %>
 
-        <% if (ratelimit) { %>
+        <% if (typeof ratelimit !== 'undefined' && ratelimit) { %>
             <div class="ratelimit-warning">
                 <strong>🌐 Discord Rate Limited</strong><br>
                 Discord's login service is temporarily busy. Please wait 5-10 minutes and try again.
@@ -172,7 +172,7 @@
             </div>
         <% } %>
 
-        <% if (retry) { %>
+        <% if (typeof retry !== 'undefined' && retry) { %>
             <div class="retry-success">
                 ✅ Session cleared. You can now retry login safely.
             </div>
@@ -192,7 +192,7 @@
             No password needed. Sign in securely with your Discord account.
         </div>
 
-        <% if (ratelimit) { %>
+        <% if (typeof ratelimit !== 'undefined' && ratelimit) { %>
             <a href="/auth/retry" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; margin-top: 1rem;">
                 🔄 Retry Login Now
             </a>
@@ -255,4 +255,3 @@
     </script>
 </body>
 </html>
-

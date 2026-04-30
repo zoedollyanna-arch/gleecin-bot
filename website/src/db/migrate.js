@@ -6,13 +6,8 @@
 
 import pg from 'pg';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const { Pool } = pg;
 
@@ -23,26 +18,30 @@ const pool = new Pool({
   }
 });
 
-/**
- * Migration SQL
- */
 const migrations = [
-  // Drop existing tables if they exist (for clean migration)
   `DROP TABLE IF EXISTS admin_logs CASCADE`,
   `DROP TABLE IF EXISTS announcements CASCADE`,
+  `DROP TABLE IF EXISTS activity_submissions CASCADE`,
+  `DROP TABLE IF EXISTS activities CASCADE`,
+  `DROP TABLE IF EXISTS reviews CASCADE`,
+  `DROP TABLE IF EXISTS quiz_attempts CASCADE`,
+  `DROP TABLE IF EXISTS quiz_questions CASCADE`,
+  `DROP TABLE IF EXISTS quizzes CASCADE`,
+  `DROP TABLE IF EXISTS messages CASCADE`,
+  `DROP TABLE IF EXISTS session_requests CASCADE`,
   `DROP TABLE IF EXISTS payments CASCADE`,
   `DROP TABLE IF EXISTS certifications CASCADE`,
   `DROP TABLE IF EXISTS challenge_submissions CASCADE`,
   `DROP TABLE IF EXISTS challenges CASCADE`,
   `DROP TABLE IF EXISTS lesson_progress CASCADE`,
   `DROP TABLE IF EXISTS lessons CASCADE`,
+  `DROP TABLE IF EXISTS schedules CASCADE`,
   `DROP TABLE IF EXISTS script_downloads CASCADE`,
   `DROP TABLE IF EXISTS scripts CASCADE`,
   `DROP TABLE IF EXISTS enrollments CASCADE`,
   `DROP TABLE IF EXISTS classes CASCADE`,
   `DROP TABLE IF EXISTS users CASCADE`,
 
-  // Users table (extends bot's user data)
   `
     CREATE TABLE users (
       id SERIAL PRIMARY KEY,
@@ -58,7 +57,6 @@ const migrations = [
     )
   `,
 
-  // Classes table
   `
     CREATE TABLE classes (
       id SERIAL PRIMARY KEY,
@@ -78,7 +76,6 @@ const migrations = [
     )
   `,
 
-  // Enrollments
   `
     CREATE TABLE enrollments (
       id SERIAL PRIMARY KEY,
@@ -91,7 +88,6 @@ const migrations = [
     )
   `,
 
-  // Scripts (Library)
   `
     CREATE TABLE scripts (
       id SERIAL PRIMARY KEY,
@@ -113,11 +109,10 @@ const migrations = [
       file_url TEXT,
       thumbnail_url TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
 
-  // Script downloads tracking
   `
     CREATE TABLE script_downloads (
       id SERIAL PRIMARY KEY,
@@ -127,7 +122,6 @@ const migrations = [
     )
   `,
 
-  // Lessons (Video Vault)
   `
     CREATE TABLE lessons (
       id SERIAL PRIMARY KEY,
@@ -137,15 +131,18 @@ const migrations = [
       duration TEXT,
       video_url TEXT NOT NULL,
       video_type TEXT CHECK (video_type IN ('youtube', 'vimeo', 'google_drive', 'uploaded')),
+      video_path TEXT,
+      video_mime_type TEXT,
+      video_size_bytes BIGINT,
       transcript TEXT,
       tags TEXT[] DEFAULT '{}',
       price_tier TEXT DEFAULT 'free' CHECK (price_tier IN ('free', 'paid', 'advanced')),
       creator_id INTEGER REFERENCES users(id),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
 
-  // Lesson progress tracking
   `
     CREATE TABLE lesson_progress (
       id SERIAL PRIMARY KEY,
@@ -153,13 +150,32 @@ const migrations = [
       lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
       completed BOOLEAN DEFAULT false,
       watch_time_seconds INTEGER DEFAULT 0,
+      progress_percent INTEGER DEFAULT 0,
       last_watched_at TIMESTAMP,
       completed_at TIMESTAMP,
       UNIQUE(user_id, lesson_id)
     )
   `,
 
-  // Challenges (Coding Exercises)
+  `
+    CREATE TABLE schedules (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      instructor TEXT,
+      scheduled_date DATE,
+      scheduled_time TEXT,
+      capacity INTEGER,
+      description TEXT,
+      class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+      published BOOLEAN DEFAULT false,
+      published_at TIMESTAMP,
+      created_by INTEGER REFERENCES users(id),
+      updated_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
   `
     CREATE TABLE challenges (
       id SERIAL PRIMARY KEY,
@@ -176,7 +192,6 @@ const migrations = [
     )
   `,
 
-  // Challenge submissions
   `
     CREATE TABLE challenge_submissions (
       id SERIAL PRIMARY KEY,
@@ -186,11 +201,13 @@ const migrations = [
       status TEXT CHECK (status IN ('submitted', 'passed', 'failed')),
       passed_tests INTEGER,
       total_tests INTEGER,
+      score INTEGER DEFAULT 0,
+      reviewed_by INTEGER REFERENCES users(id),
+      reviewed_at TIMESTAMP,
       submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
 
-  // Certifications & Achievements
   `
     CREATE TABLE certifications (
       id SERIAL PRIMARY KEY,
@@ -205,7 +222,6 @@ const migrations = [
     )
   `,
 
-  // Payment System (CRITICAL - Linden-based)
   `
     CREATE TABLE payments (
       id SERIAL PRIMARY KEY,
@@ -224,7 +240,6 @@ const migrations = [
     )
   `,
 
-  // Admin logs
   `
     CREATE TABLE admin_logs (
       id SERIAL PRIMARY KEY,
@@ -236,7 +251,6 @@ const migrations = [
     )
   `,
 
-  // Announcements
   `
     CREATE TABLE announcements (
       id SERIAL PRIMARY KEY,
@@ -250,7 +264,6 @@ const migrations = [
     )
   `,
 
-  // Session Requests (1-on-1 requests)
   `
     CREATE TABLE session_requests (
       id SERIAL PRIMARY KEY,
@@ -267,7 +280,6 @@ const migrations = [
     )
   `,
 
-  // Support Messages (Messaging System)
   `
     CREATE TABLE messages (
       id SERIAL PRIMARY KEY,
@@ -282,7 +294,6 @@ const migrations = [
     )
   `,
 
-  // Quizzes
   `
     CREATE TABLE quizzes (
       id SERIAL PRIMARY KEY,
@@ -298,7 +309,6 @@ const migrations = [
     )
   `,
 
-  // Quiz Questions
   `
     CREATE TABLE quiz_questions (
       id SERIAL PRIMARY KEY,
@@ -314,7 +324,6 @@ const migrations = [
     )
   `,
 
-  // Quiz Attempts
   `
     CREATE TABLE quiz_attempts (
       id SERIAL PRIMARY KEY,
@@ -328,20 +337,19 @@ const migrations = [
     )
   `,
 
-  // Student Reviews
   `
     CREATE TABLE reviews (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
       rating INTEGER CHECK (rating >= 1 AND rating <= 5),
       content TEXT,
       is_public BOOLEAN DEFAULT true,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
 
-  // Coding Activities/Exercises
   `
     CREATE TABLE activities (
       id SERIAL PRIMARY KEY,
@@ -361,7 +369,6 @@ const migrations = [
     )
   `,
 
-  // Activity Submissions
   `
     CREATE TABLE activity_submissions (
       id SERIAL PRIMARY KEY,
@@ -377,7 +384,6 @@ const migrations = [
     )
   `,
 
-  // Indexes for performance
   `CREATE INDEX IF NOT EXISTS idx_users_tier ON users(tier)`,
   `CREATE INDEX IF NOT EXISTS idx_enrollments_user ON enrollments(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_scripts_category ON scripts(category)`,
@@ -386,21 +392,21 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`,
   `CREATE INDEX IF NOT EXISTS idx_lesson_progress_user ON lesson_progress(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_lesson_progress_lesson ON lesson_progress(lesson_id)`,
   `CREATE INDEX IF NOT EXISTS idx_session_requests_user ON session_requests(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_session_requests_status ON session_requests(status)`,
   `CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`,
   `CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id)`,
   `CREATE INDEX IF NOT EXISTS idx_messages_read ON messages(is_read)`,
+  `CREATE INDEX IF NOT EXISTS idx_schedules_class ON schedules(class_id)`,
   `CREATE INDEX IF NOT EXISTS idx_quizzes_lesson ON quizzes(lesson_id)`,
   `CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user ON quiz_attempts(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_activity_submissions_user ON activity_submissions(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_activity_submissions_status ON activity_submissions(status)`,
-  `CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id)`
+  `CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_reviews_lesson ON reviews(lesson_id)`
 ];
 
-/**
- * Run migrations
- */
 async function runMigrations() {
   const client = await pool.connect();
 
@@ -424,5 +430,4 @@ async function runMigrations() {
   }
 }
 
-// Run if called directly
 runMigrations().catch(console.error).finally(() => process.exit(0));
