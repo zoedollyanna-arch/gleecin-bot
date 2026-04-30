@@ -719,7 +719,16 @@ router.post('/sessions/create', isAdmin, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING id`,
       [student_id, req.session.user.id, topic, preferred_time || null, duration || null, status || 'pending', admin_notes || '']
     );
-    res.json({ success: true, sessionId: created.id });
+    const sessionRow = await get(
+      `SELECT s.*, u.username AS student_name, a.username AS admin_name
+       FROM sessions s
+       LEFT JOIN users u ON s.student_id = u.id
+       LEFT JOIN users a ON s.admin_id = a.id
+       WHERE s.id = $1`,
+      [created.id]
+    );
+    console.log('[SESSIONS] created session', { sessionId: created.id, adminId: req.session.user.id, studentId: student_id, topic });
+    res.json({ success: true, sessionId: created.id, session: sessionRow });
   } catch (error) {
     console.error('[SESSION CREATE ERROR]', error);
     res.status(500).json({ error: error.message });
@@ -730,11 +739,20 @@ router.post('/sessions/:id/update', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { topic, preferred_time, duration, status, admin_notes } = req.body;
-    await run(
+    const updated = await run(
       `UPDATE sessions SET topic=$1, preferred_time=$2, duration=$3, status=$4, admin_notes=$5, admin_id=$6, updated_at=NOW() WHERE id=$7`,
       [topic, preferred_time || null, duration || null, status || 'pending', admin_notes || '', req.session.user.id, id]
     );
-    res.json({ success: true });
+    const sessionRow = await get(
+      `SELECT s.*, u.username AS student_name, a.username AS admin_name
+       FROM sessions s
+       LEFT JOIN users u ON s.student_id = u.id
+       LEFT JOIN users a ON s.admin_id = a.id
+       WHERE s.id = $1`,
+      [id]
+    );
+    console.log('[SESSIONS] updated session', { sessionId: id, changes: updated.changes, adminId: req.session.user.id });
+    res.json({ success: true, session: sessionRow });
   } catch (error) {
     console.error('[SESSION UPDATE ERROR]', error);
     res.status(500).json({ error: error.message });

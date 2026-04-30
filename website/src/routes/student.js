@@ -281,27 +281,38 @@ router.get('/activities', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
     const tier = getUserTier(user);
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
 
     if (!dbUser) {
       return res.status(404).render('error', { error: 'User not found', user });
     }
 
     const activities = await all(`
-      SELECT * FROM activities
-      WHERE price_tier = 'free' OR price_tier = $1
-      ORDER BY difficulty ASC, created_at DESC
+      SELECT c.*, COUNT(cs.id)::int AS submission_count,
+        SUM(CASE WHEN cs.status = 'passed' THEN 1 ELSE 0 END)::int AS completion_count
+      FROM challenges c
+      LEFT JOIN challenge_submissions cs ON cs.challenge_id = c.id
+      WHERE c.price_tier = 'free'
+         OR (c.price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
+         OR (c.price_tier = 'advanced' AND $1 = 'advanced')
+      GROUP BY c.id
+      ORDER BY c.difficulty ASC, c.created_at DESC
     `, [tier]);
 
     const submissions = await all(`
-      SELECT * FROM activity_submissions
-      WHERE user_id = $1
+      SELECT cs.*, c.title AS challenge_title
+      FROM challenge_submissions cs
+      JOIN challenges c ON cs.challenge_id = c.id
+      WHERE cs.user_id = $1
+      ORDER BY cs.submitted_at DESC
     `, [dbUser.id]);
 
     const submissionMap = {};
-    submissions.forEach(s => {
-      submissionMap[s.activity_id] = s;
+    submissions.forEach((submission) => {
+      submissionMap[submission.challenge_id] = submission;
     });
+
+    console.log('[STUDENT] loaded challenges', { studentId: dbUser.id, count: activities.length });
 
     res.render('student/activities', {
       user,
