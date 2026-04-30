@@ -283,8 +283,20 @@
                 </td>
                 <td><%= new Date(payment.created_at).toLocaleDateString() %></td>
                 <td>
-                  <button class="action-btn" onclick="verifyPayment(<%= payment.id %>)">✓ Verify</button>
-                  <button class="action-btn reject" onclick="rejectPayment(<%= payment.id %>)">✗ Reject</button>
+                  <button
+                    type="button"
+                    class="action-btn verify-payment-btn"
+                    data-payment-id="<%= payment.id %>"
+                  >
+                    ✓ Verify
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn reject reject-payment-btn"
+                    data-payment-id="<%= payment.id %>"
+                  >
+                    ✗ Reject
+                  </button>
                 </td>
               </tr>
             <% }); %>
@@ -299,46 +311,52 @@
   </div>
 
   <script>
-    function verifyPayment(paymentId) {
-      const notes = prompt('Enter verification notes (optional):');
-      
-      fetch(`/admin/payments/${paymentId}/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: notes || '' })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          alert('Payment verified!');
-          location.reload();
-        } else {
-          alert('Error: ' + data.error);
-        }
-      })
-      .catch(e => alert('Error: ' + e.message));
-    }
+    document.querySelectorAll('.verify-payment-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const paymentId = button.dataset.paymentId;
+        const notes = prompt('Enter verification notes (optional):');
+        
+        fetch(`/admin/payments/${paymentId}/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: notes || '' })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            alert('Payment verified!');
+            location.reload();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        })
+        .catch(e => alert('Error: ' + e.message));
+      });
+    });
 
-    function rejectPayment(paymentId) {
-      const reason = prompt('Enter rejection reason:');
-      if (!reason) return;
+    document.querySelectorAll('.reject-payment-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const paymentId = button.dataset.paymentId;
+        const reason = prompt('Enter rejection reason:');
+        if (!reason) return;
 
-      fetch(`/admin/payments/${paymentId}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          alert('Payment rejected!');
-          location.reload();
-        } else {
-          alert('Error: ' + data.error);
-        }
-      })
-      .catch(e => alert('Error: ' + e.message));
-    }
+        fetch(`/admin/payments/${paymentId}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            alert('Payment rejected!');
+            location.reload();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        })
+        .catch(e => alert('Error: ' + e.message));
+      });
+    });
   </script>
 </body>
 </html>
