@@ -13,22 +13,29 @@ import fs from 'node:fs/promises';
 
 const router = express.Router();
 
+const uploadDir = path.join(process.cwd(), 'website', 'uploads');
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'website/uploads/');
+  destination: async (req, file, cb) => {
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error);
+    }
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${uuid()}${ext}`);
   }
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+  limits: { fileSize: 250 * 1024 * 1024 }, // 250MB
   fileFilter: (req, file, cb) => {
-    const allowed = ['.pdf', '.mp4', '.webm', '.jpg', '.png', '.gif', '.zip', '.js', '.ts'];
+    const allowed = ['.pdf', '.mp4', '.webm', '.mov', '.m4v', '.jpg', '.png', '.gif', '.zip', '.js', '.ts'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) {
       cb(null, true);
@@ -204,11 +211,26 @@ router.get('/lessons', adminOnly, async (req, res) => {
   }
 });
 
-router.post('/lessons/create', isAdmin, async (req, res) => {
+router.post('/lessons/create', isAdmin, upload.single('video_file'), async (req, res) => {
   try {
     const { title, description, level, duration, video_url, video_type, tier } = req.body;
-    if (!['youtube', 'vimeo', 'google_drive', 'uploaded'].includes(video_type)) return res.status(400).json({ error: 'Invalid video type' });
-    const lessonId = await run(`INSERT INTO lessons (title, description, level, duration, video_url, video_type, price_tier, creator_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`, [title, description, level, duration, video_url, video_type, tier, req.session.user.id]);
+    const normalizedVideoType = req.file ? 'uploaded' : video_type;
+    const normalizedVideoUrl = req.file ? `/${path.posix.join('uploads', path.basename(req.file.path))}` : video_url;
+
+    if (!title || !description || !level || !duration || !tier) {
+      return res.status(400).json({ error: 'Missing required lesson fields' });
+    }
+
+    if (!['youtube', 'vimeo', 'google_drive', 'uploaded'].includes(normalizedVideoType)) {
+      return res.status(400).json({ error: 'Invalid video type' });
+    }
+
+    if (normalizedVideoType === 'uploaded' && !req.file && !video_url) {
+      return res.status(400).json({ error: 'Upload a video file or provide a video URL' });
+    }
+
+    const lessonId = await run(`INSERT INTO lessons (title, description, level, duration, video_url, video_type, price_tier, creator_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`, [title, description, level, duration, normalizedVideoUrl, normalizedVideoType, tier, req.session.user.id]);
+    await run('INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, $2, $3)', [req.session.user.id, 'create_lesson', JSON.stringify({ lessonId: lessonId.id, title, videoType: normalizedVideoType })]);
     res.json({ success: true, lessonId: lessonId.id, message: 'Lesson created' });
   } catch (error) {
     console.error('[LESSON CREATE ERROR]', error);
@@ -363,14 +385,22 @@ router.post('/challenges/:id/update', isAdmin, async (req, res) => {
 });
 
 router.get('/schedules', adminOnly, async (req, res) => {
-  const classes = await all(`SELECT id, name, start_date, end_date, instructor, price_tier FROM classes ORDER BY start_date DESC`);
-  const announcements = await all(`SELECT * FROM announcements ORDER BY created_at DESC`);
-  res.render('admin/schedules', { user: req.session.user, classes, announcements, title: 'Schedule Management' });
+  try {
+    const classes = await all(`SELECT id, name, start_date, end_date, instructor, price_tier FROM classes ORDER BY start_date DESC`);
+    const announcements = await all(`SELECT * FROM announcements ORDER BY created_at DESC`);
+    res.render('admin/schedules', { user: req.session.user, classes, announcements, title: 'Schedule Management' });
+  } catch (error) {
+    console.error('[SCHEDULES LIST ERROR]', error);
+    res.status(500).render('error', { error: error.message, user: req.session.user });
+  }
 });
 
 router.post('/schedules/announcement', isAdmin, async (req, res) => {
   try {
     const { title, content, important, expires_at } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
     await run(`INSERT INTO announcements (title, content, important, expires_at, created_at) VALUES ($1,$2,$3,$4,NOW())`, [title, content, important === 'true' || important === true, expires_at || null]);
     res.json({ success: true });
   } catch (error) {

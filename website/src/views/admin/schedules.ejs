@@ -13,9 +13,11 @@
     .admin-nav a:hover,.admin-nav a.active{background:#7B61FF;color:#0F0F14}
     .content-section{background:#1a1a22;border:2px solid #7B61FF;border-radius:8px;padding:25px;margin-bottom:30px}
     .schedule-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;margin-top:20px}
-    .schedule-card{background:#0F0F14;border:2px solid #7B61FF;border-radius:8px;padding:20px}
+    .schedule-card{background:#0F0F14;border:2px solid #7B61FF;border-radius:8px;padding:20px;display:flex;flex-direction:column;gap:10px}
     .announcement-card{background:#0F0F14;border:2px solid #7B61FF;border-radius:8px;padding:20px;margin-bottom:15px}
     .action-btn{background:#7B61FF;color:#0F0F14;padding:8px 12px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
+    .action-btn.secondary{background:#00D1FF}
+    .action-btn.secondary:hover{background:#7B61FF}
     .action-btn:hover{background:#00D1FF}
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
     .form-group{margin-bottom:15px}
@@ -64,6 +66,7 @@
               <p><%= cls.instructor || 'TBD' %></p>
               <p style="color:#999;">Start: <%= cls.start_date ? new Date(cls.start_date).toLocaleString() : 'N/A' %></p>
               <p style="color:#999;">End: <%= cls.end_date ? new Date(cls.end_date).toLocaleString() : 'N/A' %></p>
+              <button type="button" class="action-btn secondary schedule-btn" data-class-id="<%= cls.id %>">📆 Schedule</button>
             </div>
           <% }); %>
         </div>
@@ -95,6 +98,12 @@
       const res = await fetch('/admin/schedules/announcement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
       const json = await res.json();
       if (json.success) { alert('Announcement created'); location.reload(); } else { alert(json.error || 'Failed'); }
+    });
+    document.querySelectorAll('.schedule-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const classId = button.dataset.classId;
+        window.location.href = `/class/${classId}`;
+      });
     });
   </script>
 </body>
