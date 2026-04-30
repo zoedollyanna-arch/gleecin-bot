@@ -52,7 +52,9 @@ router.get('/callback', async (req, res) => {
 
     const existingUser = await get('SELECT id, is_admin FROM users WHERE discord_id = $1', [userInfo.id]);
 
+    let dbUserId;
     if (existingUser) {
+      dbUserId = existingUser.id;
       await run(
         `UPDATE users
          SET username = $1, email = $2, avatar_url = $3, roles = $4, last_login = NOW(), is_admin = $5,
@@ -61,16 +63,18 @@ router.get('/callback', async (req, res) => {
         [userInfo.username, userInfo.email || null, userInfo.avatar || null, userInfo.roles || [], isAdmin, userInfo.id]
       );
     } else {
-      await run(
+      const result = await run(
         `INSERT INTO users (discord_id, username, email, avatar_url, roles, tier, is_admin, joined_at, last_login)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id`,
         [userInfo.id, userInfo.username, userInfo.email || null, userInfo.avatar || null, userInfo.roles || [], isAdmin ? 'advanced' : 'free', isAdmin]
       );
+      dbUserId = result.id;
     }
 
-    // Store in session
+    // Store in session - use database ID, not Discord ID
     req.session.user = {
-      id: userInfo.id,
+      id: dbUserId,
+      discord_id: userInfo.id,
       username: userInfo.username,
       email: userInfo.email,
       avatar: userInfo.avatar,
