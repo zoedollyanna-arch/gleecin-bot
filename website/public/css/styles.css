@@ -436,6 +436,69 @@ textarea:focus {
     width: 100%;
 }
 
+.student-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.student-grid-2 {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.student-form {
+    display: grid;
+    gap: 16px;
+    background: #111827;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 20px;
+}
+
+.student-field {
+    display: grid;
+    gap: 8px;
+}
+
+.student-field span {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.student-field input,
+.student-field textarea {
+    width: 100%;
+    background: var(--input-background);
+    border: 1px solid #334155;
+    color: var(--text-color);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.student-form-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.student-list {
+    display: grid;
+    gap: 16px;
+}
+
+.student-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: var(--muted-text);
+    font-size: .9rem;
+    margin-top: 12px;
+}
+
+.student-note {
+    margin-top: 12px;
+    color: var(--text-color);
+}
+
 .student-panel {
     background: var(--card-background);
     border: 1px solid var(--border-color);
@@ -542,6 +605,10 @@ textarea:focus {
     .student-card__topline {
         flex-direction: column;
         align-items: stretch;
+    }
+    .student-meta {
+        flex-direction: column;
+        gap: 6px;
     }
 }
 

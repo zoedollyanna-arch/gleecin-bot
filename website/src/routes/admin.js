@@ -63,13 +63,15 @@ router.get('/', adminOnly, async (req, res) => {
         (SELECT COUNT(*) FROM users) AS total_users,
         (SELECT COUNT(*) FROM users WHERE tier = 'paid' OR tier = 'advanced') AS paid_users,
         (SELECT COUNT(*) FROM payments WHERE status = 'pending') AS pending_payments,
-        (SELECT COUNT(*) FROM scripts WHERE is_public = true) AS total_scripts,
+        (SELECT COUNT(*) FROM scripts) AS total_scripts,
         (SELECT COUNT(*) FROM lessons) AS total_lessons,
         (SELECT COUNT(*) FROM challenges) AS total_challenges,
         (SELECT COUNT(*) FROM quizzes) AS total_quizzes,
         (SELECT COUNT(*) FROM certifications) AS issued_certs,
         (SELECT COUNT(*) FROM lesson_progress WHERE completed = true) AS completed_lessons,
-        (SELECT COUNT(*) FROM messages WHERE recipient_id = $1 AND is_read = false) AS pending_messages
+        (SELECT COUNT(*) FROM messages WHERE recipient_id = $1 AND is_read = false) AS pending_messages,
+        (SELECT COUNT(*) FROM sessions) AS total_sessions,
+        (SELECT COUNT(*) FROM sessions WHERE status = 'pending') AS pending_sessions
     `, [req.session.user.id]);
 
     const recentPayments = await all(`
@@ -90,6 +92,15 @@ router.get('/', adminOnly, async (req, res) => {
       LIMIT 10
     `);
 
+    const recentSessions = await all(`
+      SELECT s.*, u.username AS student_name, a.username AS admin_name
+      FROM sessions s
+      LEFT JOIN users u ON s.student_id = u.id
+      LEFT JOIN users a ON s.admin_id = a.id
+      ORDER BY s.updated_at DESC, s.created_at DESC
+      LIMIT 10
+    `);
+
     const recentMessages = await all(`
       SELECT m.*, u.username AS sender_name
       FROM messages m
@@ -103,6 +114,7 @@ router.get('/', adminOnly, async (req, res) => {
       stats: stats || {},
       recentPayments,
       recentProgress,
+      recentSessions,
       recentMessages,
       title: 'Admin Dashboard'
     });
@@ -615,7 +627,14 @@ router.get('/schedules', adminOnly, async (req, res) => {
     `);
     const classes = await all(`SELECT id, name FROM classes ORDER BY created_at DESC`);
     const announcements = await all(`SELECT * FROM announcements ORDER BY created_at DESC`);
-    res.render('admin/schedules', { user: req.session.user, schedules, classes, announcements, title: 'Schedule Management' });
+    const sessions = await all(`
+      SELECT s.*, u.username AS student_name, a.username AS admin_name
+      FROM sessions s
+      LEFT JOIN users u ON s.student_id = u.id
+      LEFT JOIN users a ON s.admin_id = a.id
+      ORDER BY s.updated_at DESC, s.created_at DESC
+    `);
+    res.render('admin/schedules', { user: req.session.user, schedules, classes, announcements, sessions, title: 'Schedule Management' });
   } catch (error) {
     console.error('[SCHEDULES LIST ERROR]', error);
     res.status(500).render('error', { error: error.message, user: req.session.user });
@@ -673,6 +692,48 @@ router.post('/schedules/:id/publish', isAdmin, async (req, res) => {
     await run(`UPDATE schedules SET published = true, published_at = NOW(), updated_by = $1, updated_at = NOW() WHERE id = $2`, [req.session.user.id, id]);
     res.json({ success: true });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/sessions/create', isAdmin, async (req, res) => {
+  try {
+    const { student_id, topic, preferred_time, duration, status, admin_notes } = req.body;
+    if (!student_id || !topic) return res.status(400).json({ error: 'Student and topic are required' });
+    const created = await run(
+      `INSERT INTO sessions (student_id, admin_id, topic, preferred_time, duration, status, admin_notes, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING id`,
+      [student_id, req.session.user.id, topic, preferred_time || null, duration || null, status || 'pending', admin_notes || '']
+    );
+    res.json({ success: true, sessionId: created.id });
+  } catch (error) {
+    console.error('[SESSION CREATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/sessions/:id/update', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { topic, preferred_time, duration, status, admin_notes } = req.body;
+    await run(
+      `UPDATE sessions SET topic=$1, preferred_time=$2, duration=$3, status=$4, admin_notes=$5, admin_id=$6, updated_at=NOW() WHERE id=$7`,
+      [topic, preferred_time || null, duration || null, status || 'pending', admin_notes || '', req.session.user.id, id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[SESSION UPDATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/sessions/:id/delete', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await run('DELETE FROM sessions WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[SESSION DELETE ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });

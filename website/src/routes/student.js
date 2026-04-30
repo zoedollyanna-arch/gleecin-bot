@@ -10,7 +10,8 @@ import { all, get, run } from '../db/database.js';
 const router = express.Router();
 
 async function getDbUser(user) {
-  return get('SELECT id FROM users WHERE discord_id = $1', [user.discord_id || user.id]);
+  const discordId = user?.discord_id || user?.id;
+  return get('SELECT id, username, discord_id FROM users WHERE discord_id = $1', [discordId]);
 }
 
 function mapRowsById(rows, key) {
@@ -31,16 +32,17 @@ router.get('/sessions', isAuthenticated, async (req, res) => {
     }
 
     const sessions = await all(`
-      SELECT *
-      FROM session_requests
-      WHERE user_id = $1
-      ORDER BY created_at DESC
+      SELECT s.*, a.username AS admin_name
+      FROM sessions s
+      LEFT JOIN users a ON s.admin_id = a.id
+      WHERE s.student_id = $1
+      ORDER BY s.updated_at DESC, s.created_at DESC
     `, [dbUser.id]);
 
     res.render('student/sessions', {
       user,
       sessions,
-      title: 'My Session Requests'
+      title: 'My Sessions'
     });
   } catch (error) {
     console.error('[STUDENT SESSIONS ERROR]', error);
@@ -61,7 +63,7 @@ router.post('/sessions/request', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Title and description required' });
     }
 
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
 
     if (!dbUser) {
       return res.status(404).json({ error: 'User not found' });
@@ -87,7 +89,7 @@ router.post('/sessions/request', isAuthenticated, async (req, res) => {
 router.get('/messages', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
 
     if (!dbUser) {
       return res.status(404).render('error', { error: 'User not found', user });
@@ -133,7 +135,7 @@ router.post('/messages/send', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Subject and content required' });
     }
 
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
     if (!dbUser) {
       return res.status(404).json({ error: 'User not found' });
     }
