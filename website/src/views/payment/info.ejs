@@ -283,12 +283,12 @@
         <p>Unlock premium content and features</p>
       </div>
 
-      <% if (tier && tier !== 'free') %>
+      <% if (tier && tier !== 'free') { %>
         <div class="current-tier-banner">
           <h3>Current Tier: <%= tier %></h3>
           <p>You're already enjoying premium features!</p>
         </div>
-      <% end %>
+      <% } %>
 
       <div class="tiers-row">
         <!-- Free Tier -->
@@ -301,11 +301,11 @@
             <li>Community forums</li>
             <li>1 free certificate</li>
           </ul>
-          <% if (tier === 'free') %>
+          <% if (tier === 'free') { %>
             <div class="tier-current-badge">✓ CURRENT</div>
-          <% else %>
+          <% } else { %>
             <button class="submit-btn" disabled>Free Tier</button>
-          <% end %>
+          <% } %>
         </div>
 
         <!-- Paid Tier -->
@@ -319,11 +319,11 @@
             <li>Unlimited certificates</li>
             <li>Priority support</li>
           </ul>
-          <% if (tier === 'paid' || tier === 'advanced') %>
+          <% if (tier === 'paid' || tier === 'advanced') { %>
             <div class="tier-current-badge">✓ ACTIVE</div>
-          <% else %>
+          <% } else { %>
             <button class="submit-btn" onclick="selectTier('paid')">Upgrade Now</button>
-          <% end %>
+          <% } %>
         </div>
 
         <!-- Advanced Tier -->
@@ -337,11 +337,11 @@
             <li>Code review service</li>
             <li>Expert community access</li>
           </ul>
-          <% if (tier === 'advanced') %>
+          <% if (tier === 'advanced') { %>
             <div class="tier-current-badge">✓ CURRENT</div>
-          <% else %>
+          <% } else { %>
             <button class="submit-btn" onclick="selectTier('advanced')">Upgrade Now</button>
-          <% end %>
+          <% } %>
         </div>
       </div>
 

@@ -267,7 +267,7 @@
       <div class="messages-list">
         <h2>Messages</h2>
         
-        <% if (messages && messages.length > 0) %>
+        <% if (messages && messages.length > 0) { %>
           <% messages.forEach((msg, idx) => { %>
             <div 
               class="message-item <%= msg.is_read ? '' : 'unread' %>" 
@@ -279,11 +279,11 @@
               <div class="message-time"><%= new Date(msg.created_at).toLocaleDateString() %></div>
             </div>
           <% }); %>
-        <% else %>
+        <% } else { %>
           <div class="empty-state">
             <p>📭 No messages</p>
           </div>
-        <% end %>
+        <% } %>
       </div>
 
       <div class="message-detail" id="message-detail">

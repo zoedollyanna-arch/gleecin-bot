@@ -3,6 +3,8 @@ class ScriptLibrary {
     constructor() {
         this.scripts = [];
         this.filteredScripts = [];
+        this.currentPage = 1;
+        this.pageSize = 9;
         this.init();
     }
 
@@ -14,7 +16,7 @@ class ScriptLibrary {
     setupEventListeners() {
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => this.filterScripts(e.target.value));
+            searchInput.addEventListener('input', () => this.applyFilters());
         }
 
         const categoryFilter = document.getElementById('category-filter');
@@ -77,11 +79,18 @@ class ScriptLibrary {
             return;
         }
 
-        container.innerHTML = scripts.map((script) => this.renderScriptCard(script)).join('');
+        this.filteredScripts = scripts;
+        const pageItems = this.getPageItems(scripts);
+
+        container.innerHTML = pageItems.map((script) => this.renderScriptCard(script)).join('');
         this.highlightCodeBlocks();
+        this.renderPagination(scripts.length);
     }
 
     renderEmptyState(message) {
+        const pagination = document.getElementById('pagination-container');
+        if (pagination) pagination.innerHTML = '';
+
         const container = document.getElementById('scripts-container');
         if (!container) return;
         container.innerHTML = `<div class="empty-state"><p>${this.escapeHtml(message)}</p></div>`;
@@ -132,20 +141,15 @@ class ScriptLibrary {
     }
 
     filterScripts(searchTerm) {
-        const term = (searchTerm || '').trim().toLowerCase();
-        this.filteredScripts = this.scripts.filter((script) => {
-            const title = (script.title || '').toLowerCase();
-            const description = (script.description || '').toLowerCase();
-            const tags = Array.isArray(script.tags) ? script.tags.join(' ').toLowerCase() : '';
-            return !term || title.includes(term) || description.includes(term) || tags.includes(term);
-        });
-        this.applyFilters(false);
+        this.currentPage = 1;
+        this.applyFilters();
     }
 
-    applyFilters(resetSearch = true) {
+    applyFilters() {
+        this.currentPage = 1;
         const category = document.getElementById('category-filter')?.value || 'all';
         const language = document.getElementById('language-filter')?.value || 'all';
-        const search = resetSearch ? (document.getElementById('search-input')?.value || '').trim().toLowerCase() : '';
+        const search = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
 
         const filtered = this.scripts.filter((script) => {
             const scriptCategory = (script.category || 'general').toLowerCase();
@@ -162,7 +166,48 @@ class ScriptLibrary {
         });
 
         this.filteredScripts = filtered;
+        this.currentPage = 1;
         this.displayScripts(filtered);
+    }
+
+    getPageItems(scripts) {
+        const start = (this.currentPage - 1) * this.pageSize;
+        return scripts.slice(start, start + this.pageSize);
+    }
+
+    renderPagination(totalCount) {
+        const pagination = document.getElementById('pagination-container');
+        if (!pagination) return;
+
+        const totalPages = Math.max(1, Math.ceil(totalCount / this.pageSize));
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        if (this.currentPage > totalPages) {
+            this.currentPage = totalPages;
+        }
+
+        const pageButtons = [];
+        pageButtons.push(`<button class="pagination-btn" data-page="${Math.max(1, this.currentPage - 1)}" ${this.currentPage === 1 ? 'disabled' : ''}>← Prev</button>`);
+
+        for (let page = 1; page <= totalPages; page += 1) {
+            pageButtons.push(`<button class="pagination-btn ${page === this.currentPage ? 'active' : ''}" data-page="${page}">${page}</button>`);
+        }
+
+        pageButtons.push(`<button class="pagination-btn" data-page="${Math.min(totalPages, this.currentPage + 1)}" ${this.currentPage === totalPages ? 'disabled' : ''}>Next →</button>`);
+
+        pagination.innerHTML = pageButtons.join('');
+        pagination.querySelectorAll('button[data-page]').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                const page = Number(event.currentTarget.dataset.page);
+                if (!page || page === this.currentPage) return;
+                this.currentPage = page;
+                this.displayScripts(this.filteredScripts);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
     }
 
     async copyToClipboard(scriptId) {

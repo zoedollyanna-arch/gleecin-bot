@@ -255,7 +255,7 @@
     <div class="recent-payments">
       <h2>💳 Pending Payments</h2>
 
-      <% if (recentPayments && recentPayments.length > 0) %>
+      <% if (recentPayments && recentPayments.length > 0) { %>
         <table class="payments-table">
           <thead>
             <tr>
@@ -287,11 +287,11 @@
             <% }); %>
           </tbody>
         </table>
-      <% else %>
+      <% } else { %>
         <div class="empty-state">
           <p>✓ All caught up! No pending payments.</p>
         </div>
-      <% end %>
+      <% } %>
     </div>
   </div>
 

@@ -249,7 +249,7 @@
     <div class="requests-section">
       <h2>Pending & Active Requests</h2>
       
-      <% if (requests && requests.length > 0) %>
+      <% if (requests && requests.length > 0) { %>
         <% requests.forEach(request => { %>
           <div class="request-card">
             <div class="request-header">
@@ -300,11 +300,11 @@
             </div>
           </div>
         <% }); %>
-      <% else %>
+      <% } else { %>
         <div class="empty-state">
           <p>📭 No session requests yet!</p>
         </div>
-      <% end %>
+      <% } %>
     </div>
   </div>
 

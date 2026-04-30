@@ -311,7 +311,7 @@
                 </td>
                 <td>
                   <% if (log.details) { %>
-                    <button class="details-btn" onclick="showDetails(<%= log.id %>)">View →</button>
+                    <button class="details-btn" data-log-id="<%= log.id %>">View →</button>
                   <% } else { %>
                     <span style="color: #666;">—</span>
                   <% } %>
@@ -338,6 +338,10 @@
   <script>
     document.getElementById('adminFilter').addEventListener('keyup', filterLogs);
     document.getElementById('actionFilter').addEventListener('change', filterLogs);
+
+    document.querySelectorAll('.details-btn').forEach(button => {
+      button.addEventListener('click', () => showDetails(button.dataset.logId));
+    });
 
     function filterLogs() {
       const adminFilter = document.getElementById('adminFilter').value.toLowerCase();
