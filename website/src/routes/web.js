@@ -48,7 +48,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
   const user = req.session.user;
   
   try {
-    const dbUser = await get('SELECT is_admin FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await get('SELECT is_admin FROM users WHERE discord_id = $1', [user.discord_id || user.id]);
     
     if (dbUser?.is_admin) {
       return res.redirect('/admin');

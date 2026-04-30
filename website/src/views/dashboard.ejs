@@ -102,10 +102,11 @@
         <div class="dashboard-grid">
             <div class="card">
                 <h3>📚 Enrolled Classes</h3>
-                <p>Continue with your current coursework</p>
-                <ul style="list-style: none; margin: 1rem 0;">
-                    <li>• Scripting Fundamentals (Week 2)</li>
-                    <li>• Office hours on Sundays</li>
+                <p>Manage your active classes and syllabus access.</p>
+                <ul style="list-style: none; margin: 1rem 0; padding: 0;">
+                    <li>• View enrolled classes</li>
+                    <li>• Request enrollment from class detail pages</li>
+                    <li>• Open live lesson content and schedules</li>
                 </ul>
                 <a href="/classes" class="btn btn-primary card-btn">View Classes</a>
             </div>
@@ -113,67 +114,67 @@
             <div class="card">
                 <h3>🎥 Lessons</h3>
                 <p>Access recorded classes and tutorials</p>
-                <p style="font-size: 0.9rem; color: #aaa;">12 lessons available for your tier</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Tier-based lesson access</p>
                 <a href="/lessons" class="btn btn-primary card-btn">Watch Lessons</a>
             </div>
 
             <div class="card">
                 <h3>💻 Challenges</h3>
                 <p>Practice with interactive coding challenges</p>
-                <p style="font-size: 0.9rem; color: #aaa;">3 challenges completed, 5 available</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Real challenge editor with test submission</p>
                 <a href="/learning" class="btn btn-primary card-btn">Start Challenge</a>
             </div>
 
             <div class="card">
-                <h3>📖 Scripts</h3>
-                <p>Browse the script library</p>
-                <p style="font-size: 0.9rem; color: #aaa;">Access <strong><%= tier === 'free' ? '50' : tier === 'paid' ? '200' : 'all' %></strong> scripts</p>
-                <a href="/scripts" class="btn btn-primary card-btn">Browse Scripts</a>
+                <h3>💬 Inbox</h3>
+                <p>Read support messages and message staff.</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Direct access to student inbox</p>
+                <a href="/student/messages" class="btn btn-primary card-btn">Open Inbox</a>
             </div>
 
             <div class="card">
                 <h3>📅 Schedule</h3>
                 <p>View upcoming classes and announcements</p>
-                <p style="font-size: 0.9rem; color: #aaa;">Next class: Tuesday, 6 PM EST</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Live schedule and event actions</p>
                 <a href="/schedule" class="btn btn-primary card-btn">View Schedule</a>
             </div>
 
             <div class="card">
                 <h3>🏆 Certifications</h3>
-                <p>Track your progress and earned certificates</p>
-                <p style="font-size: 0.9rem; color: #aaa;">1 earned, 2 in progress</p>
+                <p>Track earned certificates and completion milestones.</p>
+                <p style="font-size: 0.9rem; color: #aaa;">Production certificate workflow</p>
                 <a href="/certification" class="btn btn-primary card-btn">View Progress</a>
             </div>
         </div>
 
-        <h2 class="section-title">📈 Your Progress</h2>
+        <h2 class="section-title">Student Overview</h2>
         <div class="progress-item">
             <div>
-                <strong>Scripting Fundamentals</strong>
-                <span style="float: right; color: var(--primary);">65%</span>
+                <strong>Classes</strong>
+                <span style="float: right; color: var(--primary);">Live</span>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: 65%"></div>
+                <div class="progress-fill" style="width: 100%"></div>
             </div>
         </div>
 
         <div class="progress-item">
             <div>
-                <strong>Video Lesson Completion</strong>
-                <span style="float: right; color: var(--primary);">42%</span>
+                <strong>Lessons</strong>
+                <span style="float: right; color: var(--primary);">Available</span>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: 42%"></div>
+                <div class="progress-fill" style="width: 100%"></div>
             </div>
         </div>
 
         <div class="progress-item">
             <div>
-                <strong>Coding Challenges</strong>
-                <span style="float: right; color: var(--primary);">37%</span>
+                <strong>Challenges</strong>
+                <span style="float: right; color: var(--primary);">Interactive</span>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: 37%"></div>
+                <div class="progress-fill" style="width: 100%"></div>
             </div>
         </div>
     </div>
