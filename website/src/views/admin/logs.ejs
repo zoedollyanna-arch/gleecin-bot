@@ -1,365 +1,89 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Logs - Admin</title>
-  <link rel="stylesheet" href="/css/styles.css">
-  <style>
-    .admin-container {
-      background: linear-gradient(135deg, #0F0F14 0%, #1a1a22 100%);
-      color: #EAEAEA;
-      min-height: 100vh;
-      padding: 20px;
-    }
+<%- include('../partials/admin-header', { title: 'Admin Logs' }) %>
 
-    .admin-header {
-      background: #1a1a22;
-      border-bottom: 2px solid #7B61FF;
-      padding: 20px;
-      margin-bottom: 30px;
-      border-radius: 8px;
-    }
-
-    .admin-header h1 {
-      color: #7B61FF;
-      margin: 0;
-      font-size: 2em;
-    }
-
-    .admin-nav {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-      flex-wrap: wrap;
-    }
-
-    .admin-nav a {
-      background: #0F0F14;
-      color: #00D1FF;
-      padding: 10px 15px;
-      border-radius: 6px;
-      text-decoration: none;
-      border: 1px solid #7B61FF;
-      transition: all 0.3s;
-    }
-
-    .admin-nav a:hover,
-    .admin-nav a.active {
-      background: #7B61FF;
-      color: #0F0F14;
-    }
-
-    .content-section {
-      background: #1a1a22;
-      border: 2px solid #7B61FF;
-      border-radius: 8px;
-      padding: 25px;
-      margin-bottom: 30px;
-    }
-
-    .content-section h2 {
-      color: #7B61FF;
-      margin-top: 0;
-    }
-
-    .filter-bar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .filter-bar input,
-    .filter-bar select {
-      padding: 10px;
-      background: #0F0F14;
-      color: #EAEAEA;
-      border: 1px solid #7B61FF;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    .filter-bar input {
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .filter-bar input::placeholder {
-      color: #666;
-    }
-
-    .filter-bar input:focus,
-    .filter-bar select:focus {
-      outline: none;
-      border-color: #00D1FF;
-    }
-
-    .logs-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-
-    .logs-table th {
-      background: #0F0F14;
-      color: #00D1FF;
-      padding: 12px;
-      text-align: left;
-      border-bottom: 2px solid #7B61FF;
-      font-weight: bold;
-      font-size: 0.95em;
-    }
-
-    .logs-table td {
-      padding: 12px;
-      border-bottom: 1px solid #333;
-      color: #EAEAEA;
-      font-size: 0.95em;
-    }
-
-    .logs-table tr:hover {
-      background: rgba(123, 97, 255, 0.1);
-    }
-
-    .action-badge {
-      display: inline-block;
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 0.85em;
-      font-weight: bold;
-      background: rgba(123, 97, 255, 0.2);
-      color: #7B61FF;
-    }
-
-    .action-badge.make_admin,
-    .action-badge.verify_payment {
-      background: rgba(0, 209, 255, 0.2);
-      color: #00D1FF;
-    }
-
-    .action-badge.reject_payment,
-    .action-badge.upload_script {
-      background: rgba(255, 122, 0, 0.2);
-      color: #FF7A00;
-    }
-
-    .admin-name {
-      color: #00D1FF;
-      font-weight: bold;
-    }
-
-    .target-name {
-      color: #7B61FF;
-    }
-
-    .timestamp {
-      color: #999;
-      font-size: 0.9em;
-    }
-
-    .details-btn {
-      background: none;
-      border: none;
-      color: #00D1FF;
-      cursor: pointer;
-      text-decoration: underline;
-      font-weight: bold;
-      padding: 0;
-    }
-
-    .details-btn:hover {
-      color: #7B61FF;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-
-    .pagination {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-top: 30px;
-      flex-wrap: wrap;
-    }
-
-    .pagination button {
-      background: #0F0F14;
-      color: #00D1FF;
-      padding: 10px 15px;
-      border: 1px solid #7B61FF;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.3s;
-    }
-
-    .pagination button:hover:not(:disabled) {
-      background: #7B61FF;
-      color: #0F0F14;
-    }
-
-    .pagination button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 768px) {
-      .admin-nav {
-        flex-direction: column;
-      }
-
-      .admin-nav a {
-        width: 100%;
-        text-align: center;
-      }
-
-      .logs-table {
-        font-size: 0.9em;
-      }
-
-      .logs-table th,
-      .logs-table td {
-        padding: 8px;
-      }
-
-      .filter-bar {
-        flex-direction: column;
-      }
-
-      .filter-bar input,
-      .filter-bar select {
-        width: 100%;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="admin-container">
-    <div class="admin-header">
-      <h1>👨‍💼 Admin Dashboard</h1>
-      <p style="margin: 10px 0 0 0; color: #999;">Logged in as: <strong><%= user.username %></strong></p>
-      <div class="admin-nav">
-        <a href="/admin">📊 Dashboard</a>
-        <a href="/admin/users">👥 Users</a>
-        <a href="/admin/payments">💰 Payments</a>
-        <a href="/admin/scripts">📝 Scripts</a>
-        <a href="/admin/lessons">🎓 Lessons</a>
-        <a href="/admin/session-requests">📅 Sessions</a>
-        <a href="/admin/messages">💬 Messages</a>
-        <a href="/admin/certifications">🏆 Certificates</a>
-        <a href="/admin/logs" class="active">📋 Logs</a>
-        <a href="/auth/logout" style="background: #ff6b6b; color: white; border: 1px solid #ff6b6b;">🚪 Logout</a>
+<main class="admin-shell">
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <div>
+        <p class="admin-eyebrow">Audit trail</p>
+        <h1>Logs</h1>
+        <p class="admin-muted">Track all admin activity, filter actions, and review details from one unified page.</p>
       </div>
     </div>
 
-    <div class="content-section">
-      <h2>📋 Admin Activity Logs</h2>
-
-      <div class="filter-bar">
-        <input type="text" id="adminFilter" placeholder="Filter by admin name...">
+    <div class="admin-form-grid">
+      <label class="admin-field">
+        <span>Filter by admin</span>
+        <input type="text" id="adminFilter" placeholder="Search admin name...">
+      </label>
+      <label class="admin-field">
+        <span>Filter by action</span>
         <select id="actionFilter">
-          <option value="">All Actions</option>
-          <option value="make_admin">👑 Make Admin</option>
-          <option value="set_tier">🎯 Set Tier</option>
-          <option value="verify_payment">✓ Verify Payment</option>
-          <option value="reject_payment">✗ Reject Payment</option>
-          <option value="upload_script">📝 Upload Script</option>
+          <option value="">All actions</option>
+          <option value="make_admin">Make admin</option>
+          <option value="set_tier">Set tier</option>
+          <option value="verify_payment">Verify payment</option>
+          <option value="reject_payment">Reject payment</option>
+          <option value="upload_script">Upload script</option>
+          <option value="create_lesson">Create lesson</option>
+          <option value="issue_certificate">Issue certificate</option>
+          <option value="approve_session">Approve session</option>
+          <option value="reject_session">Reject session</option>
         </select>
-      </div>
+      </label>
+    </div>
+  </section>
 
-      <% if (logs && logs.length > 0) { %>
-        <table class="logs-table">
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Activity log</h2>
+    </div>
+
+    <% if (Array.isArray(logs) && logs.length) { %>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
           <thead>
             <tr>
               <th>Admin</th>
               <th>Action</th>
-              <th>Target User</th>
-              <th>Date & Time</th>
+              <th>Target</th>
+              <th>Timestamp</th>
               <th>Details</th>
             </tr>
           </thead>
           <tbody id="logsTableBody">
-            <% logs.forEach(log => { %>
+            <% logs.forEach((log) => { %>
               <tr class="log-row" data-admin="<%= (log.admin_name || '').toLowerCase() %>" data-action="<%= log.action %>">
-                <td><span class="admin-name"><%= log.admin_name || 'Unknown' %></span></td>
-                <td>
-                  <span class="action-badge <%= log.action %>">
-                    <% if (log.action === 'make_admin') { %>👑<% } 
-                       else if (log.action === 'set_tier') { %>🎯<% } 
-                       else if (log.action === 'verify_payment') { %>✓<% } 
-                       else if (log.action === 'reject_payment') { %>✗<% } 
-                       else if (log.action === 'upload_script') { %>📝<% } 
-                       else { %>⚙️<% } %>
-                    <%= log.action.replace(/_/g, ' ').toUpperCase() %>
-                  </span>
-                </td>
-                <td>
-                  <% if (log.target_name) { %>
-                    <span class="target-name"><%= log.target_name %></span>
-                  <% } else { %>
-                    <span style="color: #999;">N/A</span>
-                  <% } %>
-                </td>
-                <td>
-                  <span class="timestamp">
-                    <%= new Date(log.created_at).toLocaleString() %>
-                  </span>
-                </td>
-                <td>
-                  <% if (log.details) { %>
-                    <button class="details-btn" data-log-id="<%= log.id %>">View →</button>
-                  <% } else { %>
-                    <span style="color: #666;">—</span>
-                  <% } %>
-                </td>
+                <td><strong><%= log.admin_name || 'Unknown' %></strong></td>
+                <td><span class="admin-pill"><%= log.action.replace(/_/g, ' ') %></span></td>
+                <td><%= log.target_name || 'N/A' %></td>
+                <td><%= log.created_at ? new Date(log.created_at).toLocaleString() : '—' %></td>
+                <td><%= log.details ? JSON.stringify(log.details) : '—' %></td>
               </tr>
-            <% }); %>
+            <% }) %>
           </tbody>
         </table>
+      </div>
+    <% } else { %>
+      <p class="admin-empty">No admin logs yet.</p>
+    <% } %>
+  </section>
+</main>
 
-        <div class="pagination">
-          <button disabled>← Previous</button>
-          <span style="color: #999; padding: 10px 15px;">Page 1 of 1</span>
-          <button disabled>Next →</button>
-        </div>
-      <% } else { %>
-        <div class="empty-state">
-          <p>📭 No admin logs yet</p>
-          <p>Activity logs will appear here as admins perform actions</p>
-        </div>
-      <% } %>
-    </div>
-  </div>
-
-  <script>
-    document.getElementById('adminFilter').addEventListener('keyup', filterLogs);
-    document.getElementById('actionFilter').addEventListener('change', filterLogs);
-
-    document.querySelectorAll('.details-btn').forEach(button => {
-      button.addEventListener('click', () => showDetails(button.dataset.logId));
+<script>
+  function filterLogs() {
+    const adminFilter = document.getElementById('adminFilter').value.toLowerCase();
+    const actionFilter = document.getElementById('actionFilter').value;
+    document.querySelectorAll('.log-row').forEach((row) => {
+      const admin = row.dataset.admin || '';
+      const action = row.dataset.action || '';
+      const matchesAdmin = admin.includes(adminFilter);
+      const matchesAction = !actionFilter || action === actionFilter;
+      row.style.display = matchesAdmin && matchesAction ? '' : 'none';
     });
+  }
 
-    function filterLogs() {
-      const adminFilter = document.getElementById('adminFilter').value.toLowerCase();
-      const actionFilter = document.getElementById('actionFilter').value;
-      const rows = document.querySelectorAll('.log-row');
+  document.getElementById('adminFilter').addEventListener('input', filterLogs);
+  document.getElementById('actionFilter').addEventListener('change', filterLogs);
+</script>
 
-      rows.forEach(row => {
-        const admin = row.dataset.admin;
-        const action = row.dataset.action;
-        const adminMatch = admin.includes(adminFilter);
-        const actionMatch = !actionFilter || action === actionFilter;
-        row.style.display = (adminMatch && actionMatch) ? '' : 'none';
-      });
-    }
-
-    function showDetails(logId) {
-      window.location.href = '/admin/logs';
-    }
-  </script>
-</body>
-</html>
+<%- include('../partials/admin-footer') %>

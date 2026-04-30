@@ -17,10 +17,6 @@
           <input name="title" type="text" required>
         </label>
         <label class="admin-field">
-          <span>Slug</span>
-          <input name="slug" type="text" placeholder="intro-to-node">
-        </label>
-        <label class="admin-field">
           <span>Level</span>
           <select name="level" required>
             <option value="">Select level</option>
@@ -82,7 +78,6 @@
               <th>Lesson</th>
               <th>Video</th>
               <th>Progress</th>
-              <th>Challenges</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -91,11 +86,10 @@
               <tr>
                 <td>
                   <strong><%= lesson.title %></strong>
-                  <p class="admin-muted"><%= lesson.slug || '' %></p>
+                  <p class="admin-muted"><%= lesson.creator || 'Admin' %></p>
                 </td>
                 <td><%= lesson.video_url ? 'URL' : (lesson.video_path ? 'Upload' : '—') %></td>
                 <td><%= lesson.progress_count ?? lesson.progress ?? 0 %></td>
-                <td><%= lesson.challenge_count ?? lesson.challenges ?? 0 %></td>
                 <td>
                   <div class="admin-row-actions">
                     <a class="admin-link" href="/admin/lessons/<%= lesson.id %>">Edit</a>

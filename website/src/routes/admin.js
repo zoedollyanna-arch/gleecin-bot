@@ -248,7 +248,7 @@ router.get('/lessons', adminOnly, async (req, res) => {
       FROM lesson_progress lp
       JOIN lessons l ON lp.lesson_id = l.id
       JOIN users u ON lp.user_id = u.id
-      ORDER BY lp.updated_at DESC NULLS LAST, lp.last_watched_at DESC NULLS LAST, lp.completed_at DESC NULLS LAST
+      ORDER BY COALESCE(lp.completed_at, lp.last_watched_at, lp.id::text::timestamp) DESC NULLS LAST
     `);
 
     res.render('admin/lessons', { user: req.session.user, lessons, progress, title: 'Lesson Management' });
@@ -302,7 +302,7 @@ router.get('/certifications', adminOnly, async (req, res) => {
 
 router.get('/logs', adminOnly, async (req, res) => {
   try {
-    const logs = await all(`SELECT al.*, a.username AS admin_name, t.username AS target_name FROM admin_logs al JOIN users a ON al.admin_id = a.id LEFT JOIN users t ON al.target_user_id = t.id ORDER BY al.created_at DESC LIMIT 100`);
+    const logs = await all(`SELECT al.*, a.username AS admin_name, t.username AS target_name FROM admin_logs al JOIN users a ON al.admin_id = a.id LEFT JOIN users t ON al.target_user_id = t.id ORDER BY al.created_at DESC NULLS LAST LIMIT 100`);
     res.render('admin/logs', { user: req.session.user, logs, title: 'Admin Logs' });
   } catch (error) {
     console.error('[LOGS ERROR]', error);
@@ -471,7 +471,7 @@ router.get('/schedules', adminOnly, async (req, res) => {
       SELECT s.*, c.name AS class_name
       FROM schedules s
       LEFT JOIN classes c ON s.class_id = c.id
-      ORDER BY s.scheduled_date DESC NULLS LAST, s.created_at DESC
+      ORDER BY COALESCE(s.scheduled_date::timestamp, s.created_at) DESC NULLS LAST
     `);
     const classes = await all(`SELECT id, name FROM classes ORDER BY created_at DESC`);
     const announcements = await all(`SELECT * FROM announcements ORDER BY created_at DESC`);

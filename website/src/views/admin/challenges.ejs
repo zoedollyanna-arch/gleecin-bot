@@ -6,30 +6,89 @@
       <div>
         <p class="admin-eyebrow">Challenge management</p>
         <h1>Challenges</h1>
-        <p class="admin-muted">Review submissions, completion status, and student performance without leaving the admin area.</p>
+        <p class="admin-muted">Review submissions, track completions, and create new coding challenges.</p>
       </div>
     </div>
 
+    <form class="admin-form" id="createChallengeForm">
+      <div class="admin-form-grid">
+        <label class="admin-field">
+          <span>Title</span>
+          <input name="title" type="text" placeholder="Challenge title" required>
+        </label>
+        <label class="admin-field">
+          <span>Difficulty</span>
+          <select name="difficulty" required>
+            <option value="">Select difficulty</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Level</span>
+          <select name="level" required>
+            <option value="">Select level</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Tier</span>
+          <select name="price_tier" required>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Description</span>
+          <textarea name="description" rows="4" placeholder="Challenge description" required></textarea>
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Starter code</span>
+          <textarea name="starter_code" rows="6" placeholder="Starter code"></textarea>
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Solution</span>
+          <textarea name="solution" rows="6" placeholder="Solution code"></textarea>
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Explanation</span>
+          <textarea name="explanation" rows="4" placeholder="Explain the approach"></textarea>
+        </label>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-btn admin-btn-primary" type="submit">Create challenge</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Challenges</h2>
+    </div>
     <% if (Array.isArray(challenges) && challenges.length) { %>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
             <tr>
               <th>Challenge</th>
-              <th>Lesson</th>
+              <th>Difficulty</th>
+              <th>Tier</th>
               <th>Submissions</th>
               <th>Completions</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <% challenges.forEach((challenge) => { %>
               <tr>
-                <td><strong><%= challenge.title %></strong><p class="admin-muted"><%= challenge.slug || '' %></p></td>
-                <td><%= challenge.lesson_title || challenge.lesson || '—' %></td>
-                <td><%= challenge.submission_count ?? challenge.submissions ?? 0 %></td>
-                <td><%= challenge.completion_count ?? challenge.completions ?? 0 %></td>
-                <td><a class="admin-link" href="/admin/challenges/<%= challenge.id %>">Review</a></td>
+                <td><strong><%= challenge.title %></strong></td>
+                <td><%= challenge.difficulty || '—' %></td>
+                <td><span class="admin-pill"><%= String(challenge.price_tier || 'free').toUpperCase() %></span></td>
+                <td><%= challenge.submission_count ?? 0 %></td>
+                <td><%= challenge.completion_count ?? 0 %></td>
               </tr>
             <% }) %>
           </tbody>
@@ -58,10 +117,10 @@
           <tbody>
             <% submissions.forEach((submission) => { %>
               <tr>
-                <td><%= submission.student_name || submission.student || 'Student' %></td>
-                <td><%= submission.challenge_title || submission.challenge || 'Challenge' %></td>
-                <td><span class="admin-pill"><%= submission.status || 'Submitted' %></span></td>
-                <td><%= submission.created_at ? new Date(submission.created_at).toLocaleString() : '—' %></td>
+                <td><%= submission.student_name || 'Student' %></td>
+                <td><%= submission.challenge_title || 'Challenge' %></td>
+                <td><span class="admin-pill"><%= submission.status || 'submitted' %></span></td>
+                <td><%= submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : '—' %></td>
               </tr>
             <% }) %>
           </tbody>
@@ -72,5 +131,24 @@
     <% } %>
   </section>
 </main>
+
+<script>
+  document.getElementById('createChallengeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    const res = await fetch('/admin/challenges/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert('Challenge created');
+      location.reload();
+    } else {
+      alert(json.error || 'Failed');
+    }
+  });
+</script>
 
 <%- include('../partials/admin-footer') %>

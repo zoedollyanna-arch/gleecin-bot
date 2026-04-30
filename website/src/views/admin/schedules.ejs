@@ -6,8 +6,58 @@
       <div>
         <p class="admin-eyebrow">Scheduling</p>
         <h1>Schedules</h1>
-        <p class="admin-muted">Edit schedules directly and persist changes without leaving the page.</p>
+        <p class="admin-muted">Edit schedules directly, publish announcements, and keep session planning in one place.</p>
       </div>
+    </div>
+
+    <div class="admin-grid admin-grid-2">
+      <form class="admin-form" id="createAnnouncementForm">
+        <h2>New announcement</h2>
+        <label class="admin-field">
+          <span>Title</span>
+          <input name="title" type="text" required>
+        </label>
+        <label class="admin-field">
+          <span>Content</span>
+          <textarea name="content" rows="4" required></textarea>
+        </label>
+        <label class="admin-field">
+          <span>Expires at</span>
+          <input name="expires_at" type="datetime-local">
+        </label>
+        <label class="admin-field">
+          <span>Important</span>
+          <select name="important">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </label>
+        <div class="admin-form-actions">
+          <button type="submit" class="admin-btn admin-btn-primary">Publish announcement</button>
+        </div>
+      </form>
+
+      <div class="admin-info-card">
+        <h2>Classes available for schedules</h2>
+        <% if (Array.isArray(classes) && classes.length) { %>
+          <div class="admin-list">
+            <% classes.forEach((cls) => { %>
+              <div class="admin-list-item">
+                <strong><%= cls.name %></strong>
+                <span class="admin-muted">Class ID: <%= cls.id %></span>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <p class="admin-empty">No classes available.</p>
+        <% } %>
+      </div>
+    </div>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Scheduled sessions</h2>
     </div>
 
     <% if (Array.isArray(schedules) && schedules.length) { %>
@@ -15,11 +65,12 @@
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Session</th>
+              <th>Title</th>
               <th>Instructor</th>
               <th>Date</th>
               <th>Time</th>
               <th>Capacity</th>
+              <th>Published</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -32,6 +83,7 @@
                   <td><input class="admin-inline-input" name="scheduled_date" type="date" value="<%= schedule.scheduled_date ? new Date(schedule.scheduled_date).toISOString().slice(0,10) : '' %>"></td>
                   <td><input class="admin-inline-input" name="scheduled_time" type="time" value="<%= schedule.scheduled_time || '' %>"></td>
                   <td><input class="admin-inline-input" name="capacity" type="number" min="1" value="<%= schedule.capacity ?? '' %>"></td>
+                  <td><span class="admin-pill"><%= schedule.published ? 'Published' : 'Draft' %></span></td>
                   <td>
                     <div class="admin-row-actions">
                       <button class="admin-btn admin-btn-primary admin-btn-sm" type="submit">Save</button>
@@ -48,6 +100,44 @@
       <p class="admin-empty">No schedules configured.</p>
     <% } %>
   </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Announcements</h2>
+    </div>
+    <% if (Array.isArray(announcements) && announcements.length) { %>
+      <div class="admin-list">
+        <% announcements.forEach((announcement) => { %>
+          <article class="admin-list-item">
+            <strong><%= announcement.title %></strong>
+            <p class="admin-muted"><%= announcement.content %></p>
+            <p class="admin-muted">Important: <%= announcement.important ? 'Yes' : 'No' %></p>
+          </article>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="admin-empty">No announcements yet.</p>
+    <% } %>
+  </section>
 </main>
+
+<script>
+  document.getElementById('createAnnouncementForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    const res = await fetch('/admin/schedules/announcement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert('Announcement published');
+      location.reload();
+    } else {
+      alert(json.error || 'Failed');
+    }
+  });
+</script>
 
 <%- include('../partials/admin-footer') %>
