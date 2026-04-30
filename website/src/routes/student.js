@@ -11,7 +11,17 @@ const router = express.Router();
 
 async function getDbUser(user) {
   const discordId = user?.discord_id || user?.id;
-  return get('SELECT id, username, discord_id FROM users WHERE discord_id = $1', [discordId]);
+
+  let dbUser = await get('SELECT id, username, discord_id FROM users WHERE discord_id = $1', [discordId]);
+  if (dbUser) {
+    return dbUser;
+  }
+
+  if (user?.id) {
+    dbUser = await get('SELECT id, username, discord_id FROM users WHERE id = $1', [user.id]);
+  }
+
+  return dbUser;
 }
 
 function mapRowsById(rows, key) {
@@ -195,7 +205,7 @@ router.get('/lessons', isAuthenticated, async (req, res) => {
   try {
     const user = req.session.user;
     const tier = getUserTier(user);
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
 
     if (!dbUser) {
       return res.status(404).render('error', { error: 'User not found', user });
@@ -254,7 +264,7 @@ router.get('/lessons/:id', isAuthenticated, async (req, res) => {
       return res.status(403).render('error', { error: 'Access denied', user });
     }
 
-    const dbUser = await get('SELECT id FROM users WHERE discord_id = $1', [user.id]);
+    const dbUser = await getDbUser(user);
     const progress = await get(
       'SELECT * FROM lesson_progress WHERE user_id = $1 AND lesson_id = $2',
       [dbUser.id, id]

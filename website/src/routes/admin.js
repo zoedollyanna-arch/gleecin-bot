@@ -232,18 +232,57 @@ router.get('/scripts', adminOnly, async (req, res) => {
   }
 });
 
+router.post('/scripts/create', isAdmin, async (req, res) => {
+  try {
+    const { title, description, category, tier, code, explanation, use_cases, common_mistakes, language, version, tags, is_public } = req.body;
+
+    if (!title || !category) {
+      return res.status(400).json({ error: 'Title and category are required' });
+    }
+
+    const created = await run(
+      `INSERT INTO scripts (title, description, category, author_id, price_tier, code, explanation, use_cases, common_mistakes, language, version, tags, is_public, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW()) RETURNING id`,
+      [
+        title,
+        description || null,
+        category,
+        req.session.user.id,
+        tier || 'free',
+        code || null,
+        explanation || null,
+        use_cases || null,
+        common_mistakes || null,
+        language || null,
+        version || null,
+        tags ? String(tags).split(',').map((tag) => tag.trim()).filter(Boolean) : [],
+        is_public !== 'false'
+      ]
+    );
+
+    const scriptRow = await get(`SELECT s.*, u.username AS author FROM scripts s LEFT JOIN users u ON s.author_id = u.id WHERE s.id = $1`, [created.id]);
+    console.log('[SCRIPTS] created script', { scriptId: created.id, adminId: req.session.user.id, title });
+    res.json({ success: true, scriptId: created.id, script: scriptRow });
+  } catch (error) {
+    console.error('[SCRIPT CREATE ERROR]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/scripts/:id/update', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, category, tier, code, explanation, use_cases, common_mistakes, language, version, tags, is_public } = req.body;
-    await run(
+    const updated = await run(
       `UPDATE scripts
        SET title = $1, description = $2, category = $3, price_tier = $4, code = $5, explanation = $6,
            use_cases = $7, common_mistakes = $8, language = $9, version = $10, tags = $11, is_public = $12, updated_at = NOW()
        WHERE id = $13`,
-      [title, description, category, tier, code, explanation, use_cases, common_mistakes, language || null, version || null, tags ? String(tags).split(',').map((tag) => tag.trim()).filter(Boolean) : [], is_public !== 'false', id]
+      [title, description || null, category, tier || 'free', code || null, explanation || null, use_cases || null, common_mistakes || null, language || null, version || null, tags ? String(tags).split(',').map((tag) => tag.trim()).filter(Boolean) : [], is_public !== 'false', id]
     );
-    res.json({ success: true });
+    const scriptRow = await get(`SELECT s.*, u.username AS author FROM scripts s LEFT JOIN users u ON s.author_id = u.id WHERE s.id = $1`, [id]);
+    console.log('[SCRIPTS] updated script', { scriptId: id, changes: updated.changes, adminId: req.session.user.id });
+    res.json({ success: true, script: scriptRow });
   } catch (error) {
     console.error('[SCRIPT UPDATE ERROR]', error);
     res.status(500).json({ error: error.message });
@@ -253,20 +292,12 @@ router.post('/scripts/:id/update', isAdmin, async (req, res) => {
 router.post('/scripts/:id/delete', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    await run('DELETE FROM scripts WHERE id = $1', [id]);
-    res.json({ success: true });
+    const deleted = await run('DELETE FROM scripts WHERE id = $1', [id]);
+    console.log('[SCRIPTS] deleted script', { scriptId: id, changes: deleted.changes, adminId: req.session.user.id });
+    res.json({ success: true, deleted: deleted.changes });
   } catch (error) {
     console.error('[SCRIPT DELETE ERROR]', error);
     res.status(500).json({ error: error.message });
-  }
-});
-router.get('/scripts', adminOnly, async (req, res) => {
-  try {
-    const scripts = await all(`SELECT s.*, u.username AS author FROM scripts s LEFT JOIN users u ON s.author_id = u.id ORDER BY s.created_at DESC`);
-    res.render('admin/scripts', { user: req.session.user, scripts, title: 'Script Management' });
-  } catch (error) {
-    console.error('[SCRIPTS LIST ERROR]', error);
-    res.status(500).render('error', { error: error.message, user: req.session.user });
   }
 });
 
@@ -665,7 +696,14 @@ router.post('/schedules/create', isAdmin, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,NOW(),NOW()) RETURNING id`,
       [title, instructor || null, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null, req.session.user.id]
     );
-    res.json({ success: true, scheduleId: created.id });
+    const scheduleRow = await get(`
+      SELECT s.*, c.name AS class_name
+      FROM schedules s
+      LEFT JOIN classes c ON s.class_id = c.id
+      WHERE s.id = $1
+    `, [created.id]);
+    console.log('[SCHEDULES] created schedule', { scheduleId: created.id, adminId: req.session.user.id, title, classId: class_id || null });
+    res.json({ success: true, scheduleId: created.id, schedule: scheduleRow });
   } catch (error) {
     console.error('[SCHEDULE CREATE ERROR]', error);
     res.status(500).json({ error: error.message });
@@ -676,12 +714,20 @@ router.post('/schedules/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, instructor, scheduled_date, scheduled_time, capacity, description, class_id } = req.body;
-    await run(
+    const updated = await run(
       `UPDATE schedules SET title=$1, instructor=$2, scheduled_date=$3, scheduled_time=$4, capacity=$5, description=$6, class_id=$7, updated_by=$8, updated_at=NOW() WHERE id=$9`,
-      [title, instructor, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null, req.session.user.id, id]
+      [title, instructor || null, scheduled_date || null, scheduled_time || null, capacity || null, description || null, class_id || null, req.session.user.id, id]
     );
-    res.json({ success: true });
+    const scheduleRow = await get(`
+      SELECT s.*, c.name AS class_name
+      FROM schedules s
+      LEFT JOIN classes c ON s.class_id = c.id
+      WHERE s.id = $1
+    `, [id]);
+    console.log('[SCHEDULES] updated schedule', { scheduleId: id, changes: updated.changes, adminId: req.session.user.id });
+    res.json({ success: true, schedule: scheduleRow });
   } catch (error) {
+    console.error('[SCHEDULE UPDATE ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });

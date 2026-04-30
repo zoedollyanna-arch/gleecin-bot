@@ -281,21 +281,6 @@ const migrations = [
   `,
 
   `
-    CREATE TABLE sessions (
-      id SERIAL PRIMARY KEY,
-      student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      admin_id INTEGER REFERENCES users(id),
-      topic TEXT NOT NULL,
-      preferred_time TIMESTAMP,
-      duration INTEGER,
-      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-      admin_notes TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `,
-
-  `
     CREATE TABLE messages (
       id SERIAL PRIMARY KEY,
       sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
