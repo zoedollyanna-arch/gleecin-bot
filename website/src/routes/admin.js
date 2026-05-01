@@ -61,82 +61,102 @@ function getAdminActorId(req) {
 }
 
 function normalizeDuplicateKey(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function compactText(value) {
+  return normalizeDuplicateKey(value);
+}
+
+function getTokenSet(value) {
+  const tokens = compactText(value).split(' ').filter(Boolean);
+  return new Set(tokens);
+}
+
+function similarityScore(left, right) {
+  const a = getTokenSet(left);
+  const b = getTokenSet(right);
+  if (a.size === 0 || b.size === 0) return 0;
+
+  let overlap = 0;
+  for (const token of a) {
+    if (b.has(token)) overlap += 1;
+  }
+
+  return overlap / Math.max(a.size, b.size);
 }
 
 function hasDuplicateField(values) {
-  return new Set(values.filter(Boolean)).size !== values.filter(Boolean).length;
+  const normalized = values.map(compactText).filter(Boolean);
+  return new Set(normalized).size !== normalized.length;
+}
+
+function isNearDuplicate(candidate, existing) {
+  return similarityScore(candidate, existing) >= 0.7;
 }
 
 async function isDuplicateScriptEntry({ title, description, code, explanation, use_cases, common_mistakes, id = null }) {
   const existing = await all(
     `
-      SELECT id
+      SELECT id, title, description, code, explanation, use_cases, common_mistakes
       FROM scripts
-      WHERE (
-        LOWER(title) = LOWER($1)
-        OR (
-          LOWER(COALESCE(description, '')) = LOWER(COALESCE($2, ''))
-          AND LOWER(COALESCE(code, '')) = LOWER(COALESCE($3, ''))
-          AND LOWER(COALESCE(explanation, '')) = LOWER(COALESCE($4, ''))
-          AND LOWER(COALESCE(use_cases, '')) = LOWER(COALESCE($5, ''))
-          AND LOWER(COALESCE(common_mistakes, '')) = LOWER(COALESCE($6, ''))
-        )
-      )
-      AND ($7::int IS NULL OR id <> $7)
-      LIMIT 1
+      WHERE ($7::int IS NULL OR id <> $7)
     `,
     [title, description, code, explanation, use_cases, common_mistakes, id]
   );
 
-  return existing.length > 0;
+  const candidateTitle = compactText(title);
+  const candidateBody = [description, code, explanation, use_cases, common_mistakes].map(compactText).join(' ');
+
+  return existing.some((row) => {
+    const rowTitle = compactText(row.title);
+    const rowBody = [row.description, row.code, row.explanation, row.use_cases, row.common_mistakes].map(compactText).join(' ');
+    return rowTitle === candidateTitle || isNearDuplicate(candidateTitle, rowTitle) || similarityScore(candidateBody, rowBody) >= 0.65;
+  });
 }
 
 async function isDuplicateChallengeEntry({ title, description, starter_code, solution, explanation, id = null }) {
   const existing = await all(
     `
-      SELECT id
+      SELECT id, title, description, starter_code, solution, explanation
       FROM challenges
-      WHERE (
-        LOWER(title) = LOWER($1)
-        OR (
-          LOWER(COALESCE(description, '')) = LOWER(COALESCE($2, ''))
-          AND LOWER(COALESCE(starter_code, '')) = LOWER(COALESCE($3, ''))
-          AND LOWER(COALESCE(solution, '')) = LOWER(COALESCE($4, ''))
-          AND LOWER(COALESCE(explanation, '')) = LOWER(COALESCE($5, ''))
-        )
-      )
-      AND ($6::int IS NULL OR id <> $6)
-      LIMIT 1
+      WHERE ($6::int IS NULL OR id <> $6)
     `,
     [title, description, starter_code, solution, explanation, id]
   );
 
-  return existing.length > 0;
+  const candidateTitle = compactText(title);
+  const candidateBody = [description, starter_code, solution, explanation].map(compactText).join(' ');
+
+  return existing.some((row) => {
+    const rowTitle = compactText(row.title);
+    const rowBody = [row.description, row.starter_code, row.solution, row.explanation].map(compactText).join(' ');
+    return rowTitle === candidateTitle || isNearDuplicate(candidateTitle, rowTitle) || similarityScore(candidateBody, rowBody) >= 0.65;
+  });
 }
 
 async function isDuplicateQuizEntry({ title, description, lesson_id, difficulty, passing_score, time_limit_minutes, id = null }) {
   const existing = await all(
     `
-      SELECT id
+      SELECT id, title, description, lesson_id, difficulty, passing_score, time_limit_minutes
       FROM quizzes
-      WHERE (
-        LOWER(title) = LOWER($1)
-        OR (
-          LOWER(COALESCE(description, '')) = LOWER(COALESCE($2, ''))
-          AND COALESCE(lesson_id, 0) = COALESCE($3, 0)
-          AND COALESCE(difficulty, '') = COALESCE($4, '')
-          AND COALESCE(passing_score, 0) = COALESCE($5, 0)
-          AND COALESCE(time_limit_minutes, 0) = COALESCE($6, 0)
-        )
-      )
-      AND ($7::int IS NULL OR id <> $7)
-      LIMIT 1
+      WHERE ($7::int IS NULL OR id <> $7)
     `,
     [title, description, lesson_id, difficulty, passing_score, time_limit_minutes, id]
   );
 
-  return existing.length > 0;
+  const candidateTitle = compactText(title);
+  const candidateBody = [description, difficulty, String(passing_score), String(time_limit_minutes)].map(compactText).join(' ');
+
+  return existing.some((row) => {
+    const rowTitle = compactText(row.title);
+    const rowBody = [row.description, row.difficulty, String(row.passing_score), String(row.time_limit_minutes)].map(compactText).join(' ');
+    return rowTitle === candidateTitle || isNearDuplicate(candidateTitle, rowTitle) || similarityScore(candidateBody, rowBody) >= 0.7;
+  });
 }
 
 router.get('/', adminOnly, async (req, res) => {

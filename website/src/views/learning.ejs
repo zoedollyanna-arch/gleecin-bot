@@ -7,85 +7,76 @@
 </head>
 <body class="learning-page">
     <%- include('partials/header'); %>
-    
+
     <main class="student-page learning-page__content">
-        <section class="student-panel">
+        <section class="student-panel learning-hero">
             <div class="student-panel__header">
                 <div>
-                    <h1>Interactive coding challenges</h1>
-                    <p>Practice real-world problems and get immediate feedback.</p>
+                    <h1>Interactive Learning</h1>
+                    <p>Answer quizzes and challenges with instant grading, saved progress, and downloadable certificates.</p>
+                </div>
+                <div class="learning-progress-summary">
+                    <div class="summary-card">
+                        <strong id="progress-total">0</strong>
+                        <span>Total</span>
+                    </div>
+                    <div class="summary-card">
+                        <strong id="progress-completed">0</strong>
+                        <span>Completed</span>
+                    </div>
+                    <div class="summary-card">
+                        <strong id="progress-accuracy">0%</strong>
+                        <span>Accuracy</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="challenge-filters">
-                <select id="difficulty-filter" class="filter-select">
-                    <option value="all">All difficulties</option>
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                </select>
+            <div class="student-progress">
+                <div class="student-progress__bar">
+                    <span id="progress-bar-fill" style="width: 0%"></span>
+                </div>
+                <p id="progress-label">Progress 0%</p>
+            </div>
 
-                <select id="category-filter" class="filter-select">
-                    <option value="all">All categories</option>
-                    <option value="basics">Basics</option>
-                    <option value="functions">Functions</option>
-                    <option value="events">Events</option>
-                    <option value="ui">UI elements</option>
-                    <option value="physics">Physics</option>
-                    <option value="animations">Animations</option>
-                </select>
+            <div class="learning-controls">
+                <label class="learning-control">
+                    <span>Type</span>
+                    <select id="type-filter" class="filter-select">
+                        <option value="all">All types</option>
+                        <option value="multiple_choice">Multiple choice</option>
+                        <option value="true_false">True / False</option>
+                        <option value="fill_blank">Fill in the blank</option>
+                        <option value="debug">Debug</option>
+                        <option value="prediction">Prediction</option>
+                        <option value="challenge">Challenge</option>
+                    </select>
+                </label>
 
-                <button id="search-btn" class="btn-primary">Search</button>
+                <label class="learning-control">
+                    <span>Search</span>
+                    <input id="search-filter" type="text" class="search-input" placeholder="Search questions...">
+                </label>
+
+                <button id="refresh-learning" class="btn-secondary" type="button">Refresh</button>
             </div>
         </section>
 
         <section class="student-panel">
-            <div class="student-card-grid" id="challenges-container">
-                <div class="student-empty-state" id="challenges-loading">
-                    <p>Loading challenges...</p>
-                </div>
-            </div>
+            <div id="learning-status" class="learning-status">Loading questions...</div>
+            <div id="questions-container" class="student-list"></div>
         </section>
 
         <section class="student-panel">
             <div class="student-panel__header">
                 <div>
-                    <h2>Challenge workspace</h2>
-                    <p>Open a challenge to edit, test, and submit your solution.</p>
+                    <h2>Certificates</h2>
+                    <p>Your earned certificates appear here after completion thresholds are met.</p>
                 </div>
             </div>
-
-            <div class="modal" id="challenge-modal" style="display: none;">
-                <div class="modal-content">
-                    <button class="close" type="button" aria-label="Close challenge">×</button>
-                    <div class="challenge-modal-header">
-                        <h2 id="modal-challenge-title">Challenge title</h2>
-                        <span id="modal-difficulty" class="student-badge">Beginner</span>
-                    </div>
-
-                    <div class="challenge-description" id="modal-description"></div>
-
-                    <div class="code-editor-container">
-                        <div class="editor-header">
-                            <span>Script editor</span>
-                            <select id="language-select">
-                                <option value="lsl">LSL</option>
-                            </select>
-                        </div>
-                        <textarea id="code-editor" class="code-editor" placeholder="// Write your code here..."></textarea>
-                    </div>
-
-                    <div class="test-controls">
-                        <button id="run-tests" class="btn-primary">Run tests</button>
-                        <button id="submit-solution" class="btn-success">Submit solution</button>
-                    </div>
-
-                    <div class="test-results" id="test-results" style="display: none;">
-                        <h4>Test results</h4>
-                        <div id="results-list"></div>
-                    </div>
-                </div>
+            <div id="certificate-summary" class="student-empty-state">
+                <p>No certificate has been issued yet.</p>
             </div>
+            <div id="certificate-list" class="student-card-grid"></div>
         </section>
     </main>
 

@@ -78,15 +78,16 @@ const migrations = [
     )
   `,
 
+
   `
-    CREATE TABLE enrollments (
+    CREATE TABLE certifications (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-      enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      completed BOOLEAN DEFAULT false,
-      completed_at TIMESTAMP,
-      UNIQUE(user_id, class_id)
+      course_name TEXT NOT NULL,
+      certificate_url TEXT,
+      issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      certificate_id TEXT UNIQUE,
+      is_custom BOOLEAN DEFAULT false
     )
   `,
 
@@ -253,18 +254,6 @@ const migrations = [
     )
   `,
 
-  `
-    CREATE TABLE announcements (
-      id SERIAL PRIMARY KEY,
-      title TEXT NOT NULL,
-      content TEXT,
-      important BOOLEAN DEFAULT false,
-      created_by INTEGER REFERENCES users(id),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      expires_at TIMESTAMP,
-      views INTEGER DEFAULT 0
-    )
-  `,
 
   `
     CREATE TABLE sessions (
@@ -343,6 +332,44 @@ const migrations = [
       points INTEGER DEFAULT 1,
       order_index INTEGER,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+
+  `
+    CREATE TABLE user_answers (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      question_id INTEGER NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+      answer TEXT NOT NULL,
+      is_correct BOOLEAN DEFAULT false,
+      score INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, question_id)
+    )
+  `,
+
+  `
+    CREATE TABLE user_progress (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      total_questions INTEGER DEFAULT 0,
+      completed_questions INTEGER DEFAULT 0,
+      correct_answers INTEGER DEFAULT 0,
+      progress_percent INTEGER DEFAULT 0,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id)
+    )
+  `,
+
+  `
+    CREATE TABLE certificates (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      course_name TEXT NOT NULL,
+      certificate_url TEXT,
+      issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      certificate_id TEXT UNIQUE,
+      is_custom BOOLEAN DEFAULT false
     )
   `,
 

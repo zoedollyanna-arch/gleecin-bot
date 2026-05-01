@@ -178,6 +178,30 @@ router.get('/student-preview', (req, res) => {
 });
 
 /**
+ * GET /learning-preview
+ * Public temporary preview of the learning system with a seeded student session
+ */
+router.get('/learning-preview', (req, res) => {
+  req.session = req.session || {};
+  req.session.user = buildPreviewStudentUser();
+  req.session.save((error) => {
+    if (error) {
+      console.error('[LEARNING PREVIEW ERROR]', error);
+      return res.status(500).render('error', { error: 'Failed to initialize preview session', user: null });
+    }
+
+    res.render('learning', {
+      user: req.session.user,
+      tier: 'free',
+      previewMode: true,
+      previewPublic: true,
+      pageCss: 'learning',
+      title: 'Interactive Learning Preview - GLEECIN Academy'
+    });
+  });
+});
+
+/**
  * GET /dashboard
  * Main dashboard - requires authentication
  * Admin → /admin, else → student dashboard

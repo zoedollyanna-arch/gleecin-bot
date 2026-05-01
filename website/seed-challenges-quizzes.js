@@ -2,235 +2,322 @@ import { get, run } from './src/db/database.js';
 
 const createdBy = 'Created by: Jwett';
 
-const challengeBlueprints = [
+const quizzes = [
   {
-    title: 'Signal Lantern Touch Audit',
-    description: `Build a touch-activated lantern audit tool that confirms the object is ready before toggling a warm safety light. ${createdBy}`,
-    difficulty: 'easy',
-    level: 'beginner',
-    category: 'visual',
-    starter_code: `integer lit = FALSE;
-
-default {
-    touch_start(integer total_number) {
-        // audit and toggle light
-    }
-}`,
-    solution: `integer lit = FALSE;
-
-default {
-    touch_start(integer total_number) {
-        lit = !lit;
-        llSetPrimitiveParams([PRIM_POINT_LIGHT, lit, <1.0, 0.84, 0.6>, 0.8, 8.0, 0.5]);
-        llSay(0, lit ? "Lantern online." : "Lantern offline.");
-    }
-}`,
-    explanation: `This challenge combines touch interaction, light control, and status messaging in a practical safety-themed workflow. ${createdBy}`
+    type: 'multiple_choice',
+    question: 'Which function is used to detect collisions?',
+    options: ['collision_start', 'touch_start', 'sensor', 'listen'],
+    answer: 'collision_start',
+    explanation: 'collision_start triggers when an object collides with something.'
   },
   {
-    title: 'Parcel Broadcast Sequencer',
-    description: `Create a script that rotates through three parcel announcements and posts a different line of text on each touch. ${createdBy}`,
-    difficulty: 'easy',
-    level: 'beginner',
-    category: 'communication',
-    starter_code: `list notices = ["Notice A", "Notice B", "Notice C"];
-integer index = 0;
-
-default {
-    touch_start(integer total_number) {
-        // advance the notice
-    }
-}`,
-    solution: `list notices = ["Notice A", "Notice B", "Notice C"];
-integer index = 0;
-
-default {
-    touch_start(integer total_number) {
-        llSay(0, llList2String(notices, index));
-        index = (index + 1) % llGetListLength(notices);
-    }
-}`,
-    explanation: `This exercise teaches list rotation, user feedback, and repeatable message sequencing for event signage. ${createdBy}`
+    type: 'true_false',
+    question: 'llGetOwner() returns the UUID of the object\'s owner.',
+    answer: 'True',
+    explanation: 'It returns the key of the owner.'
   },
   {
-    title: 'Visitor Badge Door Access',
-    description: `Implement a beginner access door that allows only a named visitor badge holder to open the entrance panel. ${createdBy}`,
-    difficulty: 'medium',
-    level: 'beginner',
-    category: 'security',
-    starter_code: `string badgeName = "Visitor Badge";
-
-default {
-    touch_start(integer total_number) {
-        // verify badge before opening
-    }
-}`,
-    solution: `string badgeName = "Visitor Badge";
-integer open = FALSE;
-
-default {
-    touch_start(integer total_number) {
-        if (llGetInventoryType(badgeName) == INVENTORY_OBJECT) {
-            open = !open;
-            llSay(0, open ? "Door opened." : "Door closed.");
-        } else {
-            llSay(0, "Badge required.");
-        }
-    }
-}`,
-    explanation: `The challenge focuses on inventory checks and gated interactions instead of purely cosmetic behavior. ${createdBy}`
+    type: 'fill_blank',
+    question: '______ is used to apply a physical force to an object.',
+    answer: 'llApplyImpulse',
+    explanation: 'Used for physics-based movement.'
   },
   {
-    title: 'Resettable Workshop Countdown',
-    description: `Build a countdown timer that updates floating text every second and resets cleanly when the timer reaches zero. ${createdBy}`,
-    difficulty: 'medium',
-    level: 'intermediate',
-    category: 'ui',
-    starter_code: `integer seconds = 120;
-
-default {
-    state_entry() {
-        // initialize countdown
-    }
-}`,
-    solution: `integer seconds = 120;
-
-default {
-    state_entry() {
-        llSetTimerEvent(1.0);
-    }
-
-    timer() {
-        seconds -= 1;
-        llSetText("Starts in " + (string)seconds + "s", <0.8, 0.9, 1.0>, 1.0);
-        if (seconds <= 0) {
-            llSetTimerEvent(0.0);
-            llSetText("Workshop live now", <0.3, 1.0, 0.3>, 1.0);
-        }
-    }
-}`,
-    explanation: `This challenge demonstrates timed updates, text overlays, and controlled shutdown when the countdown completes. ${createdBy}`
+    type: 'debug',
+    question: 'Fix: llSetScale(1,1,1);',
+    answer: 'llSetScale(<1,1,1>);',
+    explanation: 'Scale must be a vector.'
   },
   {
-    title: 'Directional Beacon Reset',
-    description: `Create a demonstration beacon that returns to a known rotation whenever an operator touches the object. ${createdBy}`,
-    difficulty: 'hard',
-    level: 'intermediate',
-    category: 'movement',
-    starter_code: `rotation home;
-
-default {
-    state_entry() {
-        home = llGetRot();
-    }
-
-    touch_start(integer total_number) {
-        // reset orientation
-    }
-}`,
-    solution: `rotation home;
-
-default {
-    state_entry() {
-        home = llGetRot();
-    }
-
-    touch_start(integer total_number) {
-        llSetRot(home);
-        llSay(0, "Beacon reset.");
-    }
-}`,
-    explanation: `This is a practical orientation-reset task for exhibit stands, directional markers, and showroom fixtures. ${createdBy}`
+    type: 'prediction',
+    question: 'What happens if llStopSound() is called?',
+    answer: 'Any playing sound stops',
+    explanation: 'It immediately halts sound playback.'
+  },
+  {
+    type: 'multiple_choice',
+    question: 'Which function continuously listens for chat on a channel?',
+    options: ['llListen', 'llSay', 'llWhisper', 'llRegionSay'],
+    answer: 'llListen',
+    explanation: 'llListen registers a listener for incoming chat.'
+  },
+  {
+    type: 'multiple_choice',
+    question: 'Which event fires when a script receives HTTP data?',
+    options: ['http_request', 'http_response', 'dataserver', 'listen'],
+    answer: 'http_response',
+    explanation: 'http_response handles replies from llHTTPRequest.'
+  },
+  {
+    type: 'true_false',
+    question: 'Negative channels are commonly used for private chat.',
+    answer: 'True',
+    explanation: 'Negative channels reduce accidental public listening.'
+  },
+  {
+    type: 'fill_blank',
+    question: 'Use ______ to request animation permissions from an avatar.',
+    answer: 'llRequestPermissions',
+    explanation: 'Required before triggering animations on avatars.'
+  },
+  {
+    type: 'debug',
+    question: 'Fix: llListen(-10, "", NULL_KEY, );',
+    answer: 'llListen(-10, "", NULL_KEY, "");',
+    explanation: 'The message filter parameter must be a string.'
+  },
+  {
+    type: 'prediction',
+    question: 'What happens if you never call llSetTimerEvent(0.0)?',
+    answer: 'Timer keeps firing indefinitely',
+    explanation: 'Non-zero interval continues to trigger timer events.'
   }
 ];
 
-for (let i = 0; i < 48; i += 1) {
-  const number = i + 6;
-  const difficulty = number % 4 === 0 ? 'hard' : number % 3 === 0 ? 'medium' : 'easy';
-  const level = number < 18 ? 'beginner' : 'intermediate';
-  const category = number % 5 === 0 ? 'events' : number % 5 === 1 ? 'functions' : number % 5 === 2 ? 'ui' : number % 5 === 3 ? 'inventory' : 'logic';
+const challenges = [
+  {
+    question: 'Create a vending machine that charges users before giving an item.',
+    answer: 'Use money() event, validate amount, then llGiveInventory.',
+    explanation: 'Introduces payment handling.'
+  },
+  {
+    question: 'Build a teleport pad with multiple destinations selectable via menu.',
+    answer: 'Use llDialog and map buttons to coordinates.',
+    explanation: 'Combines UI + teleport logic.'
+  },
+  {
+    question: 'Create a script that logs every touch with timestamp.',
+    answer: 'Use llGetUnixTime and store/log data.',
+    explanation: 'Tracking + logging system.'
+  },
+  {
+    question: 'Make a door that only opens during certain hours.',
+    answer: 'Check llGetWallclock before allowing interaction.',
+    explanation: 'Time-based logic.'
+  },
+  {
+    question: 'Create a system that bans users after 3 failed attempts.',
+    answer: 'Track attempts per user and block after threshold.',
+    explanation: 'State tracking + security.'
+  },
+  {
+    question: 'Build a leaderboard that tracks top interactions.',
+    answer: 'Store counts in list and sort.',
+    explanation: 'Data structures + ranking.'
+  },
+  {
+    question: 'Make an object follow a path of waypoints.',
+    answer: 'Store vectors in list and iterate through them.',
+    explanation: 'Pathfinding logic.'
+  },
+  {
+    question: 'Create a script that sends a private message instead of public chat.',
+    answer: 'Use llRegionSayTo.',
+    explanation: 'Private communication.'
+  },
+  {
+    question: 'Build a reset system that restores default object state.',
+    answer: 'Store defaults and reapply on reset.',
+    explanation: 'State restoration.'
+  },
+  {
+    question: 'Create a color picker menu using dialog buttons.',
+    answer: 'Use llDialog and map selections to colors.',
+    explanation: 'UI interaction.'
+  },
+  {
+    question: 'Make an anti-spam system for chat commands.',
+    answer: 'Track last message time per user.',
+    explanation: 'Rate limiting.'
+  },
+  {
+    question: 'Build a script that detects if object inventory changes.',
+    answer: 'Use changed(CHANGED_INVENTORY).',
+    explanation: 'Inventory events.'
+  },
+  {
+    question: 'Create a system that rotates object based on user input.',
+    answer: 'Parse chat commands and apply rotation.',
+    explanation: 'User-controlled movement.'
+  },
+  {
+    question: 'Make an object that only responds to its owner.',
+    answer: 'Compare llDetectedKey with llGetOwner.',
+    explanation: 'Ownership validation.'
+  },
+  {
+    question: 'Build a system that tracks how long a user interacts.',
+    answer: 'Store start time and calculate difference.',
+    explanation: 'Session tracking.'
+  },
+  {
+    question: 'Create a script that cycles through messages every few seconds.',
+    answer: 'Use timer and list of messages.',
+    explanation: 'Looping UI updates.'
+  },
+  {
+    question: 'Make a system that changes object size over time.',
+    answer: 'Use timer and adjust scale incrementally.',
+    explanation: 'Animation logic.'
+  },
+  {
+    question: 'Build a system that detects when object is rezzed.',
+    answer: 'Use on_rez event.',
+    explanation: 'Lifecycle events.'
+  },
+  {
+    question: 'Create a script that counts unique visitors.',
+    answer: 'Store avatar keys in list and avoid duplicates.',
+    explanation: 'Set-like behavior.'
+  },
+  {
+    question: 'Make a system that alerts owner when touched.',
+    answer: 'Use llInstantMessage to owner.',
+    explanation: 'Notifications.'
+  },
+  {
+    question: 'Build a puzzle where objects must be touched in order.',
+    answer: 'Track sequence and validate.',
+    explanation: 'State machine.'
+  },
+  {
+    question: 'Create a script that changes texture on interaction.',
+    answer: 'Use llSetTexture.',
+    explanation: 'Visual updates.'
+  },
+  {
+    question: 'Make a cooldown-based reward system.',
+    answer: 'Track last claim time per user.',
+    explanation: 'Reward timing.'
+  },
+  {
+    question: 'Build a system that syncs multiple objects together.',
+    answer: 'Use link messages or chat channels.',
+    explanation: 'Multi-object coordination.'
+  },
+  {
+    question: 'Create a script that disables itself after use.',
+    answer: 'Call llSetScriptState(FALSE).',
+    explanation: 'Self-disabling logic.'
+  },
+  {
+    type: 'challenge',
+    question: 'Build a dialog menu with three options that sends a different message for each selection.',
+    answer: 'Use llDialog with a private channel and handle responses in listen.',
+    explanation: 'Requires channel management and branching logic.'
+  },
+  {
+    type: 'challenge',
+    question: 'Create a whitelist system that only allows specific avatars to interact.',
+    answer: 'Store allowed UUIDs/names in a list and check in touch_start.',
+    explanation: 'Demonstrates list searching and access control.'
+  },
+  {
+    type: 'challenge',
+    question: 'Make a notecard reader that outputs each line in sequence.',
+    answer: 'Use llGetNotecardLine and dataserver event with an index.',
+    explanation: 'Introduces asynchronous data handling.'
+  },
+  {
+    type: 'challenge',
+    question: 'Create a system that limits actions to once every 5 seconds per user.',
+    answer: 'Track last-use timestamps per key and compare with llGetUnixTime().',
+    explanation: 'Implements cooldown logic per avatar.'
+  },
+  {
+    type: 'challenge',
+    question: 'Build a multi-prim seat that reports how many avatars are seated.',
+    answer: 'Iterate links and check llGetAgentSize for each link key.',
+    explanation: 'Uses link traversal and avatar detection.'
+  },
+  {
+    type: 'challenge',
+    question: 'Create a secure door that opens only for group members and auto-closes after 3 seconds.',
+    answer: 'Check llSameGroup, rotate/open, then use timer to close.',
+    explanation: 'Combines permissions with timed state.'
+  },
+  {
+    type: 'challenge',
+    question: 'Implement a HUD command system using a negative chat channel.',
+    answer: 'Use llListen on a negative channel and parse commands.',
+    explanation: 'Private command handling pattern.'
+  },
+  {
+    type: 'challenge',
+    question: 'Build a counter that persists across script resets using description or notecard.',
+    answer: 'Store value in llSetObjectDesc or external storage and reload on state_entry.',
+    explanation: 'Introduces persistence workaround.'
+  },
+  {
+    type: 'challenge',
+    question: 'Create a follower object that maintains a 1m offset from an avatar smoothly.',
+    answer: 'Poll target position with llGetObjectDetails and interpolate movement.',
+    explanation: 'Requires vector math and smoothing.'
+  },
+  {
+    type: 'challenge',
+    question: 'Design a teleport network with multiple destinations selectable via dialog.',
+    answer: 'Use llDialog to choose, then llTeleportAgent with mapped destinations.',
+    explanation: 'Combines UI with teleport logic.'
+  },
+  {
+    type: 'challenge',
+    question: 'Create a rate-limited greeter that only greets each avatar once every 60 seconds.',
+    answer: 'Maintain a map of avatar keys to last greet time and compare with llGetUnixTime().',
+    explanation: 'Per-user cooldown with time tracking.'
+  },
+  {
+    type: 'challenge',
+    question: 'Build a vending machine that checks inventory and dispenses items with stock limits.',
+    answer: 'Track stock counts, validate with llGetInventoryType, decrement on give.',
+    explanation: 'State management and validation.'
+  },
+  {
+    type: 'challenge',
+    question: 'Implement a multi-step puzzle where switches must be activated in the correct order.',
+    answer: 'Store sequence state and validate order on each interaction.',
+    explanation: 'Finite state machine pattern.'
+  },
+  {
+    type: 'challenge',
+    question: 'Create a logging system that records interactions to a web endpoint.',
+    answer: 'Use llHTTPRequest with serialized payload on events.',
+    explanation: 'External logging via HTTP.'
+  },
+  {
+    type: 'challenge',
+    question: 'Design a light system that adapts brightness based on time of day.',
+    answer: 'Poll llGetWallclock or region time and adjust PRIM_FULLBRIGHT/PRIM_GLOW.',
+    explanation: 'Environment-aware behavior.'
+  }
+];
 
-  challengeBlueprints.push({
-    title: `Pattern Challenge ${number}: ${category.toUpperCase()} Workflow`,
-    description: `Design a ${difficulty} ${category} challenge that solves a specific production scenario without reusing prior starter logic. ${createdBy}`,
-    difficulty,
-    level,
-    category,
-    starter_code: `default {
-    state_entry() {
-        // implement workflow ${number}
-    }
-}`,
-    solution: `default {
-    state_entry() {
-        llSay(0, "Workflow ${number} ready.");
-    }
-}`,
-    explanation: `This challenge was written to be structurally unique, scenario-specific, and distinct from the other tasks in the library. ${createdBy}`
-  });
+function getQuestionType(type) {
+  if (type === 'fill_blank') return 'short_answer';
+  if (type === 'debug') return 'code';
+  if (type === 'true_false') return 'true_false';
+  return 'multiple_choice';
 }
 
-const quizBlueprints = [];
-const quizTopics = [
-  {
-    title: 'LSL Touch Event Strategy',
-    description: 'Checks understanding of touch handlers, avatar detection, and how to design safe interaction triggers.',
-    difficulty: 'easy',
-    passing_score: 70,
-    time_limit_minutes: 10
-  },
-  {
-    title: 'LSL State Management Fundamentals',
-    description: 'Tests how script state, booleans, and reset behavior work together in small production objects.',
-    difficulty: 'easy',
-    passing_score: 70,
-    time_limit_minutes: 10
-  },
-  {
-    title: 'LSL Inventory Validation',
-    description: 'Covers inventory type checks, asset availability, and how to prevent missing-item failures.',
-    difficulty: 'medium',
-    passing_score: 75,
-    time_limit_minutes: 12
-  },
-  {
-    title: 'LSL Visual Feedback Systems',
-    description: 'Focuses on floating text, color changes, light toggles, and readable in-world messaging.',
-    difficulty: 'medium',
-    passing_score: 75,
-    time_limit_minutes: 12
-  },
-  {
-    title: 'LSL Production Safety Checks',
-    description: 'Explores rate limiting, predictable behavior, user feedback, and defensive scripting patterns.',
-    difficulty: 'hard',
-    passing_score: 80,
-    time_limit_minutes: 15
-  }
-];
+function getDifficulty(type) {
+  if (type === 'prediction' || type === 'debug') return 'hard';
+  if (type === 'multiple_choice') return 'easy';
+  return 'medium';
+}
 
-for (let i = 0; i < 52; i += 1) {
-  const topic = quizTopics[i % quizTopics.length];
-  const sequence = i + 1;
-  const tier = sequence < 18 ? 'free' : sequence < 36 ? 'free' : 'free';
-  const level = sequence < 18 ? 'beginner' : sequence < 36 ? 'intermediate' : 'advanced';
-
-  quizBlueprints.push({
-    title: `${topic.title} ${sequence}`,
-    description: `${topic.description} Quiz ${sequence} evaluates a distinct concept path and uses different scenarios from the rest of the library. ${createdBy}`,
-    difficulty: topic.difficulty === 'hard' && level === 'beginner' ? 'medium' : topic.difficulty,
-    passing_score: topic.passing_score + (sequence % 3 === 0 ? 2 : 0),
-    time_limit_minutes: topic.time_limit_minutes + (sequence % 4 === 0 ? 2 : 0),
-    price_tier: tier
-  });
+function getLevel(difficulty) {
+  if (difficulty === 'easy') return 'beginner';
+  if (difficulty === 'medium') return 'intermediate';
+  return 'advanced';
 }
 
 async function seedChallengesAndQuizzes() {
   const admin = await get('SELECT id FROM users WHERE is_admin = true ORDER BY id ASC LIMIT 1');
   const authorId = admin?.id || 1;
+  const lesson = await get('SELECT id FROM lessons ORDER BY id ASC LIMIT 1');
 
-  for (const challenge of challengeBlueprints) {
-    const existing = await get('SELECT id FROM challenges WHERE LOWER(title) = LOWER($1)', [challenge.title]);
+  for (const challenge of challenges) {
+    const existing = await get('SELECT id FROM challenges WHERE LOWER(title) = LOWER($1)', [challenge.question]);
 
     if (existing?.id) {
       await run(
@@ -241,44 +328,42 @@ async function seedChallengesAndQuizzes() {
              solution = $4,
              explanation = $5,
              level = $6,
-             price_tier = 'free'
-         WHERE id = $7`,
+             price_tier = $7
+         WHERE id = $8`,
         [
-          challenge.description,
-          challenge.difficulty,
-          challenge.starter_code,
-          challenge.solution,
-          challenge.explanation,
-          challenge.level,
+          `${challenge.question} ${createdBy}`,
+          'easy',
+          `default {\n    state_entry() {\n        // implement challenge\n    }\n}`,
+          `default {\n    state_entry() {\n        llSay(0, "Challenge ready.");\n    }\n}`,
+          `${challenge.explanation} ${createdBy}`,
+          'beginner',
+          'free',
           existing.id
         ]
       );
-      console.log(`Updated challenge: ${challenge.title}`);
       continue;
     }
 
     await run(
-      `INSERT INTO challenges
-        (title, description, difficulty, starter_code, solution, explanation, level, price_tier, created_at)
-       VALUES
-        ($1, $2, $3, $4, $5, $6, $7, 'free', NOW())`,
+      `INSERT INTO challenges (title, description, difficulty, starter_code, solution, explanation, level, price_tier, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
       [
-        challenge.title,
-        challenge.description,
-        challenge.difficulty,
-        challenge.starter_code,
-        challenge.solution,
-        challenge.explanation,
-        challenge.level
+        challenge.question,
+        `${challenge.question} ${createdBy}`,
+        'easy',
+        `default {\n    state_entry() {\n        // implement challenge\n    }\n}`,
+        `default {\n    state_entry() {\n        llSay(0, "Challenge ready.");\n    }\n}`,
+        `${challenge.explanation} ${createdBy}`,
+        'beginner',
+        'free'
       ]
     );
-    console.log(`Seeded challenge: ${challenge.title}`);
   }
 
-  const lesson = await get('SELECT id FROM lessons ORDER BY id ASC LIMIT 1');
-
-  for (const quiz of quizBlueprints) {
-    const existing = await get('SELECT id FROM quizzes WHERE LOWER(title) = LOWER($1)', [quiz.title]);
+  for (const quiz of quizzes) {
+    const difficulty = getDifficulty(quiz.type);
+    const questionType = getQuestionType(quiz.type);
+    const existing = await get('SELECT id FROM quizzes WHERE LOWER(title) = LOWER($1)', [quiz.question]);
     let quizId = existing?.id || null;
 
     if (existing?.id) {
@@ -293,17 +378,16 @@ async function seedChallengesAndQuizzes() {
              created_by = $7
          WHERE id = $8`,
         [
-          quiz.description,
+          `${quiz.question} ${createdBy}`,
           lesson?.id || null,
-          quiz.difficulty,
-          quiz.passing_score,
-          quiz.time_limit_minutes,
-          quiz.price_tier,
+          difficulty,
+          70,
+          10,
+          'free',
           authorId,
           existing.id
         ]
       );
-      console.log(`Updated quiz: ${quiz.title}`);
     } else {
       const created = await run(
         `INSERT INTO quizzes
@@ -311,63 +395,70 @@ async function seedChallengesAndQuizzes() {
          VALUES
           ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
          RETURNING id`,
-        [quiz.title, quiz.description, lesson?.id || null, quiz.difficulty, quiz.passing_score, quiz.time_limit_minutes, quiz.price_tier, authorId]
+        [
+          quiz.question,
+          `${quiz.question} ${createdBy}`,
+          lesson?.id || null,
+          difficulty,
+          70,
+          10,
+          'free',
+          authorId
+        ]
       );
       quizId = created.id;
-      console.log(`Seeded quiz: ${quiz.title}`);
     }
 
-    if (quizId) {
-      const questionText = `What is the primary skill assessed by ${quiz.title}?`;
-      const existingQuestion = await get(
-        'SELECT id FROM quiz_questions WHERE quiz_id = $1 AND order_index = $2',
-        [quizId, 1]
+    if (!quizId) continue;
+
+    const options = Array.isArray(quiz.options) ? quiz.options : [];
+    const existingQuestion = await get('SELECT id FROM quiz_questions WHERE quiz_id = $1 AND order_index = $2', [quizId, 1]);
+
+    if (existingQuestion?.id) {
+      await run(
+        `UPDATE quiz_questions
+         SET question_text = $1,
+             question_type = $2,
+             options = $3::jsonb,
+             correct_answer = $4,
+             explanation = $5,
+             points = 1
+         WHERE id = $6`,
+        [
+          quiz.question,
+          questionType,
+          JSON.stringify(options),
+          quiz.answer,
+          `${quiz.explanation} ${createdBy}`,
+          existingQuestion.id
+        ]
       );
-
-      const questionOptions = JSON.stringify([
-        'Apply the target concept safely',
-        'Delete the entire database',
-        'Skip validation entirely',
-        'Ignore user input'
-      ]);
-
-      if (existingQuestion?.id) {
-        await run(
-          `UPDATE quiz_questions
-           SET question_text = $1,
-               question_type = 'multiple_choice',
-               options = $2::jsonb,
-               correct_answer = $3,
-               explanation = $4,
-               points = 1
-           WHERE id = $5`,
-          [
-            questionText,
-            questionOptions,
-            'Apply the target concept safely',
-            `This quiz checks concept understanding, scenario judgment, and safe scripting habits. ${createdBy}`,
-            existingQuestion.id
-          ]
-        );
-      } else {
-        await run(
-          `INSERT INTO quiz_questions
-            (quiz_id, question_text, question_type, options, correct_answer, explanation, points, order_index, created_at)
-           VALUES
-            ($1, $2, 'multiple_choice', $3::jsonb, $4, $5, 1, 1, NOW())`,
-          [
-            quizId,
-            questionText,
-            questionOptions,
-            'Apply the target concept safely',
-            `This quiz checks concept understanding, scenario judgment, and safe scripting habits. ${createdBy}`
-          ]
-        );
-      }
+    } else {
+      await run(
+        `INSERT INTO quiz_questions
+          (quiz_id, question_text, question_type, options, correct_answer, explanation, points, order_index, created_at)
+         VALUES
+          ($1, $2, $3, $4::jsonb, $5, $6, 1, 1, NOW())`,
+        [
+          quizId,
+          quiz.question,
+          questionType,
+          JSON.stringify(options),
+          quiz.answer,
+          `${quiz.explanation} ${createdBy}`
+        ]
+      );
     }
+
+    await run(
+      `UPDATE quizzes
+       SET difficulty = $1
+       WHERE id = $2`,
+      [difficulty, quizId]
+    );
   }
 
-  console.log(`Seeded ${challengeBlueprints.length} challenges and ${quizBlueprints.length} quizzes.`);
+  console.log(`Seeded ${challenges.length} challenges and ${quizzes.length} quizzes.`);
 }
 
 seedChallengesAndQuizzes().catch((error) => {

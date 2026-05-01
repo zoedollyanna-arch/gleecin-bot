@@ -10,6 +10,7 @@ import validator from 'validator';
 import { isAuthenticated, getUserTier } from '../middleware/auth.js';
 import { get, all, run } from '../db/database.js';
 import { issueCertificate, verifyCertificate } from '../utils/certificates.js';
+import { gradeSubmission, getProgress, loadQuestions, maybeIssueCertificate, saveSubmission } from '../utils/learning.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -300,33 +301,95 @@ router.post('/lessons/:id/progress', isAuthenticated, submitLimiter, async (req,
   }
 });
 
-  // ============ QUIZZES ============
+// ============ LEARNING / QUESTIONS ============
 
-router.get('/quizzes', isAuthenticated, async (req, res) => {
+router.get('/learning/questions', isAuthenticated, async (req, res) => {
   try {
-    const tier = getUserTier(req.session.user);
-
-    const quizzes = await all(`
-      SELECT q.id, q.title, q.description, q.lesson_id, q.difficulty, q.passing_score,
-             q.time_limit_minutes, q.price_tier, q.created_by, q.created_at,
-             l.title AS lesson_title,
-             COUNT(DISTINCT qq.id)::int AS question_count,
-             COUNT(DISTINCT qa.id)::int AS attempt_count
-      FROM quizzes q
-      LEFT JOIN lessons l ON q.lesson_id = l.id
-      LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
-      LEFT JOIN quiz_attempts qa ON qa.quiz_id = q.id
-      WHERE q.price_tier = 'free'
-         OR (q.price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
-         OR (q.price_tier = 'advanced' AND $1 = 'advanced')
-      GROUP BY q.id, l.title
-      ORDER BY q.created_at DESC
-    `, [tier]);
-
-    res.json(quizzes);
+    const questions = await loadQuestions();
+    res.json(questions);
   } catch (error) {
-    console.error('[QUIZZES ERROR]', error);
-    res.status(500).json({ error: 'Failed to fetch quizzes' });
+    console.error('[LEARNING QUESTIONS ERROR]', error);
+    res.status(500).json({ error: 'Failed to fetch learning questions' });
+  }
+});
+
+router.post('/submit-answer', isAuthenticated, async (req, res) => {
+  try {
+    const { questionId, answer } = req.body;
+
+    if (!validator.isInt(String(questionId || ''))) {
+      return res.status(400).json({ error: 'Invalid question ID' });
+    }
+
+    if (String(answer ?? '').trim().length === 0) {
+      return res.status(400).json({ error: 'Answer cannot be empty' });
+    }
+
+    const question = await get(
+      `SELECT qq.*, q.title AS quiz_title
+       FROM quiz_questions qq
+       JOIN quizzes q ON q.id = qq.quiz_id
+       WHERE qq.id = $1`,
+      [parseInt(questionId)]
+    );
+
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    const grading = gradeSubmission(question, answer);
+    const progress = await saveSubmission(req.session.user.id, question, answer, grading);
+    const courseName = question.quiz_title || 'GLEECIN Academy Learning';
+    const certificate = await maybeIssueCertificate(req.session.user.id, courseName);
+
+    res.json({
+      correct: grading.correct,
+      score: grading.score,
+      feedback: grading.feedback,
+      progress,
+      certificate
+    });
+  } catch (error) {
+    console.error('[SUBMIT ANSWER ERROR]', error);
+    res.status(500).json({ error: 'Failed to submit answer' });
+  }
+});
+
+router.get('/progress', isAuthenticated, async (req, res) => {
+  try {
+    const progress = await getProgress(req.session.user.id);
+    const completed = progress.completed_questions || 0;
+    const correct = progress.correct_answers || 0;
+    const accuracy = completed > 0 ? Math.round((correct / completed) * 100) : 0;
+
+    res.json({
+      ...progress,
+      accuracy
+    });
+  } catch (error) {
+    console.error('[PROGRESS ERROR]', error);
+    res.status(500).json({ error: 'Failed to fetch progress' });
+  }
+});
+
+router.get('/certificate', isAuthenticated, async (req, res) => {
+  try {
+    const certificates = await all(
+      `SELECT id, user_id, course_name, certificate_url, issued_at, certificate_id, is_custom
+       FROM certificates
+       WHERE user_id = $1
+       ORDER BY issued_at DESC`,
+      [req.session.user.id]
+    );
+
+    const progress = await getProgress(req.session.user.id);
+    res.json({
+      certificates,
+      progress
+    });
+  } catch (error) {
+    console.error('[CERTIFICATE SUMMARY ERROR]', error);
+    res.status(500).json({ error: 'Failed to fetch certificate data' });
   }
 });
 

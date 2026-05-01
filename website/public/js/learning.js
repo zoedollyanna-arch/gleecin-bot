@@ -1,300 +1,418 @@
-// Interactive Learning Module - Coding Challenges
+// Interactive Learning Module - Full learner flow
 class LearningModule {
     constructor() {
-        this.currentChallengeId = null;
-        this.challenges = [];
-        this.filteredChallenges = [];
+        this.questions = [];
+        this.filteredQuestions = [];
+        this.progress = {
+            total_questions: 0,
+            completed_questions: 0,
+            correct_answers: 0,
+            progress_percent: 0,
+            accuracy: 0
+        };
+        this.certificateData = [];
         this.init();
     }
 
     init() {
-        this.setupEventListeners();
-        this.setupCodeEditor();
-        this.bindModalControls();
-        this.loadChallenges();
+        this.bindEvents();
+        this.loadAll();
     }
 
-    setupEventListeners() {
+    bindEvents() {
         document.addEventListener('click', (event) => {
-            const challengeCard = event.target.closest('.challenge-card');
-            const startButton = event.target.closest('.start-challenge');
-            const runButton = event.target.closest('#run-tests');
-            const submitButton = event.target.closest('#submit-solution');
-
-            if (challengeCard && !event.target.closest('button, a')) {
-                this.selectChallenge(challengeCard.dataset.challengeId);
-                this.openChallengeModal(challengeCard);
-                return;
-            }
-
-            if (startButton && challengeCard) {
-                event.preventDefault();
-                this.selectChallenge(challengeCard.dataset.challengeId);
-                this.openChallengeModal(challengeCard);
-                return;
-            }
-
-            if (runButton) {
-                event.preventDefault();
-                this.runTests();
-                return;
-            }
+            const submitButton = event.target.closest('[data-submit-answer]');
+            const toggleButton = event.target.closest('[data-boolean-value]');
+            const refreshButton = event.target.closest('#refresh-learning');
 
             if (submitButton) {
                 event.preventDefault();
-                this.submitChallenge();
+                const questionId = submitButton.getAttribute('data-submit-answer');
+                this.submitAnswer(questionId);
+                return;
+            }
+
+            if (toggleButton) {
+                event.preventDefault();
+                const group = toggleButton.getAttribute('data-toggle-group');
+                const value = toggleButton.getAttribute('data-boolean-value');
+                this.setBooleanValue(group, value);
+                return;
+            }
+
+            if (refreshButton) {
+                event.preventDefault();
+                this.loadAll();
             }
         });
 
-        const difficultyFilter = document.getElementById('difficulty-filter');
-        const categoryFilter = document.getElementById('category-filter');
-        const searchButton = document.getElementById('search-btn');
-
-        if (difficultyFilter) {
-            difficultyFilter.addEventListener('change', () => this.filterChallenges());
-        }
-
-        if (categoryFilter) {
-            categoryFilter.addEventListener('change', () => this.filterChallenges());
-        }
-
-        if (searchButton) {
-            searchButton.addEventListener('click', () => this.filterChallenges());
-        }
+        document.addEventListener('input', (event) => {
+            if (event.target.id === 'search-filter' || event.target.id === 'type-filter') {
+                this.filterQuestions();
+            }
+        });
     }
 
-    bindModalControls() {
-        const modal = document.getElementById('challenge-modal');
-        const closeButton = modal?.querySelector('.close');
-
-        if (closeButton) {
-            closeButton.addEventListener('click', () => this.closeChallengeModal());
-        }
-
-        if (modal) {
-            modal.addEventListener('click', (event) => {
-                if (event.target === modal) {
-                    this.closeChallengeModal();
-                }
-            });
-        }
+    async loadAll() {
+        this.setStatus('Loading questions...');
+        await Promise.all([
+            this.loadQuestions(),
+            this.loadProgress(),
+            this.loadCertificates()
+        ]);
+        this.setStatus('');
     }
 
-    setupCodeEditor() {
-        const codeArea = document.getElementById('code-editor');
-        if (codeArea) {
-            codeArea.addEventListener('input', () => {
-                this.highlightCode(codeArea.value);
-            });
-        }
-    }
-
-    async loadChallenges() {
-        const container = document.getElementById('challenges-container');
+    async loadQuestions() {
+        const container = document.getElementById('questions-container');
         if (!container) return;
 
         try {
-            const response = await fetch('/api/challenges', { credentials: 'include' });
-            const challenges = await response.json();
-
-            this.challenges = Array.isArray(challenges) ? challenges : [];
-            this.filteredChallenges = [...this.challenges];
-            this.renderChallenges(this.filteredChallenges);
+            const response = await fetch('/api/learning/questions?preview=1', {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            this.questions = Array.isArray(data) ? data : [];
+            this.filteredQuestions = [...this.questions];
+            this.renderQuestions();
         } catch (error) {
-            console.error('[CHALLENGES LOAD ERROR]', error);
-            container.innerHTML = '<div class="student-empty-state"><p>Failed to load challenges.</p></div>';
+            console.error('[LEARNING QUESTIONS ERROR]', error);
+            container.innerHTML = '<div class="student-empty-state"><p>Failed to load questions.</p></div>';
         }
     }
 
-    renderChallenges(challenges) {
-        const container = document.getElementById('challenges-container');
+    async loadProgress() {
+        try {
+            const response = await fetch('/api/progress?preview=1', {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            this.progress = {
+                total_questions: data.total_questions || 0,
+                completed_questions: data.completed_questions || 0,
+                correct_answers: data.correct_answers || 0,
+                progress_percent: data.progress_percent || 0,
+                accuracy: data.accuracy || 0
+            };
+            this.renderProgress();
+        } catch (error) {
+            console.error('[PROGRESS ERROR]', error);
+        }
+    }
+
+    async loadCertificates() {
+        const summary = document.getElementById('certificate-summary');
+        const list = document.getElementById('certificate-list');
+        if (!summary || !list) return;
+
+        try {
+            const response = await fetch('/api/certificate?preview=1', {
+                credentials: 'include'
+            });
+            const data = await response.json();
+            const certificates = Array.isArray(data.certificates) ? data.certificates : [];
+            this.certificateData = certificates;
+
+            if (!certificates.length) {
+                summary.innerHTML = '<p>No certificate has been issued yet.</p>';
+                list.innerHTML = '';
+                return;
+            }
+
+            summary.innerHTML = `<p>${certificates.length} certificate(s) issued.</p>`;
+            list.innerHTML = certificates.map((certificate) => this.renderCertificateCard(certificate)).join('');
+        } catch (error) {
+            console.error('[CERTIFICATE LOAD ERROR]', error);
+            summary.innerHTML = '<p>Failed to load certificate data.</p>';
+        }
+    }
+
+    renderProgress() {
+        const total = document.getElementById('progress-total');
+        const completed = document.getElementById('progress-completed');
+        const accuracy = document.getElementById('progress-accuracy');
+        const bar = document.getElementById('progress-bar-fill');
+        const label = document.getElementById('progress-label');
+
+        if (total) total.textContent = String(this.progress.total_questions || 0);
+        if (completed) completed.textContent = String(this.progress.completed_questions || 0);
+        if (accuracy) accuracy.textContent = `${this.progress.accuracy || 0}%`;
+        if (bar) bar.style.width = `${this.progress.progress_percent || 0}%`;
+        if (label) label.textContent = `Progress ${this.progress.progress_percent || 0}%`;
+    }
+
+    renderQuestions() {
+        const container = document.getElementById('questions-container');
         if (!container) return;
 
-        if (!challenges.length) {
-            container.innerHTML = '<div class="student-empty-state"><p>No challenges available yet.</p></div>';
+        if (!this.filteredQuestions.length) {
+            container.innerHTML = '<div class="student-empty-state"><p>No questions match your filter.</p></div>';
             return;
         }
 
-        container.innerHTML = challenges.map((challenge) => this.renderChallengeCard(challenge)).join('');
+        container.innerHTML = this.filteredQuestions.map((question) => this.renderQuestionCard(question)).join('');
+        this.restoreBooleanSelections();
     }
 
-    renderChallengeCard(challenge) {
-        const title = this.escapeHtml(challenge.title || 'Challenge');
-        const description = this.escapeHtml(challenge.description || '');
-        const difficulty = this.escapeHtml(challenge.difficulty || challenge.level || 'Beginner');
-        const category = this.escapeHtml(challenge.category || 'general');
-        const starterCode = this.escapeHtml(challenge.starter_code || '');
+    renderQuestionCard(question) {
+        const type = this.escapeHtml(question.question_type || 'multiple_choice');
+        const title = this.escapeHtml(question.quiz_title || 'Learning Question');
+        const questionText = this.escapeHtml(question.question_text || '');
+        const explanation = this.escapeHtml(question.explanation || '');
+        const options = Array.isArray(question.options) ? question.options : this.parseOptions(question.options);
 
         return `
-            <article class="student-card challenge-card" data-challenge-id="${challenge.id}" data-category="${category}" data-difficulty="${difficulty.toLowerCase()}" data-starter-code="${starterCode}">
+            <article class="student-card learning-question" data-question-id="${question.id}" data-question-type="${type}">
                 <div class="student-card__topline">
-                    <h2>${title}</h2>
-                    <span class="student-badge">${difficulty}</span>
+                    <div>
+                        <h2>${title}</h2>
+                        <p class="question-type-label">${this.formatQuestionType(type)}</p>
+                    </div>
+                    <span class="student-badge student-badge--muted">Ready</span>
                 </div>
-                <p class="challenge-description">${description}</p>
-                <div class="challenge-stats">
-                    <span class="stat">Real DB data</span>
-                    <span class="stat">${this.escapeHtml(String(challenge.price_tier || 'free').toUpperCase())}</span>
+
+                <p class="question-text">${questionText}</p>
+
+                <div class="question-input">
+                    ${this.renderInput(question, options)}
                 </div>
-                <button class="btn-secondary start-challenge" type="button">Start challenge</button>
+
+                <div class="question-actions">
+                    <button class="btn-primary" type="button" data-submit-answer="${question.id}">Submit Answer</button>
+                </div>
+
+                <div class="submission-state" id="submission-state-${question.id}" aria-live="polite"></div>
+
+                ${explanation ? `<div class="question-feedback">${explanation}</div>` : ''}
             </article>
         `;
     }
 
-    openChallengeModal(card) {
-        const modal = document.getElementById('challenge-modal');
-        const title = card.querySelector('.student-card__topline h2')?.textContent || 'Challenge';
-        const difficulty = card.querySelector('.student-badge')?.textContent || 'Beginner';
-        const description = card.querySelector('.challenge-description')?.textContent || '';
+    renderInput(question, options) {
+        const type = question.question_type || 'multiple_choice';
 
-        const modalTitle = document.getElementById('modal-challenge-title');
-        const modalDifficulty = document.getElementById('modal-difficulty');
-        const modalDescription = document.getElementById('modal-description');
-
-        if (modalTitle) modalTitle.textContent = title;
-        if (modalDifficulty) modalDifficulty.textContent = difficulty;
-        if (modalDescription) modalDescription.textContent = description;
-
-        if (modal) {
-            modal.style.display = 'block';
+        if (type === 'multiple_choice') {
+            return `
+                <div class="answer-options">
+                    ${options.map((option) => `
+                        <label class="answer-option">
+                            <input type="radio" name="answer-${question.id}" value="${this.escapeAttribute(option)}">
+                            <span>${this.escapeHtml(option)}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            `;
         }
 
-        const editor = document.getElementById('code-editor');
-        if (editor && !editor.value.trim()) {
-            editor.value = card.dataset.starterCode || this.getStarterCode(card.dataset.challengeId);
-        }
-    }
-
-    closeChallengeModal() {
-        const modal = document.getElementById('challenge-modal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    getStarterCode(challengeId) {
-        const challenge = this.challenges.find((entry) => String(entry.id) === String(challengeId));
-        return challenge?.starter_code || `default
-{
-    state_entry()
-    {
-        // Write your code here
-    }
-}`;
-    }
-
-    highlightCode(code) {
-        return code;
-    }
-
-    selectChallenge(challengeId) {
-        this.currentChallengeId = challengeId;
-
-        document.querySelectorAll('.challenge-card').forEach((card) => {
-            card.classList.remove('selected');
-        });
-
-        const selectedCard = document.querySelector(`[data-challenge-id="${challengeId}"]`);
-        if (selectedCard) {
-            selectedCard.classList.add('selected');
-        }
-    }
-
-    filterChallenges() {
-        const difficulty = document.getElementById('difficulty-filter')?.value || 'all';
-        const category = document.getElementById('category-filter')?.value || 'all';
-
-        this.filteredChallenges = this.challenges.filter((challenge) => {
-            const challengeDifficulty = String(challenge.difficulty || challenge.level || '').toLowerCase();
-            const challengeCategory = String(challenge.category || '').toLowerCase();
-            const matchesDifficulty = difficulty === 'all' || challengeDifficulty.includes(difficulty);
-            const matchesCategory = category === 'all' || challengeCategory.includes(category);
-            return matchesDifficulty && matchesCategory;
-        });
-
-        this.renderChallenges(this.filteredChallenges);
-    }
-
-    runTests() {
-        const code = document.getElementById('code-editor')?.value || '';
-        const results = this.getTestResults(code);
-        this.displayTestResults(results);
-    }
-
-    getTestResults(code) {
-        const normalized = code.toLowerCase();
-        if (String(this.currentChallengeId) === '1') {
-            return [
-                { passed: normalized.includes('llsay'), message: normalized.includes('llsay') ? '✓ Uses llSay' : '✗ Missing llSay' },
-                { passed: normalized.includes('hello world'), message: normalized.includes('hello world') ? '✓ Outputs Hello World' : '✗ Missing Hello World text' }
-            ];
+        if (type === 'true_false') {
+            return `
+                <div class="boolean-toggle" data-toggle-group="answer-${question.id}">
+                    <button type="button" class="btn-secondary" data-boolean-value="True">True</button>
+                    <button type="button" class="btn-secondary" data-boolean-value="False">False</button>
+                </div>
+                <input type="hidden" id="answer-${question.id}" value="">
+            `;
         }
 
-        if (String(this.currentChallengeId) === '2') {
-            const ok = normalized.includes('llsetpos') || normalized.includes('llmovetotarget');
-            return [{ passed: ok, message: ok ? '✓ Movement function detected' : '✗ Missing movement function' }];
+        if (type === 'fill_blank' || type === 'prediction') {
+            return `
+                <textarea id="answer-${question.id}" class="answer-textarea" rows="3" placeholder="Type your answer here..."></textarea>
+            `;
         }
 
-        return [{ passed: code.trim().length > 10, message: code.trim().length > 10 ? '✓ Code looks valid' : '✗ Code too short' }];
+        if (type === 'debug' || type === 'challenge') {
+            return `
+                <textarea id="answer-${question.id}" class="code-editor answer-textarea" rows="8" placeholder="// Write or fix the code here..."></textarea>
+            `;
+        }
+
+        return `
+            <textarea id="answer-${question.id}" class="answer-textarea" rows="4" placeholder="Type your answer here..."></textarea>
+        `;
     }
 
-    displayTestResults(results) {
-        const container = document.getElementById('test-results');
-        const list = document.getElementById('results-list');
-        if (!container || !list) return;
-
-        container.style.display = 'block';
-        list.innerHTML = results.map((result) => `<div class="test-result-item ${result.passed ? 'passed' : 'failed'}">${result.message}</div>`).join('');
-    }
-
-    async submitChallenge() {
-        if (!this.currentChallengeId) {
-            this.showNotification('Please select a challenge first', 'error');
+    async submitAnswer(questionId) {
+        const question = this.questions.find((entry) => String(entry.id) === String(questionId));
+        if (!question) {
+            this.showSubmissionState(questionId, 'Question not found.', 'error');
             return;
         }
 
-        const code = document.getElementById('code-editor')?.value || '';
-        if (!code.trim()) {
-            this.showNotification('Please write some code before submitting', 'error');
+        const answer = this.collectAnswer(question);
+        if (!String(answer).trim()) {
+            this.showSubmissionState(questionId, 'Answer cannot be empty.', 'error');
             return;
         }
+
+        const button = document.querySelector(`[data-submit-answer="${questionId}"]`);
+        const previousText = button?.textContent || 'Submit Answer';
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Submitting...';
+        }
+
+        this.showSubmissionState(questionId, 'Submitting answer...', 'info');
 
         try {
-            const response = await fetch(`/api/challenges/${this.currentChallengeId}/submit`, {
+            const response = await fetch('/api/submit-answer?preview=1', {
                 method: 'POST',
                 credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    questionId,
+                    answer
+                })
             });
 
-            const result = await response.json();
+            const data = await response.json();
 
-            if (result.success) {
-                this.showNotification('Challenge submitted successfully', 'success');
-                this.displayTestResults(this.getTestResults(code));
-            } else {
-                this.showNotification(result.error || 'Submission failed', 'error');
+            if (!response.ok) {
+                throw new Error(data.error || 'Submission failed');
+            }
+
+            this.showSubmissionState(
+                questionId,
+                `${data.correct ? 'Correct' : 'Incorrect'} — ${data.feedback || ''} (Score: ${data.score || 0})`,
+                data.correct ? 'success' : 'error'
+            );
+
+            this.progress = {
+                total_questions: data.progress?.totalQuestions ?? this.progress.total_questions,
+                completed_questions: data.progress?.completedQuestions ?? this.progress.completed_questions,
+                correct_answers: data.progress?.correctAnswers ?? this.progress.correct_answers,
+                progress_percent: data.progress?.progressPercent ?? this.progress.progress_percent,
+                accuracy: data.progress?.completedQuestions > 0
+                    ? Math.round((data.progress.correctAnswers / data.progress.completedQuestions) * 100)
+                    : this.progress.accuracy
+            };
+
+            this.renderProgress();
+            await this.loadCertificates();
+
+            if (data.certificate) {
+                this.showSubmissionState(questionId, `${data.feedback || 'Submission saved.'} Certificate issued.`, 'success');
             }
         } catch (error) {
-            console.error('[CHALLENGE SUBMIT ERROR]', error);
-            this.showNotification('Failed to submit challenge', 'error');
+            console.error('[SUBMIT ANSWER ERROR]', error);
+            this.showSubmissionState(questionId, error.message || 'Failed to submit answer.', 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = previousText;
+            }
         }
+    }
+
+    collectAnswer(question) {
+        const type = question.question_type || 'multiple_choice';
+
+        if (type === 'multiple_choice') {
+            const selected = document.querySelector(`input[name="answer-${question.id}"]:checked`);
+            return selected?.value || '';
+        }
+
+        if (type === 'true_false') {
+            return document.getElementById(`answer-${question.id}`)?.value || '';
+        }
+
+        return document.getElementById(`answer-${question.id}`)?.value || '';
+    }
+
+    setBooleanValue(group, value) {
+        const hidden = document.getElementById(group);
+        if (hidden) hidden.value = value;
+
+        document.querySelectorAll(`[data-toggle-group="${group}"] [data-boolean-value]`).forEach((button) => {
+            button.classList.toggle('active', button.getAttribute('data-boolean-value') === value);
+        });
+    }
+
+    restoreBooleanSelections() {
+        document.querySelectorAll('.boolean-toggle').forEach((group) => {
+            const hidden = group.nextElementSibling;
+            if (hidden && hidden.value) {
+                const selected = group.querySelector(`[data-boolean-value="${hidden.value}"]`);
+                if (selected) selected.classList.add('active');
+            }
+        });
+    }
+
+    filterQuestions() {
+        const typeFilter = document.getElementById('type-filter')?.value || 'all';
+        const search = document.getElementById('search-filter')?.value || '';
+
+        this.filteredQuestions = this.questions.filter((question) => {
+            const matchesType = typeFilter === 'all' || String(question.question_type || '') === typeFilter;
+            const haystack = `${question.quiz_title || ''} ${question.question_text || ''} ${question.explanation || ''}`.toLowerCase();
+            const matchesSearch = !search.trim() || haystack.includes(search.trim().toLowerCase());
+            return matchesType && matchesSearch;
+        });
+
+        this.renderQuestions();
+    }
+
+    renderCertificateCard(certificate) {
+        return `
+            <article class="student-card">
+                <div class="student-card__topline">
+                    <div>
+                        <h3>${this.escapeHtml(certificate.course_name || 'Certificate')}</h3>
+                        <p>Issued ${new Date(certificate.issued_at).toLocaleDateString()}</p>
+                    </div>
+                    <span class="student-badge ${certificate.is_custom ? 'student-badge--success' : ''}">${certificate.is_custom ? 'Custom' : 'System'}</span>
+                </div>
+                <p>Certificate ID: ${this.escapeHtml(certificate.certificate_id || '')}</p>
+                ${certificate.certificate_url ? `<a class="btn-secondary" href="${this.escapeAttribute(certificate.certificate_url)}" target="_blank" rel="noreferrer">Download</a>` : ''}
+            </article>
+        `;
+    }
+
+    parseOptions(options) {
+        if (!options) return [];
+        if (Array.isArray(options)) return options;
+        try {
+            const parsed = typeof options === 'string' ? JSON.parse(options) : options;
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    formatQuestionType(type) {
+        const labels = {
+            multiple_choice: 'Multiple choice',
+            true_false: 'True / False',
+            fill_blank: 'Fill in the blank',
+            debug: 'Debug',
+            prediction: 'Prediction',
+            challenge: 'Challenge'
+        };
+        return labels[type] || type;
+    }
+
+    showSubmissionState(questionId, message, type) {
+        const element = document.getElementById(`submission-state-${questionId}`);
+        if (!element) return;
+        element.className = `submission-state ${type}`;
+        element.textContent = message;
+    }
+
+    setStatus(message) {
+        const status = document.getElementById('learning-status');
+        if (status) status.textContent = message;
     }
 
     escapeHtml(text) {
-        const value = String(text ?? '');
         const div = document.createElement('div');
-        div.textContent = value;
+        div.textContent = String(text ?? '');
         return div.innerHTML;
     }
 
-    showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-
-        setTimeout(() => notification.remove(), 3000);
+    escapeAttribute(text) {
+        return this.escapeHtml(text).replace(/"/g, '"');
     }
 }
 
