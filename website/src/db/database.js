@@ -70,11 +70,74 @@ export async function initializeDatabase() {
       )
     `);
 
+    await query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        topic TEXT NOT NULL,
+        preferred_time TIMESTAMP,
+        duration TEXT,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed', 'scheduled', 'cancelled')),
+        admin_notes TEXT,
+        requested_date TIMESTAMP,
+        approved_by INTEGER REFERENCES users(id),
+        scheduled_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS session_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed')),
+        requested_date TIMESTAMP,
+        approved_by INTEGER REFERENCES users(id),
+        scheduled_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS admin_logs (
+        id SERIAL PRIMARY KEY,
+        admin_id INTEGER NOT NULL REFERENCES users(id),
+        action TEXT NOT NULL,
+        target_user_id INTEGER REFERENCES users(id),
+        details JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS announcements (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        important BOOLEAN DEFAULT false,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await query(`CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_messages_read ON messages(is_read)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_sessions_student ON sessions(student_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_session_requests_user ON session_requests(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_session_requests_status ON session_requests(status)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_admin ON admin_logs(admin_id)`);
 
   } catch (error) {
     console.error('[DB] Connection error:', error);
