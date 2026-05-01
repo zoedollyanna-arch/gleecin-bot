@@ -94,10 +94,15 @@
     <% if (previewMode) { %>
         <div class="welcome-section" style="border-color: rgba(0, 209, 255, 0.7); background: rgba(0, 209, 255, 0.08);">
             <h1>Student preview mode</h1>
-            <p>You are viewing the student dashboard layout while signed in as an admin. Use this to compare what students see against the admin dashboard.</p>
+            <p><%= previewPublic ? 'This is a public preview of the student dashboard. Sign in as an admin to compare it against the admin dashboard.' : 'You are viewing the student dashboard layout while signed in as an admin. Use this to compare what students see against the admin dashboard.' %></p>
             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem;">
-                <a href="/dashboard" class="btn btn-primary">Back to admin view</a>
-                <a href="/admin" class="btn btn-secondary">Open admin dashboard</a>
+                <% if (previewPublic) { %>
+                    <a href="/login" class="btn btn-primary">Sign in</a>
+                    <a href="/admin" class="btn btn-secondary">Admin dashboard</a>
+                <% } else { %>
+                    <a href="/dashboard" class="btn btn-primary">Back to admin view</a>
+                    <a href="/admin" class="btn btn-secondary">Open admin dashboard</a>
+                <% } %>
             </div>
         </div>
     <% } %>

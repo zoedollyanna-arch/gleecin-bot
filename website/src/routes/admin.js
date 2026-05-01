@@ -586,6 +586,12 @@ router.get('/challenges', adminOnly, async (req, res) => {
 
 router.get('/quizzes', adminOnly, async (req, res) => {
   try {
+    const lessons = await all(`
+      SELECT id, title
+      FROM lessons
+      ORDER BY created_at DESC
+    `).catch(() => []);
+
     const quizzes = await all(`
       SELECT q.*, l.title AS lesson_title, u.username AS creator,
         COUNT(DISTINCT qq.id)::int AS question_count,
@@ -597,14 +603,14 @@ router.get('/quizzes', adminOnly, async (req, res) => {
       LEFT JOIN quiz_attempts qa ON qa.quiz_id = q.id
       GROUP BY q.id, l.title, u.username
       ORDER BY q.created_at DESC
-    `);
+    `).catch(() => []);
 
     const questions = await all(`
       SELECT qq.*, q.title AS quiz_title
       FROM quiz_questions qq
       JOIN quizzes q ON qq.quiz_id = q.id
       ORDER BY q.id DESC, qq.order_index ASC NULLS LAST, qq.created_at DESC
-    `);
+    `).catch(() => []);
 
     const attempts = await all(`
       SELECT qa.*, q.title AS quiz_title, u.username AS student_name
@@ -613,9 +619,16 @@ router.get('/quizzes', adminOnly, async (req, res) => {
       JOIN users u ON qa.user_id = u.id
       ORDER BY qa.attempted_at DESC
       LIMIT 100
-    `);
+    `).catch(() => []);
 
-    res.render('admin/quizzes', { user: req.session.user, quizzes, questions, attempts, title: 'Quiz Management' });
+    res.render('admin/quizzes', {
+      user: req.session.user,
+      lessons: Array.isArray(lessons) ? lessons : [],
+      quizzes: Array.isArray(quizzes) ? quizzes : [],
+      questions: Array.isArray(questions) ? questions : [],
+      attempts: Array.isArray(attempts) ? attempts : [],
+      title: 'Quiz Management'
+    });
   } catch (error) {
     console.error('[QUIZZES LIST ERROR]', error);
     res.status(500).render('error', { error: error.message, user: req.session.user });

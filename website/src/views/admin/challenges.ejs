@@ -68,31 +68,56 @@
   <section class="admin-panel">
     <div class="admin-panel-header">
       <h2>Challenges</h2>
+      <p class="admin-muted">Edit, update, and delete challenge content from this dashboard.</p>
     </div>
     <% if (Array.isArray(challenges) && challenges.length) { %>
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Challenge</th>
-              <th>Difficulty</th>
-              <th>Tier</th>
-              <th>Submissions</th>
-              <th>Completions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% challenges.forEach((challenge) => { %>
-              <tr>
-                <td><strong><%= challenge.title %></strong></td>
-                <td><%= challenge.difficulty || '—' %></td>
-                <td><span class="admin-pill"><%= String(challenge.price_tier || 'free').toUpperCase() %></span></td>
-                <td><%= challenge.submission_count ?? 0 %></td>
-                <td><%= challenge.completion_count ?? 0 %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+      <div class="admin-grid admin-grid-2">
+        <% challenges.forEach((challenge) => { %>
+          <article class="admin-info-card" data-challenge-card data-challenge-id="<%= challenge.id %>">
+            <h3><%= challenge.title %></h3>
+            <p class="admin-muted"><%= challenge.difficulty || '—' %> · <%= challenge.level || 'beginner' %></p>
+            <p class="admin-muted"><%= challenge.description || 'No description' %></p>
+            <p class="admin-muted">Submissions: <%= challenge.submission_count ?? 0 %> · Completions: <%= challenge.completion_count ?? 0 %></p>
+            <p class="admin-muted">Starter code: <%= challenge.starter_code || 'Not set.' %></p>
+            <p class="admin-muted">Solution: <%= challenge.solution || 'Not set.' %></p>
+            <p class="admin-muted">Explanation: <%= challenge.explanation || 'Not set.' %></p>
+            <span class="admin-pill"><%= String(challenge.price_tier || 'free').toUpperCase() %></span>
+            <form class="admin-form admin-challenge-edit-form" data-challenge-id="<%= challenge.id %>">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Title</span><input name="title" type="text" value="<%= challenge.title %>" required></label>
+                <label class="admin-field"><span>Difficulty</span>
+                  <select name="difficulty">
+                    <option value="easy" <%= challenge.difficulty === 'easy' ? 'selected' : '' %>>Easy</option>
+                    <option value="medium" <%= challenge.difficulty === 'medium' ? 'selected' : '' %>>Medium</option>
+                    <option value="hard" <%= challenge.difficulty === 'hard' ? 'selected' : '' %>>Hard</option>
+                  </select>
+                </label>
+                <label class="admin-field"><span>Level</span>
+                  <select name="level">
+                    <option value="beginner" <%= (challenge.level || 'beginner') === 'beginner' ? 'selected' : '' %>>Beginner</option>
+                    <option value="intermediate" <%= challenge.level === 'intermediate' ? 'selected' : '' %>>Intermediate</option>
+                    <option value="advanced" <%= challenge.level === 'advanced' ? 'selected' : '' %>>Advanced</option>
+                  </select>
+                </label>
+                <label class="admin-field"><span>Tier</span>
+                  <select name="price_tier">
+                    <option value="free" <%= (challenge.price_tier || 'free') === 'free' ? 'selected' : '' %>>Free</option>
+                    <option value="paid" <%= challenge.price_tier === 'paid' ? 'selected' : '' %>>Paid</option>
+                    <option value="advanced" <%= challenge.price_tier === 'advanced' ? 'selected' : '' %>>Advanced</option>
+                  </select>
+                </label>
+                <label class="admin-field admin-field-full"><span>Description</span><textarea name="description" rows="4"><%= challenge.description || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Starter code</span><textarea name="starter_code" rows="6"><%= challenge.starter_code || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Solution</span><textarea name="solution" rows="6"><%= challenge.solution || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Explanation</span><textarea name="explanation" rows="4"><%= challenge.explanation || '' %></textarea></label>
+              </div>
+              <div class="admin-form-actions">
+                <button class="admin-btn admin-btn-primary" type="submit">Update challenge</button>
+                <button class="admin-btn admin-btn-secondary" type="button" data-delete-challenge="<%= challenge.id %>">Delete</button>
+              </div>
+            </form>
+          </article>
+        <% }) %>
       </div>
     <% } else { %>
       <p class="admin-empty">No challenges created yet.</p>
@@ -133,21 +158,59 @@
 </main>
 
 <script>
-  document.getElementById('createChallengeForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    const res = await fetch('/admin/challenges/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+  const createChallengeForm = document.getElementById('createChallengeForm');
+  if (createChallengeForm) {
+    createChallengeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/admin/challenges/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Challenge created');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed');
+      }
     });
-    const json = await res.json();
-    if (json.success) {
-      alert('Challenge created');
-      location.reload();
-    } else {
-      alert(json.error || 'Failed');
-    }
+  }
+
+  document.querySelectorAll('.admin-challenge-edit-form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const challengeId = form.dataset.challengeId;
+      const data = Object.fromEntries(new FormData(form));
+      const res = await fetch(`/admin/challenges/${challengeId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Challenge updated');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to update challenge');
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-delete-challenge]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const challengeId = button.dataset.deleteChallenge;
+      if (!confirm('Delete this challenge permanently?')) return;
+      const res = await fetch(`/admin/challenges/${challengeId}/delete`, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        alert('Challenge deleted');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to delete challenge');
+      }
+    });
   });
 </script>
 

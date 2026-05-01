@@ -1,12 +1,17 @@
 <%- include('../partials/admin-header', { title: 'Quiz Management' }) %>
 
+<% const safeLessons = Array.isArray(lessons) ? lessons : []; %>
+<% const safeQuizzes = Array.isArray(quizzes) ? quizzes : []; %>
+<% const safeQuestions = Array.isArray(questions) ? questions : []; %>
+<% const safeAttempts = Array.isArray(attempts) ? attempts : []; %>
+
 <main class="admin-shell">
   <section class="admin-panel">
     <div class="admin-panel-header">
       <div>
         <p class="admin-eyebrow">Quiz management</p>
         <h1>Quizzes</h1>
-        <p class="admin-muted">Create quizzes, edit question counts, and review student attempts from the same admin workflow.</p>
+        <p class="admin-muted">Create quizzes, edit them inline, and review questions and student attempts from the same admin workflow.</p>
       </div>
     </div>
 
@@ -20,8 +25,8 @@
           <span>Lesson</span>
           <select name="lesson_id">
             <option value="">Unlinked</option>
-            <% if (Array.isArray(lessons) && lessons.length) { %>
-              <% lessons.forEach((lesson) => { %>
+            <% if (safeLessons.length) { %>
+              <% safeLessons.forEach((lesson) => { %>
                 <option value="<%= lesson.id %>"><%= lesson.title %></option>
               <% }) %>
             <% } %>
@@ -66,35 +71,60 @@
   <section class="admin-panel">
     <div class="admin-panel-header">
       <h2>Quizzes</h2>
+      <p class="admin-muted">Edit, update, and delete quiz content from this dashboard.</p>
     </div>
 
     <% if (Array.isArray(quizzes) && quizzes.length) { %>
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Quiz</th>
-              <th>Lesson</th>
-              <th>Tier</th>
-              <th>Questions</th>
-              <th>Attempts</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% quizzes.forEach((quiz) => { %>
-              <tr>
-                <td>
-                  <strong><%= quiz.title %></strong>
-                  <p class="admin-muted"><%= quiz.description || 'No description' %></p>
-                </td>
-                <td><%= quiz.lesson_title || 'Unlinked' %></td>
-                <td><span class="admin-pill"><%= String(quiz.price_tier || 'free').toUpperCase() %></span></td>
-                <td><%= quiz.question_count ?? 0 %></td>
-                <td><%= quiz.attempt_count ?? 0 %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+      <div class="admin-grid admin-grid-2">
+        <% quizzes.forEach((quiz) => { %>
+          <article class="admin-info-card" data-quiz-card data-quiz-id="<%= quiz.id %>">
+            <h3><%= quiz.title %></h3>
+            <p class="admin-muted">Lesson: <%= quiz.lesson_title || 'Unlinked' %></p>
+            <p class="admin-muted">Creator: <%= quiz.creator || 'Admin' %></p>
+            <p class="admin-muted"><%= quiz.description || 'No description' %></p>
+            <p class="admin-muted">Questions: <%= quiz.question_count ?? 0 %> · Attempts: <%= quiz.attempt_count ?? 0 %></p>
+            <p class="admin-muted">Passing score: <%= quiz.passing_score ?? 70 %> · Time limit: <%= quiz.time_limit_minutes || 'No limit' %> mins</p>
+            <span class="admin-pill"><%= String(quiz.price_tier || 'free').toUpperCase() %></span>
+
+            <form class="admin-form admin-quiz-edit-form" data-quiz-id="<%= quiz.id %>">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Title</span><input name="title" type="text" value="<%= quiz.title %>" required></label>
+                <label class="admin-field"><span>Lesson</span>
+                  <select name="lesson_id">
+                    <option value="">Unlinked</option>
+                    <% if (safeLessons.length) { %>
+                      <% safeLessons.forEach((lesson) => { %>
+                        <option value="<%= lesson.id %>" <%= String(quiz.lesson_id || '') === String(lesson.id) ? 'selected' : '' %>><%= lesson.title %></option>
+                      <% }) %>
+                    <% } %>
+                  </select>
+                </label>
+                <label class="admin-field"><span>Difficulty</span>
+                  <select name="difficulty">
+                    <option value="" <%= !quiz.difficulty ? 'selected' : '' %>>Select difficulty</option>
+                    <option value="easy" <%= quiz.difficulty === 'easy' ? 'selected' : '' %>>Easy</option>
+                    <option value="medium" <%= quiz.difficulty === 'medium' ? 'selected' : '' %>>Medium</option>
+                    <option value="hard" <%= quiz.difficulty === 'hard' ? 'selected' : '' %>>Hard</option>
+                  </select>
+                </label>
+                <label class="admin-field"><span>Tier</span>
+                  <select name="price_tier">
+                    <option value="free" <%= (quiz.price_tier || 'free') === 'free' ? 'selected' : '' %>>Free</option>
+                    <option value="paid" <%= quiz.price_tier === 'paid' ? 'selected' : '' %>>Paid</option>
+                    <option value="advanced" <%= quiz.price_tier === 'advanced' ? 'selected' : '' %>>Advanced</option>
+                  </select>
+                </label>
+                <label class="admin-field"><span>Passing score</span><input name="passing_score" type="number" min="1" max="100" value="<%= quiz.passing_score ?? 70 %>"></label>
+                <label class="admin-field"><span>Time limit minutes</span><input name="time_limit_minutes" type="number" min="1" value="<%= quiz.time_limit_minutes || '' %>"></label>
+                <label class="admin-field admin-field-full"><span>Description</span><textarea name="description" rows="4"><%= quiz.description || '' %></textarea></label>
+              </div>
+              <div class="admin-form-actions">
+                <button class="admin-btn admin-btn-primary" type="submit">Update quiz</button>
+                <button class="admin-btn admin-btn-secondary" type="button" data-delete-quiz="<%= quiz.id %>">Delete</button>
+              </div>
+            </form>
+          </article>
+        <% }) %>
       </div>
     <% } else { %>
       <p class="admin-empty">No quizzes created yet.</p>
@@ -160,21 +190,59 @@
 </main>
 
 <script>
-  document.getElementById('createQuizForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    const res = await fetch('/admin/quizzes/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+  const createQuizForm = document.getElementById('createQuizForm');
+  if (createQuizForm) {
+    createQuizForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/admin/quizzes/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Quiz created');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed');
+      }
     });
-    const json = await res.json();
-    if (json.success) {
-      alert('Quiz created');
-      location.reload();
-    } else {
-      alert(json.error || 'Failed');
-    }
+  }
+
+  document.querySelectorAll('.admin-quiz-edit-form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const quizId = form.dataset.quizId;
+      const data = Object.fromEntries(new FormData(form));
+      const res = await fetch(`/admin/quizzes/${quizId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Quiz updated');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to update quiz');
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-delete-quiz]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const quizId = button.dataset.deleteQuiz;
+      if (!confirm('Delete this quiz permanently?')) return;
+      const res = await fetch(`/admin/quizzes/${quizId}/delete`, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        alert('Quiz deleted');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to delete quiz');
+      }
+    });
   });
 </script>
 

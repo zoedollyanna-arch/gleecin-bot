@@ -119,19 +119,38 @@ async function seedChallengesAndQuizzes() {
   const authorId = admin?.id || 1;
 
   for (const challenge of challengeBlueprints) {
+    const existing = await get('SELECT id FROM challenges WHERE title = $1', [challenge.title]);
+
+    if (existing?.id) {
+      await run(
+        `UPDATE challenges
+         SET description = $1,
+             difficulty = $2,
+             starter_code = $3,
+             solution = $4,
+             explanation = $5,
+             level = $6,
+             price_tier = 'free'
+         WHERE id = $7`,
+        [
+          challenge.description,
+          challenge.difficulty,
+          challenge.starter_code,
+          challenge.solution,
+          challenge.explanation,
+          challenge.level,
+          existing.id
+        ]
+      );
+      console.log(`Updated challenge: ${challenge.title}`);
+      continue;
+    }
+
     await run(
       `INSERT INTO challenges
         (title, description, difficulty, starter_code, solution, explanation, level, price_tier, created_at)
        VALUES
-        ($1, $2, $3, $4, $5, $6, $7, 'free', NOW())
-       ON CONFLICT (title)
-       DO UPDATE SET
-         description = EXCLUDED.description,
-         difficulty = EXCLUDED.difficulty,
-         starter_code = EXCLUDED.starter_code,
-         solution = EXCLUDED.solution,
-         explanation = EXCLUDED.explanation,
-         level = EXCLUDED.level`,
+        ($1, $2, $3, $4, $5, $6, $7, 'free', NOW())`,
       [
         challenge.title,
         challenge.description,
@@ -148,48 +167,79 @@ async function seedChallengesAndQuizzes() {
   const lesson = await get('SELECT id FROM lessons ORDER BY id ASC LIMIT 1');
 
   for (const quiz of quizBlueprints) {
-    const created = await run(
-      `INSERT INTO quizzes
-        (title, description, lesson_id, difficulty, passing_score, time_limit_minutes, price_tier, created_by, created_at)
-       VALUES
-        ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-       ON CONFLICT (title)
-       DO UPDATE SET
-         description = EXCLUDED.description,
-         difficulty = EXCLUDED.difficulty,
-         passing_score = EXCLUDED.passing_score,
-         time_limit_minutes = EXCLUDED.time_limit_minutes,
-         price_tier = EXCLUDED.price_tier`,
-      [quiz.title, quiz.description, lesson?.id || null, quiz.difficulty, quiz.passing_score, quiz.time_limit_minutes, quiz.price_tier, authorId]
-    );
+    const existing = await get('SELECT id FROM quizzes WHERE title = $1', [quiz.title]);
+    let quizId = existing?.id || null;
 
-    if (created?.id) {
+    if (existing?.id) {
       await run(
-        `INSERT INTO quiz_questions
-          (quiz_id, question_text, question_type, options, correct_answer, explanation, points, order_index, created_at)
-         VALUES
-          ($1, $2, 'multiple_choice', $3::jsonb, $4, $5, 1, 1, NOW())
-         ON CONFLICT DO NOTHING`,
+        `UPDATE quizzes
+         SET description = $1,
+             lesson_id = $2,
+             difficulty = $3,
+             passing_score = $4,
+             time_limit_minutes = $5,
+             price_tier = $6,
+             created_by = $7
+         WHERE id = $8`,
         [
-          created.id,
-          `What is the main purpose of ${quiz.title}?`,
-          JSON.stringify(['Learn syntax', 'Delete data', 'Compile images', 'Open the browser']),
-          'Learn syntax',
-          'The quiz checks understanding of LSL fundamentals and safe production habits.'
+          quiz.description,
+          lesson?.id || null,
+          quiz.difficulty,
+          quiz.passing_score,
+          quiz.time_limit_minutes,
+          quiz.price_tier,
+          authorId,
+          existing.id
         ]
       );
+      console.log(`Updated quiz: ${quiz.title}`);
     } else {
-      const existing = await get('SELECT id FROM quizzes WHERE title = $1', [quiz.title]);
-      if (existing?.id) {
+      const created = await run(
+        `INSERT INTO quizzes
+          (title, description, lesson_id, difficulty, passing_score, time_limit_minutes, price_tier, created_by, created_at)
+         VALUES
+          ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         RETURNING id`,
+        [quiz.title, quiz.description, lesson?.id || null, quiz.difficulty, quiz.passing_score, quiz.time_limit_minutes, quiz.price_tier, authorId]
+      );
+      quizId = created.id;
+      console.log(`Seeded quiz: ${quiz.title}`);
+    }
+
+    if (quizId) {
+      const questionText = `What is the main purpose of ${quiz.title}?`;
+      const existingQuestion = await get(
+        'SELECT id FROM quiz_questions WHERE quiz_id = $1 AND order_index = $2',
+        [quizId, 1]
+      );
+
+      if (existingQuestion?.id) {
+        await run(
+          `UPDATE quiz_questions
+           SET question_text = $1,
+               question_type = 'multiple_choice',
+               options = $2::jsonb,
+               correct_answer = $3,
+               explanation = $4,
+               points = 1
+           WHERE id = $5`,
+          [
+            questionText,
+            JSON.stringify(['Learn syntax', 'Delete data', 'Compile images', 'Open the browser']),
+            'Learn syntax',
+            'The quiz checks understanding of LSL fundamentals and safe production habits.',
+            existingQuestion.id
+          ]
+        );
+      } else {
         await run(
           `INSERT INTO quiz_questions
             (quiz_id, question_text, question_type, options, correct_answer, explanation, points, order_index, created_at)
            VALUES
-            ($1, $2, 'multiple_choice', $3::jsonb, $4, $5, 1, 1, NOW())
-           ON CONFLICT DO NOTHING`,
+            ($1, $2, 'multiple_choice', $3::jsonb, $4, $5, 1, 1, NOW())`,
           [
-            existing.id,
-            `What is the main purpose of ${quiz.title}?`,
+            quizId,
+            questionText,
             JSON.stringify(['Learn syntax', 'Delete data', 'Compile images', 'Open the browser']),
             'Learn syntax',
             'The quiz checks understanding of LSL fundamentals and safe production habits.'
@@ -197,8 +247,6 @@ async function seedChallengesAndQuizzes() {
         );
       }
     }
-
-    console.log(`Seeded quiz: ${quiz.title}`);
   }
 
   console.log(`Seeded ${challengeBlueprints.length} challenges and ${quizBlueprints.length} quizzes.`);

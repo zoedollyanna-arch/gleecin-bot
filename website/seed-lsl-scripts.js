@@ -167,22 +167,46 @@ async function seedScripts() {
   const authorId = admin?.id || 1;
 
   for (const script of lslScripts) {
+    const existing = await get('SELECT id FROM scripts WHERE title = $1', [script.title]);
+
+    if (existing?.id) {
+      await run(
+        `UPDATE scripts
+         SET description = $1,
+             category = $2,
+             language = 'LSL',
+             author_id = $3,
+             code = $4,
+             explanation = $5,
+             use_cases = $6,
+             common_mistakes = $7,
+             version = '1.0.0',
+             tags = $8,
+             price_tier = 'free',
+             is_public = true,
+             updated_at = NOW()
+         WHERE id = $9`,
+        [
+          script.description,
+          script.category,
+          authorId,
+          script.code,
+          script.explanation,
+          script.use_cases,
+          script.common_mistakes,
+          script.tags,
+          existing.id
+        ]
+      );
+      console.log(`Updated script: ${script.title}`);
+      continue;
+    }
+
     await run(
       `INSERT INTO scripts
         (title, description, category, language, author_id, code, explanation, use_cases, common_mistakes, version, tags, price_tier, is_public, created_at, updated_at)
        VALUES
-        ($1, $2, $3, 'LSL', $4, $5, $6, $7, $8, '1.0.0', $9, 'free', true, NOW(), NOW())
-       ON CONFLICT (title)
-       DO UPDATE SET
-         description = EXCLUDED.description,
-         category = EXCLUDED.category,
-         language = EXCLUDED.language,
-         code = EXCLUDED.code,
-         explanation = EXCLUDED.explanation,
-         use_cases = EXCLUDED.use_cases,
-         common_mistakes = EXCLUDED.common_mistakes,
-         tags = EXCLUDED.tags,
-         updated_at = NOW()`,
+        ($1, $2, $3, 'LSL', $4, $5, $6, $7, $8, '1.0.0', $9, 'free', true, NOW(), NOW())`,
       [
         script.title,
         script.description,

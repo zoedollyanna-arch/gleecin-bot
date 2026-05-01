@@ -70,25 +70,60 @@
     </form>
   </section>
 
-  <section class="admin-panel">
+    <section class="admin-panel">
     <div class="admin-panel-header">
       <h2>Script management</h2>
+      <p class="admin-muted">Edit, update, delete, and publish the full library.</p>
     </div>
 
     <% if (Array.isArray(scripts) && scripts.length > 0) { %>
-      <div class="admin-grid admin-grid-3">
+      <div class="admin-grid admin-grid-2">
         <% scripts.forEach((script) => { %>
-          <article class="admin-info-card">
+          <article class="admin-info-card" data-script-card data-script-id="<%= script.id %>">
             <h3><%= script.title %></h3>
-            <p class="admin-muted"><%= script.category %></p>
+            <p class="admin-muted"><%= script.category %> · <%= script.language || 'LSL' %></p>
             <p class="admin-muted">By: <%= script.author || 'Admin' %></p>
             <p class="admin-muted"><%= script.description || 'No description' %></p>
-            <p class="admin-muted">Downloads: <%= script.download_count || 0 %></p>
-            <p class="admin-muted">Views: <%= script.view_count || 0 %></p>
+            <p class="admin-muted">Downloads: <%= script.download_count || 0 %> · Views: <%= script.view_count || 0 %></p>
+            <p class="admin-muted">Explanation: <%= script.explanation || 'No explanation yet.' %></p>
+            <p class="admin-muted">Use cases: <%= script.use_cases || 'Not set.' %></p>
+            <p class="admin-muted">Mistakes: <%= script.common_mistakes || 'Not set.' %></p>
             <span class="admin-pill"><%= String(script.price_tier || 'free').toUpperCase() %></span>
-            <div class="admin-form-actions">
-              <button class="admin-btn admin-btn-secondary" type="button" onclick="window.location.href='/scripts/<%= script.id %>'">Open</button>
-            </div>
+            <details class="admin-script-details">
+              <summary class="admin-link">View code</summary>
+              <pre class="admin-code-block"><code><%= script.code || 'No code saved.' %></code></pre>
+            </details>
+            <form class="admin-form admin-script-edit-form" data-script-id="<%= script.id %>">
+              <div class="admin-form-grid">
+                <label class="admin-field"><span>Title</span><input name="title" type="text" value="<%= script.title %>" required></label>
+                <label class="admin-field"><span>Category</span><input name="category" type="text" value="<%= script.category || '' %>" required></label>
+                <label class="admin-field"><span>Tier</span>
+                  <select name="tier">
+                    <option value="free" <%= (script.price_tier || 'free') === 'free' ? 'selected' : '' %>>Free</option>
+                    <option value="paid" <%= script.price_tier === 'paid' ? 'selected' : '' %>>Paid</option>
+                    <option value="advanced" <%= script.price_tier === 'advanced' ? 'selected' : '' %>>Advanced</option>
+                  </select>
+                </label>
+                <label class="admin-field"><span>Language</span><input name="language" type="text" value="<%= script.language || 'LSL' %>"></label>
+                <label class="admin-field"><span>Version</span><input name="version" type="text" value="<%= script.version || '1.0.0' %>"></label>
+                <label class="admin-field admin-field-full"><span>Description</span><textarea name="description" rows="3"><%= script.description || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Code</span><textarea name="code" rows="8"><%= script.code || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Explanation</span><textarea name="explanation" rows="4"><%= script.explanation || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Use cases</span><textarea name="use_cases" rows="3"><%= script.use_cases || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Common mistakes</span><textarea name="common_mistakes" rows="3"><%= script.common_mistakes || '' %></textarea></label>
+                <label class="admin-field admin-field-full"><span>Tags</span><input name="tags" type="text" value="<%= Array.isArray(script.tags) ? script.tags.join(', ') : '' %>"></label>
+                <label class="admin-field"><span>Public</span>
+                  <select name="is_public">
+                    <option value="true" <%= script.is_public ? 'selected' : '' %>>Yes</option>
+                    <option value="false" <%= !script.is_public ? 'selected' : '' %>>No</option>
+                  </select>
+                </label>
+              </div>
+              <div class="admin-form-actions">
+                <button class="admin-btn admin-btn-primary" type="submit">Update script</button>
+                <button class="admin-btn admin-btn-secondary" type="button" data-delete-script="<%= script.id %>">Delete</button>
+              </div>
+            </form>
           </article>
         <% }) %>
       </div>
@@ -99,20 +134,58 @@
 </main>
 
 <script>
-  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const response = await fetch('/admin/scripts/upload', {
-      method: 'POST',
-      body: formData
+  const uploadForm = document.getElementById('uploadForm');
+  if (uploadForm) {
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const response = await fetch('/admin/scripts/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Script uploaded successfully');
+        location.reload();
+      } else {
+        alert(data.error || 'Failed to upload script');
+      }
     });
-    const data = await response.json();
-    if (data.success) {
-      alert('Script uploaded successfully');
-      location.reload();
-    } else {
-      alert(data.error || 'Failed to upload script');
-    }
+  }
+
+  document.querySelectorAll('.admin-script-edit-form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const scriptId = form.dataset.scriptId;
+      const data = Object.fromEntries(new FormData(form));
+      const response = await fetch(`/admin/scripts/${scriptId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await response.json();
+      if (json.success) {
+        alert('Script updated');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to update script');
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-delete-script]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const scriptId = button.dataset.deleteScript;
+      if (!confirm('Delete this script permanently?')) return;
+      const response = await fetch(`/admin/scripts/${scriptId}/delete`, { method: 'POST' });
+      const json = await response.json();
+      if (json.success) {
+        alert('Script deleted');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to delete script');
+      }
+    });
   });
 </script>
 
