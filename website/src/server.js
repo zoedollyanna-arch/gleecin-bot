@@ -100,10 +100,11 @@ async function start() {
     const portValue = Number.isFinite(Number(PORT)) ? Number(PORT) : 3000;
 
     app.listen(portValue, () => {
+      const publicUrl = process.env.PUBLIC_URL || `http${process.env.NODE_ENV === 'production' ? 's' : ''}://0.0.0.0:${portValue}`;
       console.log(`
 ╔═══════════════════════════════════════╗
 ║   🎓 GLEECIN Academy Portal           ║
-║   Running on http://localhost:${portValue}   ║
+║   Running on ${publicUrl}   ║
 ╚═══════════════════════════════════════╝
       `);
     });

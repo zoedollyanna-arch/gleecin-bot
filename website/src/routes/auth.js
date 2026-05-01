@@ -15,7 +15,22 @@ import { get, run } from '../db/database.js';
 const router = express.Router();
 
 const { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET } = process.env;
-const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:3000/auth/callback';
+
+function getRedirectUri(req) {
+  if (process.env.REDIRECT_URI) {
+    return process.env.REDIRECT_URI;
+  }
+
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const proto = forwardedProto || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host');
+
+  if (!host) {
+    throw new Error('Unable to determine redirect host');
+  }
+
+  return `${proto}://${host}/auth/callback`;
+}
 
 /**
  * GET /auth/login
@@ -26,7 +41,7 @@ router.get('/login', (req, res) => {
   const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   req.session.oauthState = state;
 
-  const oauthUrl = getDiscordOAuthURL(REDIRECT_URI, state);
+  const oauthUrl = getDiscordOAuthURL(getRedirectUri(req), state);
   res.redirect(oauthUrl);
 });
 
@@ -43,7 +58,7 @@ router.get('/callback', async (req, res) => {
 
   try {
     // Exchange code for token
-    const tokenData = await exchangeOAuthCode(code, REDIRECT_URI);
+    const tokenData = await exchangeOAuthCode(code, getRedirectUri(req));
 
     // Get user info
     const userInfo = await getDiscordUserInfo(tokenData.access_token);

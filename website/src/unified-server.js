@@ -236,10 +236,11 @@ async function startup() {
     // Start Express server on the platform-provided port only
     await new Promise((resolve, reject) => {
       const server = app.listen(portValue, () => {
+        const publicUrl = process.env.PUBLIC_URL || `http${process.env.NODE_ENV === 'production' ? 's' : ''}://0.0.0.0:${portValue}`;
         console.log(`
 ╔══════════════════════════════════════════╗
 ║  GLEECIN Academy Portal                 ║
-║  Website: http://localhost:${portValue}${portValue === 3000 ? '        ' : '      '}║
+║  Website: ${publicUrl}${publicUrl.length < 40 ? ' '.repeat(40 - publicUrl.length) : ''}║
 ║  Status: RUNNING                         ║
 ╚══════════════════════════════════════════╝
         `);

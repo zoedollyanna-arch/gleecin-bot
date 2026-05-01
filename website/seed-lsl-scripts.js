@@ -131,26 +131,48 @@ const moreScripts = [
 }`, ['beginner', 'furniture']]
 ];
 
-for (let i = 0; i < 47; i += 1) {
+const generatedScripts = [];
+for (let i = 0; i < 52; i += 1) {
   const n = i + 8;
-  moreScripts.push([
+  generatedScripts.push([
     `Script Example ${n}`,
-    n % 3 === 0 ? 'utilities' : n % 3 === 1 ? 'interaction' : 'movement',
+    n % 4 === 0 ? 'utilities' : n % 4 === 1 ? 'interaction' : n % 4 === 2 ? 'movement' : 'visual',
     n < 18 ? 'beginner' : 'intermediate',
     `Functional LSL script example ${n}.`,
-    `This script demonstrates a production-safe pattern for LSL example ${n}.`,
+    `This script demonstrates a production-safe pattern for LSL example ${n} and can be copied directly into a prim.`,
     'General learning, reference, copy/paste use',
     'Keep scripts focused and avoid unnecessary loops.',
-    `default {
+    n % 4 === 0
+      ? `integer count = 0;
+
+default {
     touch_start(integer total_number) {
-        llSay(0, "Script example ${n}");
+        count += 1;
+        llSay(0, "Counter: " + (string)count);
+    }
+}`
+      : n % 4 === 1
+        ? `default {
+    touch_start(integer total_number) {
+        llSay(0, "Interaction example ${n}");
+    }
+}`
+        : n % 4 === 2
+          ? `default {
+    touch_start(integer total_number) {
+        llSetPos(llGetPos() + <0.5, 0.0, 0.0>);
+    }
+}`
+          : `default {
+    touch_start(integer total_number) {
+        llSetColor(<1.0, 1.0, 1.0>, ALL_SIDES);
     }
 }`,
-    ['lsl', n < 18 ? 'beginner' : 'intermediate']
+    ['lsl', n < 18 ? 'beginner' : 'intermediate', n % 2 === 0 ? 'copy' : 'reference']
   ]);
 }
 
-const lslScripts = scripts.concat(moreScripts).slice(0, 50).map((entry) => ({
+const lslScripts = scripts.concat(moreScripts, generatedScripts).slice(0, 55).map((entry) => ({
   title: entry[0] || entry.title,
   category: entry[1] || entry.category,
   level: entry[2] || entry.level,

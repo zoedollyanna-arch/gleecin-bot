@@ -79,7 +79,7 @@ default {
   }
 ];
 
-for (let i = 0; i < 47; i += 1) {
+for (let i = 0; i < 49; i += 1) {
   const number = i + 4;
   challengeBlueprints.push({
     title: `Challenge ${number}`,
@@ -102,7 +102,7 @@ for (let i = 0; i < 47; i += 1) {
 }
 
 const quizBlueprints = [];
-for (let i = 0; i < 50; i += 1) {
+for (let i = 0; i < 52; i += 1) {
   const number = i + 1;
   quizBlueprints.push({
     title: `LSL Quiz ${number}`,
