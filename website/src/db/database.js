@@ -56,8 +56,25 @@ export async function initializeDatabase() {
       )
     `);
 
+    await query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subject TEXT,
+        content TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT false,
+        is_reply BOOLEAN DEFAULT false,
+        parent_message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await query(`CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_messages_read ON messages(is_read)`);
 
   } catch (error) {
     console.error('[DB] Connection error:', error);
