@@ -158,8 +158,8 @@ class LearningModule {
         const type = this.escapeHtml(question.question_type || 'multiple_choice');
         const title = this.escapeHtml(question.quiz_title || 'Learning Question');
         const questionText = this.escapeHtml(question.question_text || '');
-        const explanation = this.escapeHtml(question.explanation || '');
         const options = Array.isArray(question.options) ? question.options : this.parseOptions(question.options);
+        const hasOptions = Array.isArray(options) && options.length > 0;
 
         return `
             <article class="student-card learning-question" data-question-id="${question.id}" data-question-type="${type}">
@@ -181,9 +181,9 @@ class LearningModule {
                     <button class="btn-primary" type="button" data-submit-answer="${question.id}">Submit Answer</button>
                 </div>
 
-                <div class="submission-state" id="submission-state-${question.id}" aria-live="polite"></div>
+                <div class="submission-state" id="submission-state-${question.id}" aria-live="polite" data-feedback-hidden="true"></div>
 
-                ${explanation ? `<div class="question-feedback">${explanation}</div>` : ''}
+                ${!hasOptions && type === 'multiple_choice' ? '<div class="question-feedback question-feedback--warning">This question is missing answer options.</div>' : ''}
             </article>
         `;
     }
@@ -192,15 +192,24 @@ class LearningModule {
         const type = question.question_type || 'multiple_choice';
 
         if (type === 'multiple_choice') {
+            if (!Array.isArray(options) || options.length === 0) {
+                return `
+                    <div class="student-empty-state">
+                        <p>Answer options are not available for this question yet.</p>
+                    </div>
+                `;
+            }
+
             return `
-                <div class="answer-options">
-                    ${options.map((option) => `
+                <fieldset class="answer-options">
+                    <legend class="sr-only">Select one answer</legend>
+                    ${options.map((option, index) => `
                         <label class="answer-option">
-                            <input type="radio" name="answer-${question.id}" value="${this.escapeAttribute(option)}">
+                            <input type="radio" name="answer-${question.id}" value="${this.escapeAttribute(option)}" ${index === 0 ? 'data-default-answer="true"' : ''}>
                             <span>${this.escapeHtml(option)}</span>
                         </label>
                     `).join('')}
-                </div>
+                </fieldset>
             `;
         }
 
@@ -278,6 +287,11 @@ class LearningModule {
                 `${data.correct ? 'Correct' : 'Incorrect'} — ${data.feedback || ''} (Score: ${data.score || 0})`,
                 data.correct ? 'success' : 'error'
             );
+
+            const feedbackElement = document.getElementById(`submission-state-${questionId}`);
+            if (feedbackElement) {
+                feedbackElement.dataset.feedbackHidden = 'false';
+            }
 
             this.progress = {
                 total_questions: data.progress?.totalQuestions ?? this.progress.total_questions,
