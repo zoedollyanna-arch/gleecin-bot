@@ -233,6 +233,13 @@ async function startup() {
     console.log('[BOT] Loading events...');
     await loadBotEvents();
 
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[CONTENT] Seeding production academy content...');
+      await import('../seed-lsl-scripts.js');
+      await import('../seed-challenges-quizzes.js');
+      console.log('[CONTENT] ✅ Production academy content seeded');
+    }
+
     // Start Express server on the platform-provided port only
     await new Promise((resolve, reject) => {
       const server = app.listen(portValue, () => {
