@@ -35,10 +35,30 @@ export async function initializeDatabase() {
     // Test connection
     await query('SELECT 1');
     console.log('[DB] ✅ Connected to PostgreSQL');
-    
-    // The tables are already created by the bot's migration script
-    // No need to recreate them here since they share the same database
-    
+
+    // Ensure tables required by the website routes exist even if the
+    // deployment skipped the full migration script.
+    await query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tier TEXT NOT NULL CHECK (tier IN ('paid', 'advanced')),
+        amount_lindens INTEGER NOT NULL,
+        recipient TEXT DEFAULT 'zoedollyanna resident',
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'rejected')),
+        proof_text TEXT,
+        transaction_date TIMESTAMP,
+        verified_by INTEGER REFERENCES users(id),
+        verified_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP,
+        notes TEXT
+      )
+    `);
+
+    await query(`CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status)`);
+
   } catch (error) {
     console.error('[DB] Connection error:', error);
     throw error;
