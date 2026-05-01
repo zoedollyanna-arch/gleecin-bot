@@ -60,6 +60,85 @@ function getAdminActorId(req) {
   return req.user?.id ?? req.session?.user?.id ?? null;
 }
 
+function normalizeDuplicateKey(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function hasDuplicateField(values) {
+  return new Set(values.filter(Boolean)).size !== values.filter(Boolean).length;
+}
+
+async function isDuplicateScriptEntry({ title, description, code, explanation, use_cases, common_mistakes, id = null }) {
+  const existing = await all(
+    `
+      SELECT id
+      FROM scripts
+      WHERE (
+        LOWER(title) = LOWER($1)
+        OR (
+          LOWER(COALESCE(description, '')) = LOWER(COALESCE($2, ''))
+          AND LOWER(COALESCE(code, '')) = LOWER(COALESCE($3, ''))
+          AND LOWER(COALESCE(explanation, '')) = LOWER(COALESCE($4, ''))
+          AND LOWER(COALESCE(use_cases, '')) = LOWER(COALESCE($5, ''))
+          AND LOWER(COALESCE(common_mistakes, '')) = LOWER(COALESCE($6, ''))
+        )
+      )
+      AND ($7::int IS NULL OR id <> $7)
+      LIMIT 1
+    `,
+    [title, description, code, explanation, use_cases, common_mistakes, id]
+  );
+
+  return existing.length > 0;
+}
+
+async function isDuplicateChallengeEntry({ title, description, starter_code, solution, explanation, id = null }) {
+  const existing = await all(
+    `
+      SELECT id
+      FROM challenges
+      WHERE (
+        LOWER(title) = LOWER($1)
+        OR (
+          LOWER(COALESCE(description, '')) = LOWER(COALESCE($2, ''))
+          AND LOWER(COALESCE(starter_code, '')) = LOWER(COALESCE($3, ''))
+          AND LOWER(COALESCE(solution, '')) = LOWER(COALESCE($4, ''))
+          AND LOWER(COALESCE(explanation, '')) = LOWER(COALESCE($5, ''))
+        )
+      )
+      AND ($6::int IS NULL OR id <> $6)
+      LIMIT 1
+    `,
+    [title, description, starter_code, solution, explanation, id]
+  );
+
+  return existing.length > 0;
+}
+
+async function isDuplicateQuizEntry({ title, description, lesson_id, difficulty, passing_score, time_limit_minutes, id = null }) {
+  const existing = await all(
+    `
+      SELECT id
+      FROM quizzes
+      WHERE (
+        LOWER(title) = LOWER($1)
+        OR (
+          LOWER(COALESCE(description, '')) = LOWER(COALESCE($2, ''))
+          AND COALESCE(lesson_id, 0) = COALESCE($3, 0)
+          AND COALESCE(difficulty, '') = COALESCE($4, '')
+          AND COALESCE(passing_score, 0) = COALESCE($5, 0)
+          AND COALESCE(time_limit_minutes, 0) = COALESCE($6, 0)
+        )
+      )
+      AND ($7::int IS NULL OR id <> $7)
+      LIMIT 1
+    `,
+    [title, description, lesson_id, difficulty, passing_score, time_limit_minutes, id]
+  );
+
+  return existing.length > 0;
+}
+
 router.get('/', adminOnly, async (req, res) => {
   try {
     const stats = await get(`
@@ -280,6 +359,10 @@ router.post('/scripts/create', isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Title and category are required' });
     }
 
+    if (await isDuplicateScriptEntry({ title, description, code, explanation, use_cases, common_mistakes })) {
+      return res.status(409).json({ error: 'Duplicate script detected by title or content' });
+    }
+
     const created = await run(
       `INSERT INTO scripts (title, description, category, author_id, price_tier, code, explanation, use_cases, common_mistakes, language, version, tags, is_public, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW()) RETURNING id`,
@@ -313,6 +396,11 @@ router.post('/scripts/:id/update', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, category, tier, code, explanation, use_cases, common_mistakes, language, version, tags, is_public } = req.body;
+
+    if (await isDuplicateScriptEntry({ title, description, code, explanation, use_cases, common_mistakes, id: Number(id) })) {
+      return res.status(409).json({ error: 'Duplicate script detected by title or content' });
+    }
+
     const updated = await run(
       `UPDATE scripts
        SET title = $1, description = $2, category = $3, price_tier = $4, code = $5, explanation = $6,
@@ -642,6 +730,10 @@ router.post('/quizzes/create', isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Title is required' });
     }
 
+    if (await isDuplicateQuizEntry({ title, description, lesson_id, difficulty, passing_score, time_limit_minutes })) {
+      return res.status(409).json({ error: 'Duplicate quiz detected by title or content' });
+    }
+
     const created = await run(
       `INSERT INTO quizzes (title, description, lesson_id, difficulty, passing_score, time_limit_minutes, price_tier, created_by, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING id`,
@@ -659,6 +751,10 @@ router.post('/quizzes/:id/update', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, lesson_id, difficulty, passing_score, time_limit_minutes, price_tier } = req.body;
+
+    if (await isDuplicateQuizEntry({ title, description, lesson_id, difficulty, passing_score, time_limit_minutes, id: Number(id) })) {
+      return res.status(409).json({ error: 'Duplicate quiz detected by title or content' });
+    }
 
     await run(
       `UPDATE quizzes
@@ -689,6 +785,11 @@ router.post('/quizzes/:id/delete', isAdmin, async (req, res) => {
 router.post('/challenges/create', isAdmin, async (req, res) => {
   try {
     const { title, description, difficulty, starter_code, solution, explanation, level, price_tier } = req.body;
+
+    if (await isDuplicateChallengeEntry({ title, description, starter_code, solution, explanation })) {
+      return res.status(409).json({ error: 'Duplicate challenge detected by title or content' });
+    }
+
     const created = await run(`INSERT INTO challenges (title, description, difficulty, starter_code, solution, explanation, level, price_tier, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING id`, [title, description, difficulty, starter_code, solution, explanation, level, price_tier]);
     res.json({ success: true, challengeId: created.id });
   } catch (error) {
@@ -700,6 +801,11 @@ router.post('/challenges/:id/update', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, difficulty, starter_code, solution, explanation, level, price_tier } = req.body;
+
+    if (await isDuplicateChallengeEntry({ title, description, starter_code, solution, explanation, id: Number(id) })) {
+      return res.status(409).json({ error: 'Duplicate challenge detected by title or content' });
+    }
+
     await run(`UPDATE challenges SET title=$1, description=$2, difficulty=$3, starter_code=$4, solution=$5, explanation=$6, level=$7, price_tier=$8 WHERE id=$9`, [title, description, difficulty, starter_code, solution, explanation, level, price_tier, id]);
     res.json({ success: true });
   } catch (error) {
