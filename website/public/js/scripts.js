@@ -101,6 +101,7 @@ class ScriptLibrary {
         const language = (script.language || 'lsl').toLowerCase();
         const title = script.title || 'Untitled Script';
         const description = script.description || 'No description provided.';
+        const createdBy = script.created_by || script.author || 'Jwett';
         const category = script.category || 'general';
         const priceTier = script.price_tier || 'free';
         const tags = Array.isArray(script.tags) ? script.tags : [];
@@ -118,6 +119,7 @@ class ScriptLibrary {
                     </div>
                 </div>
                 <p class="script-description">${this.escapeHtml(description)}</p>
+                <p class="script-author">Created by: ${this.escapeHtml(createdBy)}</p>
                 <div class="script-preview">
                     <pre><code class="language-${this.escapeHtml(language)}">${this.escapeHtml(code)}</code></pre>
                 </div>

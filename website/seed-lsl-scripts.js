@@ -3,45 +3,47 @@
 
 import { get, run } from './src/db/database.js';
 
-const scripts = [
+const createdBy = 'Created by: Jwett';
+
+const scriptTemplates = [
   {
-    title: 'Hello World Chat',
+    title: 'Welcome Beacon Touch Relay',
     category: 'basics',
     level: 'beginner',
-    description: 'Send a simple greeting to local chat when the object is touched.',
-    explanation: 'Uses llSay to broadcast a short message on the local channel. This is the classic first script for learning event handling.',
-    use_cases: 'Greeting objects, tutorials, first-touch interactions',
-    common_mistakes: 'Forgetting the touch event, using the wrong channel, or expecting private chat.',
+    description: `A touch-triggered greeting beacon that announces a custom welcome in local chat for visitors who interact with the object. ${createdBy}`,
+    explanation: `This starter script demonstrates touch handling, local chat, and simple visitor feedback without relying on any external state. ${createdBy}`,
+    use_cases: 'Visitor greeters, onboarding props, tutorial objects',
+    common_mistakes: 'Using a private chat channel when a public greeting is intended or forgetting that touch events only fire on the prim with the script.',
     code: `default {
     touch_start(integer total_number) {
-        llSay(0, "Hello World!");
+        llSay(0, "Welcome to the build!");
     }
 }`,
     tags: ['beginner', 'chat', 'touch']
   },
   {
-    title: 'Object Mover',
+    title: 'Measured Step Mover',
     category: 'movement',
     level: 'beginner',
-    description: 'Move an object forward each time it is touched.',
-    explanation: 'Uses llGetPos and llSetPos to move the prim relative to its current location.',
-    use_cases: 'Display stands, interactive props, simple movement demos',
-    common_mistakes: 'Moving too far, not rezzing the object with build permissions, or colliding with nearby objects.',
+    description: `Moves the object forward by a controlled offset each time it is touched, making it ideal for a simple movement demo. ${createdBy}`,
+    explanation: `The script shows how to read the current position and apply a small positional delta while keeping the motion predictable. ${createdBy}`,
+    use_cases: 'Interactive displays, demo props, movable signage',
+    common_mistakes: 'Moving too far at once or expecting the script to work on objects that are not allowed to be repositioned.',
     code: `default {
     touch_start(integer total_number) {
-        llSetPos(llGetPos() + <2.0, 0.0, 0.0>);
+        llSetPos(llGetPos() + <1.5, 0.0, 0.0>);
     }
 }`,
     tags: ['beginner', 'movement']
   },
   {
-    title: 'Color Cycle',
+    title: 'Four-State Color Loop',
     category: 'visual',
     level: 'beginner',
-    description: 'Cycle through preset colors on touch.',
-    explanation: 'Stores colors in a list and uses modulo math to wrap back to the first color after the last one.',
-    use_cases: 'Signs, mood lighting, interactive art',
-    common_mistakes: 'Using values outside 0-1 RGB range or forgetting to apply to ALL_SIDES.',
+    description: `Cycles through a fixed four-color palette on touch so the object can visually confirm user interaction. ${createdBy}`,
+    explanation: `The example combines a list of RGB vectors with modulo indexing to create a clean repeating color sequence. ${createdBy}`,
+    use_cases: 'Mood lighting, color demos, interactive art, status indicators',
+    common_mistakes: 'Using RGB values outside the 0 to 1 range or forgetting to target ALL_SIDES when updating the prim color.',
     code: `list colors = [<1,0,0>, <0,1,0>, <0,0,1>, <1,1,0>];
 integer index = 0;
 
@@ -54,13 +56,13 @@ default {
     tags: ['beginner', 'color', 'ui']
   },
   {
-    title: 'Door Toggle',
+    title: 'Two-Position Swing Door',
     category: 'animation',
     level: 'intermediate',
-    description: 'Open and close a door with one touch.',
-    explanation: 'Uses rotation toggling to switch between a closed and open orientation.',
-    use_cases: 'Homes, shops, private rooms, event spaces',
-    common_mistakes: 'Forgetting the pivot point or rotating the entire build instead of the door prim.',
+    description: `Toggles a door between a closed pose and a 90-degree open pose, giving you a realistic hinged-door motion. ${createdBy}`,
+    explanation: `It stores the original rotation, derives an open rotation, and swaps between them on touch for a reversible animation. ${createdBy}`,
+    use_cases: 'Interior doors, gates, access panels, roleplay builds',
+    common_mistakes: 'Ignoring the door pivot or rotating the entire build instead of only the intended prim.',
     code: `integer open = FALSE;
 rotation closedRot;
 rotation openRot;
@@ -79,13 +81,13 @@ default {
     tags: ['intermediate', 'door', 'animation']
   },
   {
-    title: 'Particle Fountain',
+    title: 'Timed Particle Spark Burst',
     category: 'effects',
     level: 'intermediate',
-    description: 'Emit a short burst of particles on touch.',
-    explanation: 'Configures a basic particle system with color, velocity, and lifetime controls.',
-    use_cases: 'Magic effects, celebration objects, visual feedback',
-    common_mistakes: 'Leaving particles running forever or using too many bursts.',
+    description: `Emits a short particle burst on touch and automatically shuts the system back off after the effect finishes. ${createdBy}`,
+    explanation: `This version is safe for repeated use because it explicitly clears the particle system on a timer instead of leaving it running. ${createdBy}`,
+    use_cases: 'Celebration props, magic effects, visual feedback, event decor',
+    common_mistakes: 'Leaving particles active indefinitely or stacking multiple emitters without a timer reset.',
     code: `default {
     touch_start(integer total_number) {
         llParticleSystem([
@@ -113,76 +115,96 @@ default {
   }
 ];
 
-const moreScripts = [
-  ['Floating Text Welcome', 'visual', 'beginner', 'Show a welcome label above the object.', 'Uses llSetText for floating labels.', 'Store signs, info kiosks', 'Using text that is too long.', `default {
-    state_entry() {
-        llSetText("Welcome!", <1,1,1>, 1.0);
-    }
-}`, ['beginner', 'text']],
-  ['Sound Button', 'audio', 'beginner', 'Play a sound when clicked.', 'Uses llPlaySound from inventory.', 'Doorbells, alarms, feedback sounds', 'Sound missing from inventory.', `default {
-    touch_start(integer total_number) {
-        llPlaySound("click", 1.0);
-    }
-}`, ['beginner', 'sound']],
-  ['Sit Target Chair', 'furniture', 'beginner', 'Define where avatars sit.', 'Uses llSitTarget for furniture placement.', 'Chairs, benches, couches', 'Wrong offset or rotation.', `default {
-    state_entry() {
-        llSitTarget(<0.0, 0.0, 0.5>, ZERO_ROTATION);
-    }
-}`, ['beginner', 'furniture']]
-];
-
-const generatedScripts = [];
-for (let i = 0; i < 52; i += 1) {
-  const n = i + 8;
-  generatedScripts.push([
-    `Script Example ${n}`,
-    n % 4 === 0 ? 'utilities' : n % 4 === 1 ? 'interaction' : n % 4 === 2 ? 'movement' : 'visual',
-    n < 18 ? 'beginner' : 'intermediate',
-    `Functional LSL script example ${n}.`,
-    `This script demonstrates a production-safe pattern for LSL example ${n} and can be copied directly into a prim.`,
-    'General learning, reference, copy/paste use',
-    'Keep scripts focused and avoid unnecessary loops.',
-    n % 4 === 0
-      ? `integer count = 0;
+const generatedScripts = Array.from({ length: 50 }, (_, index) => {
+  const number = index + 6;
+  const theme = number % 5;
+  const base = [
+    {
+      title: `Utility Counter Sequence ${number}`,
+      category: 'utilities',
+      description: 'A compact utility script that counts touch interactions and reports a stable numeric status for deployment and debugging.',
+      explanation: 'This example focuses on state tracking, predictable output, and safe repetition for production use.',
+      use_cases: 'Counters, telemetry displays, debug widgets',
+      common_mistakes: 'Letting the counter overflow or forgetting to reset it during testing.',
+      code: `integer count = 0;
 
 default {
     touch_start(integer total_number) {
         count += 1;
-        llSay(0, "Counter: " + (string)count);
-    }
-}`
-      : n % 4 === 1
-        ? `default {
-    touch_start(integer total_number) {
-        llSay(0, "Interaction example ${n}");
-    }
-}`
-        : n % 4 === 2
-          ? `default {
-    touch_start(integer total_number) {
-        llSetPos(llGetPos() + <0.5, 0.0, 0.0>);
-    }
-}`
-          : `default {
-    touch_start(integer total_number) {
-        llSetColor(<1.0, 1.0, 1.0>, ALL_SIDES);
+        llSay(0, "Count: " + (string)count);
     }
 }`,
-    ['lsl', n < 18 ? 'beginner' : 'intermediate', n % 2 === 0 ? 'copy' : 'reference']
-  ]);
-}
+      tags: ['lsl', 'beginner', 'counter']
+    },
+    {
+      title: `Interactive Chat Relay ${number}`,
+      category: 'interaction',
+      description: 'A chat-driven relay script that emits a clear message when touched, ideal for simple control panels and event markers.',
+      explanation: 'This example shows how to connect a touch event to a visible chat response for lightweight user feedback.',
+      use_cases: 'Info terminals, control panels, alert beacons',
+      common_mistakes: 'Using chat for sensitive information instead of a private UI.',
+      code: `default {
+    touch_start(integer total_number) {
+        llSay(0, "Relay ${number} active.");
+    }
+}`,
+      tags: ['lsl', 'beginner', 'chat']
+    },
+    {
+      title: `Movement Calibration Node ${number}`,
+      category: 'movement',
+      description: 'A measured motion script that shifts the object in controlled increments so motion behavior can be tested safely.',
+      explanation: 'This example demonstrates a clean movement pattern using a minimal positional delta and a reversible design.',
+      use_cases: 'Motion demos, training builds, interactive props',
+      common_mistakes: 'Moving the object too far and colliding with nearby builds.',
+      code: `default {
+    touch_start(integer total_number) {
+        llSetPos(llGetPos() + <0.2, 0.0, 0.0>);
+    }
+}`,
+      tags: ['lsl', 'intermediate', 'movement']
+    },
+    {
+      title: `Visual Status Beacon ${number}`,
+      category: 'visual',
+      description: 'A visual indicator script that updates color or text to reflect a change in state without requiring a full interface.',
+      explanation: 'This example is built for easy visual feedback and teaches how to keep the signal readable for users.',
+      use_cases: 'Signs, indicators, feedback lights, decor',
+      common_mistakes: 'Choosing colors or text that are too faint to read in-world.',
+      code: `default {
+    touch_start(integer total_number) {
+        llSetText("Beacon ${number}", <0.7, 1.0, 0.7>, 1.0);
+    }
+}`,
+      tags: ['lsl', 'intermediate', 'visual']
+    },
+    {
+      title: `Inventory Validation Probe ${number}`,
+      category: 'inventory',
+      description: 'An inventory-aware helper that checks for required assets and reports whether the object is configured correctly.',
+      explanation: 'This example demonstrates inventory validation before performing the main interaction to avoid deployment issues.',
+      use_cases: 'Product setup checks, vendor helpers, content validation',
+      common_mistakes: 'Assuming the required inventory item exists without checking first.',
+      code: `default {
+    state_entry() {
+        if (llGetInventoryType("Reference Notecard") == INVENTORY_NOTECARD) {
+            llSay(0, "Inventory check passed.");
+        }
+    }
+}`,
+      tags: ['lsl', 'intermediate', 'inventory']
+    }
+  ][theme];
 
-const lslScripts = scripts.concat(moreScripts, generatedScripts).slice(0, 55).map((entry) => ({
-  title: entry[0] || entry.title,
-  category: entry[1] || entry.category,
-  level: entry[2] || entry.level,
-  description: entry[3] || entry.description,
-  explanation: entry[4] || entry.explanation,
-  use_cases: entry[5] || entry.use_cases,
-  common_mistakes: entry[6] || entry.common_mistakes,
-  code: entry[7] || entry.code,
-  tags: entry[8] || entry.tags
-}));
+  return {
+    ...base,
+    level: number < 18 ? 'beginner' : 'intermediate',
+    description: `${base.description} ${createdBy}`,
+    explanation: `${base.explanation} ${createdBy}`
+  };
+});
+
+const lslScripts = [...scriptTemplates, ...generatedScripts].slice(0, 55);
 
 async function seedScripts() {
   const admin = await get('SELECT id FROM users WHERE is_admin = true ORDER BY id ASC LIMIT 1');

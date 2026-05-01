@@ -3,10 +3,12 @@
 
 import { get, run } from './src/db/database.js';
 
+const createdBy = 'Created by: Jwett';
+
 const challengeBlueprints = [
   {
     title: 'Hello World Touch',
-    description: 'Write a script that says Hello World when the object is touched.',
+    description: `Write a beginner-friendly script that says Hello World when the object is touched. ${createdBy}`,
     difficulty: 'easy',
     level: 'beginner',
     category: 'basics',
@@ -20,11 +22,11 @@ const challengeBlueprints = [
         llSay(0, "Hello World!");
     }
 }`,
-    explanation: 'A first challenge that teaches the touch event and llSay.'
+    explanation: `This opening challenge teaches the touch event, local chat output, and the smallest complete interaction flow. ${createdBy}`
   },
   {
     title: 'Color Cycler',
-    description: 'Cycle an object through at least three colors on touch.',
+    description: `Cycle an object through at least three colors on touch using a clean list-based approach. ${createdBy}`,
     difficulty: 'easy',
     level: 'beginner',
     category: 'visual',
@@ -45,11 +47,11 @@ default {
         llSetColor(llList2Vector(colors, index), ALL_SIDES);
     }
 }`,
-    explanation: 'This challenge practices lists, indexing, and color application.'
+    explanation: `This challenge practices list indexing, modulo wrapping, and visible feedback through object color changes. ${createdBy}`
   },
   {
     title: 'Basic Door Toggle',
-    description: 'Build a toggle door that opens and closes when touched.',
+    description: `Build a touch-driven door that opens and closes with a reversible motion state. ${createdBy}`,
     difficulty: 'medium',
     level: 'beginner',
     category: 'movement',
@@ -75,18 +77,22 @@ default {
         llSetPos(open ? openPos : closedPos);
     }
 }`,
-    explanation: 'Introduces state tracking and object movement.'
+    explanation: `This challenge introduces state tracking, movement offsets, and a simple closed/open toggle pattern. ${createdBy}`
   }
 ];
 
 for (let i = 0; i < 49; i += 1) {
   const number = i + 4;
+  const difficulty = number % 3 === 0 ? 'hard' : number % 2 === 0 ? 'medium' : 'easy';
+  const level = number < 18 ? 'beginner' : 'intermediate';
+  const category = number % 4 === 0 ? 'events' : number % 4 === 1 ? 'functions' : number % 4 === 2 ? 'ui' : 'utilities';
+
   challengeBlueprints.push({
     title: `Challenge ${number}`,
-    description: `Production-safe challenge ${number} focused on core LSL patterns.`,
-    difficulty: number % 3 === 0 ? 'hard' : number % 2 === 0 ? 'medium' : 'easy',
-    level: number < 18 ? 'beginner' : 'intermediate',
-    category: number % 4 === 0 ? 'events' : number % 4 === 1 ? 'functions' : number % 4 === 2 ? 'ui' : 'utilities',
+    description: `A production-safe ${difficulty} challenge focused on ${category} patterns and reliable scripting habits. ${createdBy}`,
+    difficulty,
+    level,
+    category,
     starter_code: `default {
     state_entry() {
         // challenge ${number}
@@ -97,7 +103,7 @@ for (let i = 0; i < 49; i += 1) {
         llSay(0, "Challenge ${number} complete");
     }
 }`,
-    explanation: `Challenge ${number} teaches a reusable scripting pattern and is ready for progress tracking.`
+    explanation: `Challenge ${number} teaches a reusable LSL pattern and reinforces safe, readable production scripting. ${createdBy}`
   });
 }
 
@@ -106,7 +112,7 @@ for (let i = 0; i < 52; i += 1) {
   const number = i + 1;
   quizBlueprints.push({
     title: `LSL Quiz ${number}`,
-    description: `Short interactive quiz ${number} covering beginner to intermediate LSL concepts.`,
+    description: `A focused quiz covering ${number < 18 ? 'beginner' : number < 36 ? 'intermediate' : 'advanced'} Linden Scripting Language concepts. ${createdBy}`,
     difficulty: number < 18 ? 'easy' : number < 36 ? 'medium' : 'hard',
     passing_score: number < 18 ? 70 : number < 36 ? 75 : 80,
     time_limit_minutes: number < 18 ? 10 : 15,
@@ -213,6 +219,8 @@ async function seedChallengesAndQuizzes() {
         [quizId, 1]
       );
 
+      const questionOptions = JSON.stringify(['Learn syntax', 'Delete data', 'Compile images', 'Open the browser']);
+
       if (existingQuestion?.id) {
         await run(
           `UPDATE quiz_questions
@@ -225,9 +233,9 @@ async function seedChallengesAndQuizzes() {
            WHERE id = $5`,
           [
             questionText,
-            JSON.stringify(['Learn syntax', 'Delete data', 'Compile images', 'Open the browser']),
+            questionOptions,
             'Learn syntax',
-            'The quiz checks understanding of LSL fundamentals and safe production habits.',
+            `The quiz checks understanding of the target concept and safe production habits. ${createdBy}`,
             existingQuestion.id
           ]
         );
@@ -240,9 +248,9 @@ async function seedChallengesAndQuizzes() {
           [
             quizId,
             questionText,
-            JSON.stringify(['Learn syntax', 'Delete data', 'Compile images', 'Open the browser']),
+            questionOptions,
             'Learn syntax',
-            'The quiz checks understanding of LSL fundamentals and safe production habits.'
+            `The quiz checks understanding of the target concept and safe production habits. ${createdBy}`
           ]
         );
       }
