@@ -6,7 +6,6 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-// Create PostgreSQL connection pool using the same DATABASE_URL as the bot
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -14,30 +13,108 @@ const pool = new Pool({
   }
 });
 
-/**
- * Query function for PostgreSQL
- */
 export async function query(text, params) {
   const client = await pool.connect();
   try {
-    const result = await client.query(text, params);
-    return result;
+    return await client.query(text, params);
   } finally {
     client.release();
   }
 }
 
-/**
- * Initialize database connection and ensure tables exist
- */
+async function seedDefaultPrompts() {
+  const existingPrompts = await get('SELECT COUNT(*)::int AS count FROM prompts');
+  if ((existingPrompts?.count || 0) > 0) return;
+
+  const starterPrompts = [
+    {
+      title: 'Debug a failing API route',
+      category: 'debugging',
+      description: 'Find the root cause, inspect the request flow, and fix the issue without hiding errors.',
+      prompt_text: 'You are debugging a production API route. First identify the exact failing file, line, and request path. Then explain why it fails, patch the root cause, and verify the endpoint with a real request. Do not use try/catch to hide the bug. Return the minimal safe fix and any test command you used.',
+      is_public: true
+    },
+    {
+      title: 'Build a clean React form',
+      category: 'ui',
+      description: 'Generate a maintainable, accessible form with validation and polished spacing.',
+      prompt_text: 'Create a React form component with accessible labels, inline validation, disabled submit state, and clear error messages. Keep the layout responsive, avoid overflow, and use reusable subcomponents for inputs and helper text. Include the expected props and how the form state should be handled.',
+      is_public: true
+    },
+    {
+      title: 'Optimize a slow database query',
+      category: 'optimization',
+      description: 'Improve query performance while preserving behavior.',
+      prompt_text: 'Analyze the SQL query for bottlenecks, suggest indexes if needed, and rewrite the query for better performance without changing results. Explain the tradeoffs, show the optimized query, and mention what data shape or cardinality assumptions you are making.',
+      is_public: true
+    },
+    {
+      title: 'Design a backend CRUD endpoint',
+      category: 'backend',
+      description: 'Create a safe CRUD API with validation and error handling.',
+      prompt_text: 'Design a production-ready CRUD endpoint for a backend service. Include route definitions, validation rules, status codes, persistence logic, and error responses. Ensure the code matches the database schema and does not accept invalid input.',
+      is_public: true
+    },
+    {
+      title: 'Write a regression test plan',
+      category: 'testing',
+      description: 'Build a test plan that catches the current bug and future regressions.',
+      prompt_text: 'Create a regression test plan for this feature. List the core success path, invalid input cases, permission checks, and the exact assertions needed to prevent regressions. Include both automated and manual verification steps.',
+      is_public: true
+    },
+    {
+      title: 'Refactor a messy component',
+      category: 'ui',
+      description: 'Split a large UI component into smaller maintainable pieces.',
+      prompt_text: 'Refactor the provided large UI component into smaller files with clear responsibilities. Preserve behavior, improve readability, and remove duplicate logic. Explain the new file structure and the props passed between components.',
+      is_public: true
+    },
+    {
+      title: 'Add API validation rules',
+      category: 'backend',
+      description: 'Strengthen request validation before persistence.',
+      prompt_text: 'Add strict validation for this API endpoint. Validate required fields, data types, maximum lengths, and allowed values. Reject invalid payloads with meaningful 4xx responses and ensure the database only receives sanitized input.',
+      is_public: true
+    },
+    {
+      title: 'Improve error handling',
+      category: 'debugging',
+      description: 'Make failures obvious and actionable.',
+      prompt_text: 'Audit the error handling path and replace vague failures with precise, actionable messages. Preserve stack traces in logs, return useful client-facing errors, and avoid swallowing exceptions or silently defaulting incorrect values.',
+      is_public: true
+    },
+    {
+      title: 'Plan a feature rollout',
+      category: 'architecture',
+      description: 'Break a feature into safe implementation phases.',
+      prompt_text: 'Create a phased rollout plan for a new feature. Include schema changes, backend routes, frontend components, migrations, verification steps, and rollback considerations. Make the plan realistic for a production app.',
+      is_public: true
+    },
+    {
+      title: 'Review schema consistency',
+      category: 'architecture',
+      description: 'Check that code, API, and database all match.',
+      prompt_text: 'Review the codebase for schema mismatches between frontend, API routes, and database tables. Identify inconsistencies, propose the exact schema updates, and list the files that must change so everything stays aligned.',
+      is_public: true
+    }
+  ];
+
+  for (const prompt of starterPrompts) {
+    await query(
+      `INSERT INTO prompts (title, category, prompt_text, description, is_public, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+      [prompt.title, prompt.category, prompt.prompt_text, prompt.description, prompt.is_public]
+    );
+  }
+}
+
 export async function initializeDatabase() {
   try {
     await query('SELECT 1');
     console.log('[DB] ✅ Connected to PostgreSQL');
 
     const schemaStatements = [
-      `
-      CREATE TABLE IF NOT EXISTS users (
+      `CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         discord_id TEXT UNIQUE NOT NULL,
         username TEXT NOT NULL UNIQUE,
@@ -48,10 +125,8 @@ export async function initializeDatabase() {
         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP,
         is_admin BOOLEAN DEFAULT false
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS classes (
+      )`,
+      `CREATE TABLE IF NOT EXISTS classes (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -66,32 +141,34 @@ export async function initializeDatabase() {
         topics TEXT,
         requirements TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS certifications (
+      )`,
+      `CREATE TABLE IF NOT EXISTS certifications (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         course_name TEXT NOT NULL,
         certificate_url TEXT,
         issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         certificate_id TEXT UNIQUE,
-        is_custom BOOLEAN DEFAULT false
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS certificates (
+        is_custom BOOLEAN DEFAULT false,
+        shared BOOLEAN DEFAULT false,
+        shared_at TIMESTAMP,
+        pdf_url TEXT,
+        completion_date TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS certificates (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         course_name TEXT NOT NULL,
         certificate_url TEXT,
         issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         certificate_id TEXT UNIQUE,
-        is_custom BOOLEAN DEFAULT false
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS scripts (
+        is_custom BOOLEAN DEFAULT false,
+        shared BOOLEAN DEFAULT false,
+        shared_at TIMESTAMP,
+        pdf_url TEXT,
+        completion_date TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS scripts (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -112,18 +189,14 @@ export async function initializeDatabase() {
         thumbnail_url TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS script_downloads (
+      )`,
+      `CREATE TABLE IF NOT EXISTS script_downloads (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         script_id INTEGER NOT NULL REFERENCES scripts(id) ON DELETE CASCADE,
         downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS lessons (
+      )`,
+      `CREATE TABLE IF NOT EXISTS lessons (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -140,10 +213,8 @@ export async function initializeDatabase() {
         creator_id INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS lesson_progress (
+      )`,
+      `CREATE TABLE IF NOT EXISTS lesson_progress (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
@@ -153,10 +224,8 @@ export async function initializeDatabase() {
         last_watched_at TIMESTAMP,
         completed_at TIMESTAMP,
         UNIQUE(user_id, lesson_id)
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS schedules (
+      )`,
+      `CREATE TABLE IF NOT EXISTS schedules (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         instructor TEXT,
@@ -171,10 +240,8 @@ export async function initializeDatabase() {
         updated_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS challenges (
+      )`,
+      `CREATE TABLE IF NOT EXISTS challenges (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -186,10 +253,8 @@ export async function initializeDatabase() {
         level TEXT DEFAULT 'beginner',
         price_tier TEXT DEFAULT 'free' CHECK (price_tier IN ('free', 'paid', 'advanced')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS challenge_submissions (
+      )`,
+      `CREATE TABLE IF NOT EXISTS challenge_submissions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         challenge_id INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
@@ -201,10 +266,8 @@ export async function initializeDatabase() {
         reviewed_by INTEGER REFERENCES users(id),
         reviewed_at TIMESTAMP,
         submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS quizzes (
+      )`,
+      `CREATE TABLE IF NOT EXISTS quizzes (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -215,10 +278,8 @@ export async function initializeDatabase() {
         price_tier TEXT DEFAULT 'free' CHECK (price_tier IN ('free', 'paid', 'advanced')),
         created_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS quiz_questions (
+      )`,
+      `CREATE TABLE IF NOT EXISTS quiz_questions (
         id SERIAL PRIMARY KEY,
         quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
         question_text TEXT NOT NULL,
@@ -233,10 +294,8 @@ export async function initializeDatabase() {
           question_type NOT IN ('multiple_choice', 'true_false')
           OR (options IS NOT NULL AND jsonb_typeof(options) = 'array' AND jsonb_array_length(options) >= 2)
         )
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS quiz_attempts (
+      )`,
+      `CREATE TABLE IF NOT EXISTS quiz_attempts (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
@@ -245,10 +304,8 @@ export async function initializeDatabase() {
         answers JSONB,
         time_spent_seconds INTEGER,
         attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS reviews (
+      )`,
+      `CREATE TABLE IF NOT EXISTS reviews (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
@@ -257,10 +314,8 @@ export async function initializeDatabase() {
         is_public BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS activities (
+      )`,
+      `CREATE TABLE IF NOT EXISTS activities (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -275,10 +330,8 @@ export async function initializeDatabase() {
         price_tier TEXT DEFAULT 'free' CHECK (price_tier IN ('free', 'paid', 'advanced')),
         created_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS activity_submissions (
+      )`,
+      `CREATE TABLE IF NOT EXISTS activity_submissions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
@@ -289,10 +342,8 @@ export async function initializeDatabase() {
         mentor_id INTEGER REFERENCES users(id),
         submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         reviewed_at TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS payments (
+      )`,
+      `CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         tier TEXT NOT NULL CHECK (tier IN ('paid', 'advanced')),
@@ -306,10 +357,8 @@ export async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         expires_at TIMESTAMP,
         notes TEXT
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS messages (
+      )`,
+      `CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
         sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -319,10 +368,8 @@ export async function initializeDatabase() {
         is_reply BOOLEAN DEFAULT false,
         parent_message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS sessions (
+      )`,
+      `CREATE TABLE IF NOT EXISTS sessions (
         id SERIAL PRIMARY KEY,
         student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -340,10 +387,8 @@ export async function initializeDatabase() {
         updated_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS session_requests (
+      )`,
+      `CREATE TABLE IF NOT EXISTS session_requests (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         title TEXT NOT NULL,
@@ -355,30 +400,24 @@ export async function initializeDatabase() {
         completed_at TIMESTAMP,
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS admin_logs (
+      )`,
+      `CREATE TABLE IF NOT EXISTS admin_logs (
         id SERIAL PRIMARY KEY,
         admin_id INTEGER NOT NULL REFERENCES users(id),
         action TEXT NOT NULL,
         target_user_id INTEGER REFERENCES users(id),
         details JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS announcements (
+      )`,
+      `CREATE TABLE IF NOT EXISTS announcements (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
         important BOOLEAN DEFAULT false,
         expires_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS prompts (
+      )`,
+      `CREATE TABLE IF NOT EXISTS prompts (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         category TEXT NOT NULL,
@@ -388,8 +427,7 @@ export async function initializeDatabase() {
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-      `
+      )`
     ];
 
     for (const statement of schemaStatements) {
@@ -398,7 +436,6 @@ export async function initializeDatabase() {
 
     const indexStatements = [
       `CREATE INDEX IF NOT EXISTS idx_users_tier ON users(tier)`,
-      `CREATE INDEX IF NOT EXISTS idx_enrollments_user ON enrollments(user_id)`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_scripts_title_unique ON scripts (LOWER(title))`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_scripts_content_unique ON scripts (LOWER(COALESCE(description, '')), LOWER(COALESCE(code, '')), LOWER(COALESCE(explanation, '')), LOWER(COALESCE(use_cases, '')), LOWER(COALESCE(common_mistakes, '')))`,
       `CREATE INDEX IF NOT EXISTS idx_scripts_category ON scripts(category)`,
@@ -436,20 +473,17 @@ export async function initializeDatabase() {
     for (const statement of indexStatements) {
       await query(statement);
     }
+
+    await seedDefaultPrompts();
   } catch (error) {
     console.error('[DB] Connection error:', error);
     throw error;
   }
 }
 
-/**
- * Get database instance (for compatibility with existing code)
- */
 export function getDatabase() {
   return {
-    run: async (sql, params) => {
-      return await query(sql, params);
-    },
+    run: async (sql, params) => await query(sql, params),
     get: async (sql, params) => {
       const result = await query(sql, params);
       return result.rows[0] || null;
@@ -461,33 +495,21 @@ export function getDatabase() {
   };
 }
 
-/**
- * Run a query (for INSERT, UPDATE, DELETE)
- */
 export async function run(sql, params = []) {
   const result = await query(sql, params);
   return { id: result.rows[0]?.id || null, changes: result.rowCount };
 }
 
-/**
- * Get a single row
- */
 export async function get(sql, params = []) {
   const result = await query(sql, params);
   return result.rows[0] || null;
 }
 
-/**
- * Get all rows
- */
 export async function all(sql, params = []) {
   const result = await query(sql, params);
   return result.rows;
 }
 
-/**
- * Close database connection
- */
 export async function closeDatabase() {
   await pool.end();
 }

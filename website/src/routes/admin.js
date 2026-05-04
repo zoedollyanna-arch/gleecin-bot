@@ -520,6 +520,20 @@ router.post('/lessons/create', isAdmin, upload.single('video_file'), async (req,
   }
 });
 
+router.get('/prompts', adminOnly, async (req, res) => {
+  try {
+    res.render('prompts', {
+      user: req.session.user,
+      isAdmin: true,
+      pageCss: 'prompts',
+      title: 'Prompts Management'
+    });
+  } catch (error) {
+    console.error('[PROMPTS LIST ERROR]', error);
+    res.status(500).render('error', { error: error.message, user: req.session.user });
+  }
+});
+
 router.get('/certifications', adminOnly, async (req, res) => {
   try {
     const certs = await all(`SELECT c.*, u.username FROM certifications c JOIN users u ON c.user_id = u.id ORDER BY c.completion_date DESC`);

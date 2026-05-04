@@ -1,3 +1,4 @@
+<% const adminMode = typeof isAdmin !== 'undefined' && isAdmin; %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,7 @@
     <title>Prompts | GLEECIN Academy</title>
     <link rel="stylesheet" href="/css/prompts.css">
 </head>
-<body class="prompts-page">
+<body class="prompts-page" data-is-admin="<%= adminMode ? 'true' : 'false' %>">
     <%- include('partials/header'); %>
 
     <main class="student-page prompts-page__content">
@@ -37,6 +38,59 @@
                 </label>
             </div>
         </section>
+
+        <% if (adminMode) { %>
+        <section class="student-panel">
+            <div class="student-panel__header">
+                <div>
+                    <h2>Admin controls</h2>
+                    <p>Create, edit, and delete prompts from the same live prompt library.</p>
+                </div>
+            </div>
+
+            <form id="admin-prompt-form" class="prompts-admin-form">
+                <input type="hidden" id="prompt-id" name="id" value="">
+                <div class="prompts-admin-grid">
+                    <label class="prompt-filter">
+                        <span>Title</span>
+                        <input id="prompt-title" name="title" class="search-input" type="text" maxlength="120" required>
+                    </label>
+                    <label class="prompt-filter">
+                        <span>Category</span>
+                        <select id="prompt-category" name="category" class="filter-select" required>
+                            <option value="">Select category</option>
+                            <option value="debugging">Debugging</option>
+                            <option value="ui">UI</option>
+                            <option value="backend">Backend</option>
+                            <option value="optimization">Optimization</option>
+                            <option value="testing">Testing</option>
+                            <option value="architecture">Architecture</option>
+                        </select>
+                    </label>
+                    <label class="prompt-filter prompt-admin-full">
+                        <span>Description</span>
+                        <input id="prompt-description" name="description" class="search-input" type="text" maxlength="300">
+                    </label>
+                    <label class="prompt-filter prompt-admin-full">
+                        <span>Prompt text</span>
+                        <textarea id="prompt-text" name="prompt_text" rows="8" class="search-input" maxlength="5000" required></textarea>
+                    </label>
+                    <label class="prompt-filter">
+                        <span>Visibility</span>
+                        <select id="prompt-is-public" name="is_public" class="filter-select">
+                            <option value="true">Public</option>
+                            <option value="false">Private</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="admin-row-actions" style="margin-top: 1rem;">
+                    <button type="submit" class="btn-primary" id="prompt-save-button">Save prompt</button>
+                    <button type="button" class="btn-secondary" id="prompt-cancel-button">Cancel edit</button>
+                    <button type="button" class="btn-secondary" id="prompt-delete-button">Delete prompt</button>
+                </div>
+            </form>
+        </section>
+        <% } %>
 
         <section class="student-panel">
             <div id="prompts-container" class="student-card-grid"></div>

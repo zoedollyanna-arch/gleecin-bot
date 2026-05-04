@@ -292,6 +292,7 @@ router.get('/prompts', isAuthenticated, (req, res) => {
 
   res.render('prompts', {
     user,
+    isAdmin: Boolean(user?.is_admin),
     pageCss: 'prompts',
     title: 'Prompts - GLEECIN Academy'
   });
