@@ -156,19 +156,19 @@ class LearningModule {
 
     renderQuestionCard(question, index) {
         const type = this.normalizeQuestionType(question.question_type || 'multiple_choice');
-        const title = this.escapeHtml(question.quiz_title || 'Learning Question');
+        const title = this.escapeHtml(question.quiz_title || question.challenge_title || 'Learning Question');
         const questionText = this.escapeHtml(question.question_text || '');
         const options = this.parseOptions(question.options);
         const hasOptions = Array.isArray(options) && options.length > 0;
 
         return `
-            <article class="student-card learning-question" data-question-id="${question.id}" data-question-type="${type}">
+            <article class="student-card learning-question" data-question-id="${question.id}" data-question-type="${type}" data-source-type="${this.escapeAttribute(question.source_type || 'quiz')}">
                 <div class="student-card__topline">
                     <div>
                         <h2>${title}</h2>
                         <p class="question-type-label">${this.formatQuestionType(type)}</p>
                     </div>
-                    <span class="student-badge student-badge--muted">Ready</span>
+                    <span class="student-badge student-badge--muted">${this.escapeHtml(question.source_type === 'challenge' ? 'Challenge' : 'Quiz')}</span>
                 </div>
 
                 <p class="question-text">${questionText}</p>
@@ -200,9 +200,9 @@ class LearningModule {
             return `
                 <fieldset class="answer-options">
                     <legend class="sr-only">Select one answer</legend>
-                    ${options.map((option, index) => `
+                    ${options.map((option) => `
                         <label class="answer-option">
-                            <input type="radio" name="answer-${question.id}" value="${this.escapeAttribute(option)}" ${index === 0 ? '' : ''}>
+                            <input type="radio" name="answer-${question.id}" value="${this.escapeAttribute(option)}">
                             <span>${this.escapeHtml(option)}</span>
                         </label>
                     `).join('')}
@@ -355,7 +355,7 @@ class LearningModule {
         this.filteredQuestions = this.questions.filter((question) => {
             const normalizedType = this.normalizeQuestionType(question.question_type || '');
             const matchesType = typeFilter === 'all' || normalizedType === typeFilter;
-            const haystack = `${question.quiz_title || ''} ${question.question_text || ''} ${question.explanation || ''}`.toLowerCase();
+            const haystack = `${question.quiz_title || ''} ${question.challenge_title || ''} ${question.question_text || ''} ${question.explanation || ''}`.toLowerCase();
             const matchesSearch = !search.trim() || haystack.includes(search.trim().toLowerCase());
             return matchesType && matchesSearch;
         });

@@ -31,6 +31,37 @@ function computeScore(correct, maxScore = 100) {
   return correct ? maxScore : 0;
 }
 
+function normalizeQuestionType(type) {
+  const value = String(type || '').toLowerCase();
+  const map = {
+    short_answer: 'fill_blank',
+    fill_in_blank: 'fill_blank',
+    fill_blank: 'fill_blank',
+    debugging: 'debug',
+    debug: 'debug',
+    code: 'debug',
+    prediction_based: 'prediction',
+    prediction: 'prediction',
+    scenario_based: 'challenge',
+    challenge: 'challenge',
+    multiple_choice: 'multiple_choice',
+    true_false: 'true_false'
+  };
+  return map[value] || value || 'multiple_choice';
+}
+
+function normalizeOptions(options) {
+  if (!options) return [];
+  if (Array.isArray(options)) return options;
+
+  try {
+    const parsed = typeof options === 'string' ? JSON.parse(options) : options;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function buildFeedback(questionType, isCorrect, expected, submitted) {
   if (isCorrect) {
     return 'Correct answer. Your submission has been saved and your progress was updated.';
@@ -57,7 +88,7 @@ function buildFeedback(questionType, isCorrect, expected, submitted) {
 }
 
 export function gradeSubmission(question, submittedAnswer) {
-  const questionType = question.question_type || question.type || 'multiple_choice';
+  const questionType = normalizeQuestionType(question.question_type || question.type || 'multiple_choice');
   const correctAnswer = question.correct_answer ?? question.answer ?? '';
   const submitted = submittedAnswer ?? '';
 
@@ -83,7 +114,7 @@ export function gradeSubmission(question, submittedAnswer) {
     const matched = includesAny(actual, expectedKeywords);
 
     isCorrect = matched || actual.includes(normalizeText(correctAnswer));
-    score = isCorrect ? 100 : (matched ? 70 : 0);
+    score = isCorrect ? 100 : matched ? 70 : 0;
   } else if (questionType === 'challenge') {
     const expectedKeywords = toKeywords(correctAnswer);
     const actual = normalizeText(submitted);
@@ -173,7 +204,7 @@ export async function getProgress(userId) {
   };
 }
 
-export async function maybeIssueCertificate(userId, courseName) {
+export async function maybeIssueCertificate(userId, courseName, details = {}) {
   const progress = await getProgress(userId);
   const accuracy = progress.completed_questions > 0 ? Math.round((progress.correct_answers / progress.completed_questions) * 100) : 0;
   const qualifiesByCompletion = progress.progress_percent >= 100;
@@ -194,7 +225,7 @@ export async function maybeIssueCertificate(userId, courseName) {
     };
   }
 
-  const generated = await issueCertificate(userId, courseName);
+  const generated = await issueCertificate(userId, courseName, details.completionDate || new Date());
   const certificateId = generated?.certificateId || `CERT-${uuid()}`;
 
   const record = await run(
@@ -208,17 +239,68 @@ export async function maybeIssueCertificate(userId, courseName) {
     id: record.id,
     certificateId,
     certificateUrl: generated?.pdfUrl || null,
-    downloadUrl: generated?.downloadUrl || `/api/certificate/${record.id}/download`,
+    downloadUrl: generated?.downloadUrl || `/api/certifications/${record.id}/download`,
     issuedAt: new Date().toISOString(),
     alreadyIssued: false
   };
 }
 
+function normalizeLearningRow(row) {
+  return {
+    ...row,
+    question_type: normalizeQuestionType(row.question_type),
+    options: normalizeOptions(row.options)
+  };
+}
+
 export async function loadQuestions() {
-  return all(`
-    SELECT qq.*, q.title AS quiz_title, q.lesson_id
+  const quizQuestions = await all(`
+    SELECT
+      qq.id,
+      qq.quiz_id,
+      qq.question_text,
+      qq.question_type,
+      qq.options,
+      qq.correct_answer,
+      qq.explanation,
+      qq.points,
+      qq.order_index,
+      q.title AS quiz_title,
+      q.lesson_id,
+      q.description AS quiz_description,
+      q.created_by,
+      q.created_at,
+      'quiz' AS source_type
     FROM quiz_questions qq
     JOIN quizzes q ON q.id = qq.quiz_id
-    ORDER BY q.created_at DESC, qq.order_index ASC, qq.id ASC
   `);
+
+  const challengeRows = await all(`
+    SELECT
+      c.id AS id,
+      NULL::int AS quiz_id,
+      c.title AS question_text,
+      'challenge'::text AS question_type,
+      NULL::jsonb AS options,
+      c.solution AS correct_answer,
+      c.explanation,
+      1 AS points,
+      1 AS order_index,
+      c.title AS quiz_title,
+      NULL::int AS lesson_id,
+      c.description AS quiz_description,
+      NULL::int AS created_by,
+      c.created_at,
+      'challenge' AS source_type
+    FROM challenges c
+  `);
+
+  return [...quizQuestions, ...challengeRows]
+    .map(normalizeLearningRow)
+    .sort((left, right) => {
+      const leftDate = new Date(left.created_at || 0).getTime();
+      const rightDate = new Date(right.created_at || 0).getTime();
+      if (leftDate !== rightDate) return rightDate - leftDate;
+      return (left.order_index || 0) - (right.order_index || 0);
+    });
 }

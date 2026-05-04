@@ -326,9 +326,15 @@ router.post('/submit-answer', isAuthenticated, async (req, res) => {
     }
 
     const question = await get(
-      `SELECT qq.*, q.title AS quiz_title
+      `SELECT
+         qq.*,
+         q.title AS quiz_title,
+         q.description AS quiz_description,
+         q.created_by AS quiz_created_by,
+         u.username AS instructor_name
        FROM quiz_questions qq
        JOIN quizzes q ON q.id = qq.quiz_id
+       LEFT JOIN users u ON u.id = q.created_by
        WHERE qq.id = $1`,
       [parseInt(questionId)]
     );
@@ -339,8 +345,19 @@ router.post('/submit-answer', isAuthenticated, async (req, res) => {
 
     const grading = gradeSubmission(question, answer);
     const progress = await saveSubmission(req.session.user.id, question, answer, grading);
-    const courseName = question.quiz_title || 'GLEECIN Academy Learning';
-    const certificate = await maybeIssueCertificate(req.session.user.id, courseName);
+
+    const completionEligible = Boolean(grading.correct);
+    const certificateCourseName = question.quiz_title || question.quiz_description || 'GLEECIN Academy Learning';
+    const certificate = completionEligible
+      ? await maybeIssueCertificate(req.session.user.id, certificateCourseName, {
+          completionDate: new Date(),
+          title: certificateCourseName,
+          studentName: req.session.user.username,
+          instructorName: question.instructor_name || 'Jwett',
+          score: grading.score,
+          status: 'completed'
+        })
+      : null;
 
     res.json({
       correct: grading.correct,
@@ -400,13 +417,43 @@ router.get('/challenges', isAuthenticated, async (req, res) => {
     const tier = getUserTier(req.session.user);
 
     const challenges = await all(`
-      SELECT id, title, description, difficulty, level,
-             starter_code, price_tier, created_at
-      FROM challenges
-      WHERE price_tier = 'free'
-         OR (price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
-         OR (price_tier = 'advanced' AND $1 = 'advanced')
-      ORDER BY difficulty ASC, created_at DESC
+      SELECT
+        c.id,
+        c.title,
+        c.description,
+        c.difficulty,
+        c.level,
+        c.starter_code,
+        c.solution,
+        c.explanation,
+        c.price_tier,
+        c.created_at,
+        'challenge' AS source_type,
+        COALESCE(
+          json_agg(
+            CASE
+              WHEN qq.id IS NULL THEN NULL
+              ELSE json_build_object(
+                'id', qq.id,
+                'question_text', qq.question_text,
+                'question_type', qq.question_type,
+                'options', qq.options,
+                'correct_answer', qq.correct_answer,
+                'explanation', qq.explanation,
+                'points', qq.points,
+                'order_index', qq.order_index
+              )
+            END
+          ) FILTER (WHERE qq.id IS NOT NULL),
+          '[]'::json
+        ) AS questions
+      FROM challenges c
+      LEFT JOIN quiz_questions qq ON qq.quiz_id = c.id
+      WHERE c.price_tier = 'free'
+         OR (c.price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
+         OR (c.price_tier = 'advanced' AND $1 = 'advanced')
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
     `, [tier]);
 
     res.json(challenges);

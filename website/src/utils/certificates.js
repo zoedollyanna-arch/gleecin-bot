@@ -148,10 +148,10 @@ export async function issueCertificate(userId, courseName) {
 
     // Insert into database
     const cert = await run(
-      `INSERT INTO certificates (user_id, certificate_type, course_name, certificate_url, issued_at, certificate_id, is_custom)
-       VALUES ($1, $2, $3, $4, NOW(), $5, false)
-       RETURNING *`,
-      [userId, 'course_completion', courseName, relativePath, certId]
+      `INSERT INTO certificates (user_id, course_name, certificate_url, issued_at, certificate_id, is_custom)
+       VALUES ($1, $2, $3, NOW(), $4, false)
+       RETURNING id`,
+      [userId, courseName, relativePath, certId]
     );
 
     return {
