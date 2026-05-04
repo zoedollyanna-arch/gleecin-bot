@@ -222,7 +222,7 @@ export async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
         question_text TEXT NOT NULL,
-        question_type TEXT CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'code')),
+        question_type TEXT CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'fill_blank', 'debugging', 'prediction', 'scenario_based', 'code')),
         options JSONB,
         correct_answer TEXT,
         explanation TEXT,
@@ -332,6 +332,8 @@ export async function initializeDatabase() {
         scheduled_at TIMESTAMP,
         completed_at TIMESTAMP,
         notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        updated_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )

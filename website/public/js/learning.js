@@ -3,6 +3,8 @@ class LearningModule {
     constructor() {
         this.questions = [];
         this.filteredQuestions = [];
+        this.completedQuestionIds = new Set();
+        this.activeQuestionId = null;
         this.progress = {
             total_questions: 0,
             completed_questions: 0,
@@ -22,21 +24,25 @@ class LearningModule {
     bindEvents() {
         document.addEventListener('click', (event) => {
             const submitButton = event.target.closest('[data-submit-answer]');
+            const nextButton = event.target.closest('[data-next-question]');
             const toggleButton = event.target.closest('[data-boolean-value]');
             const refreshButton = event.target.closest('#refresh-learning');
 
             if (submitButton) {
                 event.preventDefault();
-                const questionId = submitButton.getAttribute('data-submit-answer');
-                this.submitAnswer(questionId);
+                this.submitAnswer(submitButton.getAttribute('data-submit-answer'));
+                return;
+            }
+
+            if (nextButton) {
+                event.preventDefault();
+                this.focusQuestion(nextButton.getAttribute('data-next-question'));
                 return;
             }
 
             if (toggleButton) {
                 event.preventDefault();
-                const group = toggleButton.getAttribute('data-toggle-group');
-                const value = toggleButton.getAttribute('data-boolean-value');
-                this.setBooleanValue(group, value);
+                this.setBooleanValue(toggleButton.getAttribute('data-toggle-group'), toggleButton.getAttribute('data-boolean-value'));
                 return;
             }
 
@@ -68,9 +74,7 @@ class LearningModule {
         if (!container) return;
 
         try {
-            const response = await fetch('/api/learning/questions?preview=1', {
-                credentials: 'include'
-            });
+            const response = await fetch('/api/learning/questions', { credentials: 'include' });
             const data = await response.json();
             this.questions = Array.isArray(data) ? data : [];
             this.filteredQuestions = [...this.questions];
@@ -83,9 +87,7 @@ class LearningModule {
 
     async loadProgress() {
         try {
-            const response = await fetch('/api/progress?preview=1', {
-                credentials: 'include'
-            });
+            const response = await fetch('/api/progress', { credentials: 'include' });
             const data = await response.json();
             this.progress = {
                 total_questions: data.total_questions || 0,
@@ -106,9 +108,7 @@ class LearningModule {
         if (!summary || !list) return;
 
         try {
-            const response = await fetch('/api/certificate?preview=1', {
-                credentials: 'include'
-            });
+            const response = await fetch('/api/certificate', { credentials: 'include' });
             const data = await response.json();
             const certificates = Array.isArray(data.certificates) ? data.certificates : [];
             this.certificateData = certificates;
@@ -150,15 +150,15 @@ class LearningModule {
             return;
         }
 
-        container.innerHTML = this.filteredQuestions.map((question) => this.renderQuestionCard(question)).join('');
-        this.restoreBooleanSelections();
+        container.innerHTML = this.filteredQuestions.map((question, index) => this.renderQuestionCard(question, index)).join('');
+        this.restoreSelections();
     }
 
-    renderQuestionCard(question) {
-        const type = this.escapeHtml(question.question_type || 'multiple_choice');
+    renderQuestionCard(question, index) {
+        const type = this.normalizeQuestionType(question.question_type || 'multiple_choice');
         const title = this.escapeHtml(question.quiz_title || 'Learning Question');
         const questionText = this.escapeHtml(question.question_text || '');
-        const options = Array.isArray(question.options) ? question.options : this.parseOptions(question.options);
+        const options = this.parseOptions(question.options);
         const hasOptions = Array.isArray(options) && options.length > 0;
 
         return `
@@ -179,6 +179,7 @@ class LearningModule {
 
                 <div class="question-actions">
                     <button class="btn-primary" type="button" data-submit-answer="${question.id}">Submit Answer</button>
+                    <button class="btn-secondary" type="button" data-next-question="${this.getNextQuestionId(index)}" ${index === this.filteredQuestions.length - 1 ? 'disabled' : ''}>Next Question</button>
                 </div>
 
                 <div class="submission-state" id="submission-state-${question.id}" aria-live="polite" data-feedback-hidden="true"></div>
@@ -189,15 +190,11 @@ class LearningModule {
     }
 
     renderInput(question, options) {
-        const type = question.question_type || 'multiple_choice';
+        const type = this.normalizeQuestionType(question.question_type || 'multiple_choice');
 
         if (type === 'multiple_choice') {
             if (!Array.isArray(options) || options.length === 0) {
-                return `
-                    <div class="student-empty-state">
-                        <p>Answer options are not available for this question yet.</p>
-                    </div>
-                `;
+                return '<div class="student-empty-state"><p>Answer options are not available for this question yet.</p></div>';
             }
 
             return `
@@ -205,7 +202,7 @@ class LearningModule {
                     <legend class="sr-only">Select one answer</legend>
                     ${options.map((option, index) => `
                         <label class="answer-option">
-                            <input type="radio" name="answer-${question.id}" value="${this.escapeAttribute(option)}" ${index === 0 ? 'data-default-answer="true"' : ''}>
+                            <input type="radio" name="answer-${question.id}" value="${this.escapeAttribute(option)}" ${index === 0 ? '' : ''}>
                             <span>${this.escapeHtml(option)}</span>
                         </label>
                     `).join('')}
@@ -223,21 +220,15 @@ class LearningModule {
             `;
         }
 
-        if (type === 'fill_blank' || type === 'prediction') {
-            return `
-                <textarea id="answer-${question.id}" class="answer-textarea" rows="3" placeholder="Type your answer here..."></textarea>
-            `;
+        if (type === 'fill_in_blank' || type === 'fill_blank' || type === 'prediction') {
+            return `<input id="answer-${question.id}" class="answer-textarea" type="text" placeholder="Type your answer here...">`;
         }
 
-        if (type === 'debug' || type === 'challenge') {
-            return `
-                <textarea id="answer-${question.id}" class="code-editor answer-textarea" rows="8" placeholder="// Write or fix the code here..."></textarea>
-            `;
+        if (type === 'debugging' || type === 'debug' || type === 'challenge') {
+            return `<textarea id="answer-${question.id}" class="code-editor answer-textarea" rows="8" placeholder="// Write or fix the code here..."></textarea>`;
         }
 
-        return `
-            <textarea id="answer-${question.id}" class="answer-textarea" rows="4" placeholder="Type your answer here..."></textarea>
-        `;
+        return `<textarea id="answer-${question.id}" class="answer-textarea" rows="4" placeholder="Type your answer here..."></textarea>`;
     }
 
     async submitAnswer(questionId) {
@@ -264,34 +255,22 @@ class LearningModule {
         this.showSubmissionState(questionId, 'Submitting answer...', 'info');
 
         try {
-            const response = await fetch('/api/submit-answer?preview=1', {
+            const response = await fetch('/api/submit-answer', {
                 method: 'POST',
                 credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    questionId,
-                    answer
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questionId, answer })
             });
 
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Submission failed');
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Submission failed');
-            }
-
-            this.showSubmissionState(
-                questionId,
-                `${data.correct ? 'Correct' : 'Incorrect'} — ${data.feedback || ''} (Score: ${data.score || 0})`,
-                data.correct ? 'success' : 'error'
-            );
+            this.completedQuestionIds.add(String(questionId));
+            const resultType = data.correct ? 'success' : 'error';
+            this.showSubmissionState(questionId, `${data.correct ? 'Correct' : 'Incorrect'} — ${data.feedback || ''} (Score: ${data.score || 0})`, resultType);
 
             const feedbackElement = document.getElementById(`submission-state-${questionId}`);
-            if (feedbackElement) {
-                feedbackElement.dataset.feedbackHidden = 'false';
-            }
+            if (feedbackElement) feedbackElement.dataset.feedbackHidden = 'false';
 
             this.progress = {
                 total_questions: data.progress?.totalQuestions ?? this.progress.total_questions,
@@ -321,7 +300,7 @@ class LearningModule {
     }
 
     collectAnswer(question) {
-        const type = question.question_type || 'multiple_choice';
+        const type = this.normalizeQuestionType(question.question_type || 'multiple_choice');
 
         if (type === 'multiple_choice') {
             const selected = document.querySelector(`input[name="answer-${question.id}"]:checked`);
@@ -344,7 +323,7 @@ class LearningModule {
         });
     }
 
-    restoreBooleanSelections() {
+    restoreSelections() {
         document.querySelectorAll('.boolean-toggle').forEach((group) => {
             const hidden = group.nextElementSibling;
             if (hidden && hidden.value) {
@@ -354,12 +333,28 @@ class LearningModule {
         });
     }
 
+    focusQuestion(questionId) {
+        if (!questionId) return;
+        const target = document.querySelector(`[data-question-id="${questionId}"]`);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.classList.add('question-highlight');
+            window.setTimeout(() => target.classList.remove('question-highlight'), 1500);
+        }
+    }
+
+    getNextQuestionId(index) {
+        const next = this.filteredQuestions[index + 1];
+        return next ? next.id : '';
+    }
+
     filterQuestions() {
         const typeFilter = document.getElementById('type-filter')?.value || 'all';
         const search = document.getElementById('search-filter')?.value || '';
 
         this.filteredQuestions = this.questions.filter((question) => {
-            const matchesType = typeFilter === 'all' || String(question.question_type || '') === typeFilter;
+            const normalizedType = this.normalizeQuestionType(question.question_type || '');
+            const matchesType = typeFilter === 'all' || normalizedType === typeFilter;
             const haystack = `${question.quiz_title || ''} ${question.question_text || ''} ${question.explanation || ''}`.toLowerCase();
             const matchesSearch = !search.trim() || haystack.includes(search.trim().toLowerCase());
             return matchesType && matchesSearch;
@@ -374,7 +369,7 @@ class LearningModule {
                 <div class="student-card__topline">
                     <div>
                         <h3>${this.escapeHtml(certificate.course_name || 'Certificate')}</h3>
-                        <p>Issued ${new Date(certificate.issued_at).toLocaleDateString()}</p>
+                        <p>Issued ${certificate.issued_at ? new Date(certificate.issued_at).toLocaleDateString() : 'Recently'}</p>
                     </div>
                     <span class="student-badge ${certificate.is_custom ? 'student-badge--success' : ''}">${certificate.is_custom ? 'Custom' : 'System'}</span>
                 </div>
@@ -395,16 +390,35 @@ class LearningModule {
         }
     }
 
+    normalizeQuestionType(type) {
+        const value = String(type || '').toLowerCase();
+        const map = {
+            short_answer: 'fill_blank',
+            fill_in_blank: 'fill_blank',
+            fill_blank: 'fill_blank',
+            debugging: 'debug',
+            debug: 'debug',
+            code: 'debug',
+            prediction_based: 'prediction',
+            prediction: 'prediction',
+            scenario_based: 'challenge',
+            challenge: 'challenge',
+            multiple_choice: 'multiple_choice',
+            true_false: 'true_false'
+        };
+        return map[value] || value || 'multiple_choice';
+    }
+
     formatQuestionType(type) {
         const labels = {
             multiple_choice: 'Multiple choice',
             true_false: 'True / False',
             fill_blank: 'Fill in the blank',
-            debug: 'Debug',
-            prediction: 'Prediction',
-            challenge: 'Challenge'
+            debug: 'Debugging challenge',
+            prediction: 'Prediction question',
+            challenge: 'Scenario-based challenge'
         };
-        return labels[type] || type;
+        return labels[this.normalizeQuestionType(type)] || type;
     }
 
     showSubmissionState(questionId, message, type) {

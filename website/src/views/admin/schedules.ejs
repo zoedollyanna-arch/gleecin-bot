@@ -6,18 +6,63 @@
       <div>
         <p class="admin-eyebrow">Scheduling</p>
         <h1>Schedules</h1>
-        <p class="admin-muted">Edit schedules directly, publish announcements, and keep session planning in one place.</p>
+        <p class="admin-muted">Create, edit, publish, and delete schedules with live database updates.</p>
       </div>
+      <button class="admin-btn admin-btn-primary" type="button" id="toggleScheduleForm">Add New</button>
     </div>
 
-    <div class="admin-grid admin-grid-2">
-      <form class="admin-form" id="createAnnouncementForm">
-        <h2>New announcement</h2>
+    <form class="admin-form" id="createScheduleForm" hidden>
+      <h2>Create schedule</h2>
+      <div class="admin-form-grid">
         <label class="admin-field">
           <span>Title</span>
           <input name="title" type="text" required>
         </label>
         <label class="admin-field">
+          <span>Instructor</span>
+          <input name="instructor" type="text">
+        </label>
+        <label class="admin-field">
+          <span>Date</span>
+          <input name="scheduled_date" type="date">
+        </label>
+        <label class="admin-field">
+          <span>Time</span>
+          <input name="scheduled_time" type="time">
+        </label>
+        <label class="admin-field">
+          <span>Capacity</span>
+          <input name="capacity" type="number" min="1" step="1">
+        </label>
+        <label class="admin-field">
+          <span>Class</span>
+          <select name="class_id">
+            <option value="">No class attached</option>
+            <% if (Array.isArray(classes) && classes.length) { %>
+              <% classes.forEach((cls) => { %>
+                <option value="<%= cls.id %>"><%= cls.name %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Description</span>
+          <textarea name="description" rows="4"></textarea>
+        </label>
+      </div>
+      <div class="admin-form-actions">
+        <button type="submit" class="admin-btn admin-btn-primary">Create schedule</button>
+      </div>
+    </form>
+
+    <form class="admin-form" id="createAnnouncementForm">
+      <h2>New announcement</h2>
+      <div class="admin-form-grid">
+        <label class="admin-field">
+          <span>Title</span>
+          <input name="title" type="text" required>
+        </label>
+        <label class="admin-field admin-field-full">
           <span>Content</span>
           <textarea name="content" rows="4" required></textarea>
         </label>
@@ -32,27 +77,11 @@
             <option value="true">Yes</option>
           </select>
         </label>
-        <div class="admin-form-actions">
-          <button type="submit" class="admin-btn admin-btn-primary">Publish announcement</button>
-        </div>
-      </form>
-
-      <div class="admin-info-card">
-        <h2>Classes available for schedules</h2>
-        <% if (Array.isArray(classes) && classes.length) { %>
-          <div class="admin-list">
-            <% classes.forEach((cls) => { %>
-              <div class="admin-list-item">
-                <strong><%= cls.name %></strong>
-                <span class="admin-muted">Class ID: <%= cls.id %></span>
-              </div>
-            <% }) %>
-          </div>
-        <% } else { %>
-          <p class="admin-empty">No classes available.</p>
-        <% } %>
       </div>
-    </div>
+      <div class="admin-form-actions">
+        <button type="submit" class="admin-btn admin-btn-primary">Publish announcement</button>
+      </div>
+    </form>
   </section>
 
   <section class="admin-panel">
@@ -70,27 +99,75 @@
               <th>Date</th>
               <th>Time</th>
               <th>Capacity</th>
+              <th>Class</th>
               <th>Published</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             <% schedules.forEach((schedule) => { %>
-              <tr>
-                <form class="admin-inline-form" action="/admin/schedules/<%= schedule.id %>" method="post">
-                  <td><input class="admin-inline-input" name="title" value="<%= schedule.title || '' %>"></td>
-                  <td><input class="admin-inline-input" name="instructor" value="<%= schedule.instructor || '' %>"></td>
-                  <td><input class="admin-inline-input" name="scheduled_date" type="date" value="<%= schedule.scheduled_date ? new Date(schedule.scheduled_date).toISOString().slice(0,10) : '' %>"></td>
-                  <td><input class="admin-inline-input" name="scheduled_time" type="time" value="<%= schedule.scheduled_time || '' %>"></td>
-                  <td><input class="admin-inline-input" name="capacity" type="number" min="1" value="<%= schedule.capacity ?? '' %>"></td>
-                  <td><span class="admin-pill"><%= schedule.published ? 'Published' : 'Draft' %></span></td>
-                  <td>
-                    <div class="admin-row-actions">
-                      <button class="admin-btn admin-btn-primary admin-btn-sm" type="submit">Save</button>
-                      <button class="admin-btn admin-btn-secondary admin-btn-sm" type="submit" formaction="/admin/schedules/<%= schedule.id %>/publish">Publish</button>
+              <tr data-schedule-row data-schedule-id="<%= schedule.id %>">
+                <td><strong><%= schedule.title || '' %></strong></td>
+                <td><%= schedule.instructor || '' %></td>
+                <td><%= schedule.scheduled_date ? new Date(schedule.scheduled_date).toLocaleDateString() : '—' %></td>
+                <td><%= schedule.scheduled_time || '—' %></td>
+                <td><%= schedule.capacity ?? '—' %></td>
+                <td><%= schedule.class_name || '—' %></td>
+                <td><span class="admin-pill"><%= schedule.published ? 'Published' : 'Draft' %></span></td>
+                <td>
+                  <div class="admin-row-actions">
+                    <button class="admin-btn admin-btn-primary admin-btn-sm" type="button" data-action="edit">Edit</button>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" type="button" data-action="publish">Publish</button>
+                    <button class="admin-btn admin-btn-danger admin-btn-sm" type="button" data-action="delete">Delete</button>
+                  </div>
+                </td>
+              </tr>
+              <tr data-schedule-edit-row hidden>
+                <td colspan="8">
+                  <form class="admin-form admin-schedule-form" data-schedule-id="<%= schedule.id %>">
+                    <div class="admin-form-grid">
+                      <label class="admin-field">
+                        <span>Title</span>
+                        <input class="admin-inline-input" name="title" value="<%= schedule.title || '' %>" required>
+                      </label>
+                      <label class="admin-field">
+                        <span>Instructor</span>
+                        <input class="admin-inline-input" name="instructor" value="<%= schedule.instructor || '' %>">
+                      </label>
+                      <label class="admin-field">
+                        <span>Date</span>
+                        <input class="admin-inline-input" name="scheduled_date" type="date" value="<%= schedule.scheduled_date ? new Date(schedule.scheduled_date).toISOString().slice(0,10) : '' %>">
+                      </label>
+                      <label class="admin-field">
+                        <span>Time</span>
+                        <input class="admin-inline-input" name="scheduled_time" type="time" value="<%= schedule.scheduled_time || '' %>">
+                      </label>
+                      <label class="admin-field">
+                        <span>Capacity</span>
+                        <input class="admin-inline-input" name="capacity" type="number" min="1" value="<%= schedule.capacity ?? '' %>">
+                      </label>
+                      <label class="admin-field">
+                        <span>Class</span>
+                        <select class="admin-inline-input" name="class_id">
+                          <option value="">No class attached</option>
+                          <% if (Array.isArray(classes) && classes.length) { %>
+                            <% classes.forEach((cls) => { %>
+                              <option value="<%= cls.id %>" <%= String(schedule.class_id || '') === String(cls.id) ? 'selected' : '' %>><%= cls.name %></option>
+                            <% }) %>
+                          <% } %>
+                        </select>
+                      </label>
+                      <label class="admin-field admin-field-full">
+                        <span>Description</span>
+                        <textarea class="admin-inline-input" name="description" rows="4"><%= schedule.description || '' %></textarea>
+                      </label>
                     </div>
-                  </td>
-                </form>
+                    <div class="admin-form-actions">
+                      <button class="admin-btn admin-btn-primary" type="submit">Save schedule</button>
+                      <button class="admin-btn admin-btn-secondary" type="button" data-cancel-schedule-edit>Cancel</button>
+                    </div>
+                  </form>
+                </td>
               </tr>
             <% }) %>
           </tbody>
@@ -122,7 +199,32 @@
 </main>
 
 <script>
-  document.getElementById('createAnnouncementForm').addEventListener('submit', async (e) => {
+  const toggleScheduleForm = document.getElementById('toggleScheduleForm');
+  const createScheduleForm = document.getElementById('createScheduleForm');
+
+  toggleScheduleForm?.addEventListener('click', () => {
+    createScheduleForm.hidden = !createScheduleForm.hidden;
+  });
+
+  const refreshPage = () => window.location.reload();
+
+  document.getElementById('createScheduleForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    const res = await fetch('/admin/schedules/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      refreshPage();
+    } else {
+      alert(json.error || 'Failed');
+    }
+  });
+
+  document.getElementById('createAnnouncementForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     const res = await fetch('/admin/schedules/announcement', {
@@ -132,11 +234,61 @@
     });
     const json = await res.json();
     if (json.success) {
-      alert('Announcement published');
-      location.reload();
+      refreshPage();
     } else {
       alert(json.error || 'Failed');
     }
+  });
+
+  document.querySelectorAll('[data-schedule-row]').forEach((row) => {
+    const scheduleId = row.dataset.scheduleId;
+    const editRow = row.nextElementSibling;
+    const editForm = editRow?.querySelector('.admin-schedule-form');
+
+    row.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
+      if (editRow) editRow.hidden = !editRow.hidden;
+    });
+
+    editForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(editForm));
+      const res = await fetch(`/admin/schedules/${scheduleId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        refreshPage();
+      } else {
+        alert(json.error || 'Failed to update schedule');
+      }
+    });
+
+    editForm?.querySelector('[data-cancel-schedule-edit]')?.addEventListener('click', () => {
+      if (editRow) editRow.hidden = true;
+    });
+
+    row.querySelector('[data-action="publish"]')?.addEventListener('click', async () => {
+      const res = await fetch(`/admin/schedules/${scheduleId}/publish`, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        refreshPage();
+      } else {
+        alert(json.error || 'Failed to publish schedule');
+      }
+    });
+
+    row.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
+      if (!confirm('Delete this schedule?')) return;
+      const res = await fetch(`/admin/schedules/${scheduleId}/delete`, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        refreshPage();
+      } else {
+        alert(json.error || 'Failed to delete schedule');
+      }
+    });
   });
 </script>
 

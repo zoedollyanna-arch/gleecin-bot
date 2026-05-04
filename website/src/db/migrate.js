@@ -45,17 +45,24 @@ const migrations = [
   `DROP TABLE IF EXISTS users CASCADE`,
 
   `
-    CREATE TABLE users (
+    CREATE TABLE sessions (
       id SERIAL PRIMARY KEY,
-      discord_id TEXT UNIQUE NOT NULL,
-      username TEXT NOT NULL UNIQUE,
-      email TEXT,
-      avatar_url TEXT,
-      roles TEXT[] DEFAULT '{}',
-      tier TEXT DEFAULT 'free' CHECK (tier IN ('free', 'paid', 'advanced')),
-      joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      last_login TIMESTAMP,
-      is_admin BOOLEAN DEFAULT false
+      student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      topic TEXT NOT NULL,
+      preferred_time TIMESTAMP,
+      duration TEXT,
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed', 'scheduled', 'cancelled')),
+      admin_notes TEXT,
+      requested_date TIMESTAMP,
+      approved_by INTEGER REFERENCES users(id),
+      scheduled_at TIMESTAMP,
+      completed_at TIMESTAMP,
+      notes TEXT,
+      created_by INTEGER REFERENCES users(id),
+      updated_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
 
@@ -325,7 +332,7 @@ const migrations = [
       id SERIAL PRIMARY KEY,
       quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
       question_text TEXT NOT NULL,
-      question_type TEXT CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'code')),
+      question_type TEXT CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'fill_blank', 'debugging', 'prediction', 'scenario_based', 'code')),
       options JSONB,
       correct_answer TEXT,
       explanation TEXT,
@@ -446,6 +453,9 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_lesson_progress_lesson ON lesson_progress(lesson_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_student ON sessions(student_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)`,
+  `CREATE INDEX IF NOT EXISTS idx_user_answers_user ON user_answers(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_user_answers_question ON user_answers(question_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_user_progress_user ON user_progress(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_session_requests_user ON session_requests(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_session_requests_status ON session_requests(status)`,
   `CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`,

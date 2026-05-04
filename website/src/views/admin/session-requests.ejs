@@ -6,8 +6,54 @@
       <div>
         <p class="admin-eyebrow">Session workflow</p>
         <h1>Sessions</h1>
-        <p class="admin-muted">Approve, reject, schedule, and complete session requests with a unified admin interface.</p>
+        <p class="admin-muted">Create, edit, approve, reject, complete, and delete sessions with live database updates.</p>
       </div>
+      <button class="admin-btn admin-btn-primary" type="button" id="toggleSessionForm">Add New</button>
+    </div>
+
+    <form class="admin-form" id="createSessionForm" hidden>
+      <div class="admin-form-grid">
+        <label class="admin-field">
+          <span>Student ID</span>
+          <input name="student_id" type="number" min="1" required>
+        </label>
+        <label class="admin-field">
+          <span>Topic</span>
+          <input name="topic" type="text" required>
+        </label>
+        <label class="admin-field">
+          <span>Preferred time</span>
+          <input name="preferred_time" type="datetime-local">
+        </label>
+        <label class="admin-field">
+          <span>Duration</span>
+          <input name="duration" type="text" placeholder="60 minutes">
+        </label>
+        <label class="admin-field">
+          <span>Status</span>
+          <select name="status">
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </label>
+        <label class="admin-field">
+          <span>Admin notes</span>
+          <textarea name="admin_notes" rows="4"></textarea>
+        </label>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-btn admin-btn-primary" type="submit">Create session</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Session requests</h2>
     </div>
 
     <% if (Array.isArray(requests) && requests.length > 0) { %>
@@ -25,7 +71,7 @@
           </thead>
           <tbody>
             <% requests.forEach((request) => { %>
-              <tr>
+              <tr data-session-row data-session-id="<%= request.id %>">
                 <td><%= request.student_name || request.username || 'Student' %></td>
                 <td>
                   <strong><%= request.topic || request.title || 'Session' %></strong>
@@ -36,15 +82,35 @@
                 <td><%= request.scheduled_at ? new Date(request.scheduled_at).toLocaleString() : (request.preferred_time ? new Date(request.preferred_time).toLocaleString() : '—') %></td>
                 <td>
                   <div class="admin-row-actions">
-                    <% if (request.status === 'pending') { %>
-                      <button class="admin-btn admin-btn-primary admin-btn-sm" type="button" data-session-action="approve" data-session-id="<%= request.id %>">Approve</button>
-                      <button class="admin-btn admin-btn-secondary admin-btn-sm" type="button" data-session-action="reject" data-session-id="<%= request.id %>">Reject</button>
-                    <% } else if (request.status === 'approved') { %>
-                      <button class="admin-btn admin-btn-primary admin-btn-sm" type="button" data-session-action="complete" data-session-id="<%= request.id %>">Complete</button>
-                    <% } else { %>
-                      <span class="admin-muted">No actions</span>
-                    <% } %>
+                    <button class="admin-btn admin-btn-primary admin-btn-sm" type="button" data-session-action="edit">Edit</button>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" type="button" data-session-action="approve">Approve</button>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" type="button" data-session-action="reject">Reject</button>
+                    <button class="admin-btn admin-btn-secondary admin-btn-sm" type="button" data-session-action="complete">Complete</button>
+                    <button class="admin-btn admin-btn-danger admin-btn-sm" type="button" data-session-action="delete">Delete</button>
                   </div>
+                </td>
+              </tr>
+              <tr data-session-edit-row hidden>
+                <td colspan="6">
+                  <form class="admin-form admin-session-edit-form" data-session-id="<%= request.id %>">
+                    <div class="admin-form-grid">
+                      <label class="admin-field"><span>Topic</span><input name="topic" type="text" value="<%= request.topic || '' %>" required></label>
+                      <label class="admin-field"><span>Preferred time</span><input name="preferred_time" type="datetime-local" value="<%= request.preferred_time ? new Date(request.preferred_time).toISOString().slice(0,16) : '' %>"></label>
+                      <label class="admin-field"><span>Duration</span><input name="duration" type="text" value="<%= request.duration || '' %>"></label>
+                      <label class="admin-field"><span>Status</span>
+                        <select name="status">
+                          <% ['pending', 'approved', 'scheduled', 'completed', 'cancelled', 'rejected'].forEach((status) => { %>
+                            <option value="<%= status %>" <%= String(request.status || 'pending') === status ? 'selected' : '' %>><%= status %></option>
+                          <% }) %>
+                        </select>
+                      </label>
+                      <label class="admin-field admin-field-full"><span>Admin notes</span><textarea name="admin_notes" rows="4"><%= request.admin_notes || '' %></textarea></label>
+                    </div>
+                    <div class="admin-form-actions">
+                      <button class="admin-btn admin-btn-primary" type="submit">Save session</button>
+                      <button class="admin-btn admin-btn-secondary" type="button" data-cancel-session-edit>Cancel</button>
+                    </div>
+                  </form>
                 </td>
               </tr>
             <% }) %>
@@ -58,6 +124,13 @@
 </main>
 
 <script>
+  const toggleSessionForm = document.getElementById('toggleSessionForm');
+  const createSessionForm = document.getElementById('createSessionForm');
+
+  toggleSessionForm?.addEventListener('click', () => {
+    createSessionForm.hidden = !createSessionForm.hidden;
+  });
+
   async function postSessionAction(sessionId, action, payload = {}) {
     const response = await fetch(`/admin/session-requests/${sessionId}/${action}`, {
       method: 'POST',
@@ -67,46 +140,78 @@
     return response.json();
   }
 
-  function bindSessionActions() {
-    document.querySelectorAll('[data-session-action]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const { sessionAction, sessionId } = button.dataset;
-
-        try {
-          let payload = {};
-          if (sessionAction === 'approve') {
-            const scheduledAt = prompt('Enter session date/time (YYYY-MM-DD HH:MM):');
-            if (!scheduledAt) return;
-            const notes = prompt('Enter any notes (optional):') || '';
-            payload = { scheduled_at: scheduledAt, notes };
-          }
-
-          if (sessionAction === 'reject') {
-            const notes = prompt('Enter rejection reason:');
-            if (!notes) return;
-            payload = { notes };
-          }
-
-          if (sessionAction === 'complete') {
-            const notes = prompt('Enter completion notes (optional):') || '';
-            payload = { notes };
-          }
-
-          const data = await postSessionAction(sessionId, sessionAction, payload);
-          if (data.success) {
-            alert('Session updated!');
-            location.reload();
-          } else {
-            alert('Error: ' + (data.error || 'Failed'));
-          }
-        } catch (error) {
-          alert('Error: ' + error.message);
-        }
-      });
+  document.getElementById('createSessionForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    const response = await fetch('/admin/sessions/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
-  }
+    const json = await response.json();
+    if (json.success) {
+      location.reload();
+    } else {
+      alert(json.error || 'Failed to create session');
+    }
+  });
 
-  bindSessionActions();
+  document.querySelectorAll('[data-session-row]').forEach((row) => {
+    const sessionId = row.dataset.sessionId;
+    const editRow = row.nextElementSibling;
+    const editForm = editRow?.querySelector('.admin-session-edit-form');
+
+    row.querySelector('[data-session-action="edit"]')?.addEventListener('click', () => {
+      if (editRow) editRow.hidden = !editRow.hidden;
+    });
+
+    editForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(editForm));
+      const response = await fetch(`/admin/sessions/${sessionId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await response.json();
+      if (json.success) {
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to update session');
+      }
+    });
+
+    editForm?.querySelector('[data-cancel-session-edit]')?.addEventListener('click', () => {
+      if (editRow) editRow.hidden = true;
+    });
+
+    row.querySelector('[data-session-action="approve"]')?.addEventListener('click', async () => {
+      const scheduledAt = prompt('Enter session date/time (YYYY-MM-DD HH:MM) or leave blank:') || '';
+      const notes = prompt('Enter approval notes (optional):') || '';
+      const data = await postSessionAction(sessionId, 'approve', { scheduled_at: scheduledAt, notes });
+      if (data.success) location.reload(); else alert(data.error || 'Failed to approve session');
+    });
+
+    row.querySelector('[data-session-action="reject"]')?.addEventListener('click', async () => {
+      const notes = prompt('Enter rejection reason:');
+      if (!notes) return;
+      const data = await postSessionAction(sessionId, 'reject', { notes });
+      if (data.success) location.reload(); else alert(data.error || 'Failed to reject session');
+    });
+
+    row.querySelector('[data-session-action="complete"]')?.addEventListener('click', async () => {
+      const notes = prompt('Enter completion notes (optional):') || '';
+      const data = await postSessionAction(sessionId, 'complete', { notes });
+      if (data.success) location.reload(); else alert(data.error || 'Failed to complete session');
+    });
+
+    row.querySelector('[data-session-action="delete"]')?.addEventListener('click', async () => {
+      if (!confirm('Delete this session?')) return;
+      const response = await fetch(`/admin/sessions/${sessionId}/delete`, { method: 'POST' });
+      const json = await response.json();
+      if (json.success) location.reload(); else alert(json.error || 'Failed to delete session');
+    });
+  });
 </script>
 
 <%- include('../partials/admin-footer') %>
