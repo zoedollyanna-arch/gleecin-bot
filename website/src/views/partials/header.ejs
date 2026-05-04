@@ -6,6 +6,31 @@
                     <img src="/images/gleecin logo.png" alt="GLEECIN Academy Logo" class="logo-image">
                 </a>
             </div>
+
+            <nav class="main-nav" aria-label="Primary">
+                <ul>
+                    <li><a href="/academy">Academy</a></li>
+                    <li><a href="/classes">Classes</a></li>
+                    <li><a href="/learning">Learning</a></li>
+                    <li><a href="/scripts">Scripts</a></li>
+                    <li><a href="/lessons">Lessons</a></li>
+                    <li><a href="/prompts">Prompts</a></li>
+                    <li><a href="/schedule">Schedules</a></li>
+                    <li><a href="/certification">Certification</a></li>
+                </ul>
+            </nav>
+
+            <div class="user-actions">
+                <% if (user) { %>
+                    <div class="user-menu">
+                        <span>Welcome, <%= user.username %></span>
+                        <a href="/profile" class="btn-primary">Profile</a>
+                        <a href="/auth/logout" class="btn-secondary">Logout</a>
+                    </div>
+                <% } else { %>
+                    <a href="/auth/login" class="btn-primary">Login</a>
+                <% } %>
+            </div>
         </div>
     </div>
 </header>
