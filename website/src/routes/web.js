@@ -287,17 +287,13 @@ router.get('/learning', isAuthenticated, (req, res) => {
   });
 });
 
-router.get('/challenges', (req, res) => {
-  const user = req.session?.user;
-  const isAuth = !!user;
-  const tier = isAuth ? getUserTier(user) : 'free';
+router.get('/prompts', isAuthenticated, (req, res) => {
+  const user = req.session.user;
 
-  res.render('learning', {
+  res.render('prompts', {
     user,
-    tier,
-    isAuth,
-    pageCss: 'learning',
-    title: 'Challenges - GLEECIN Academy'
+    pageCss: 'prompts',
+    title: 'Prompts - GLEECIN Academy'
   });
 });
 

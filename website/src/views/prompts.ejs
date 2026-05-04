@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head'); %>
+    <title>Prompts | GLEECIN Academy</title>
+    <link rel="stylesheet" href="/css/prompts.css">
+</head>
+<body class="prompts-page">
+    <%- include('partials/header'); %>
+
+    <main class="student-page prompts-page__content">
+        <section class="student-panel">
+            <div class="student-panel__header">
+                <div>
+                    <h1>Prompts</h1>
+                    <p>Copy starter prompts for debugging, UI work, backend logic, optimization, and more.</p>
+                </div>
+            </div>
+
+            <div class="prompts-toolbar">
+                <label class="prompt-filter">
+                    <span>Category</span>
+                    <select id="prompt-category-filter" class="filter-select">
+                        <option value="all">All categories</option>
+                        <option value="debugging">Debugging</option>
+                        <option value="ui">UI</option>
+                        <option value="backend">Backend</option>
+                        <option value="optimization">Optimization</option>
+                        <option value="testing">Testing</option>
+                        <option value="architecture">Architecture</option>
+                    </select>
+                </label>
+
+                <label class="prompt-filter">
+                    <span>Search</span>
+                    <input id="prompt-search" class="search-input" type="text" placeholder="Search prompts...">
+                </label>
+            </div>
+        </section>
+
+        <section class="student-panel">
+            <div id="prompts-container" class="student-card-grid"></div>
+        </section>
+    </main>
+
+    <%- include('partials/footer'); %>
+    <script src="/js/prompts.js"></script>
+</body>
+</html>

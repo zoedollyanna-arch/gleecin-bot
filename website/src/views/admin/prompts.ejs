@@ -1,0 +1,176 @@
+<%- include('../partials/admin-header', { title: 'Prompts Management' }) %>
+
+<main class="admin-shell">
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <div>
+        <p class="admin-eyebrow">Prompt library</p>
+        <h1>Prompts</h1>
+        <p class="admin-muted">Create, edit, publish, and delete prompts for students.</p>
+      </div>
+    </div>
+
+    <form class="admin-form" id="createPromptForm">
+      <div class="admin-form-grid">
+        <label class="admin-field">
+          <span>Title</span>
+          <input name="title" type="text" required maxlength="120" placeholder="Prompt title">
+        </label>
+        <label class="admin-field">
+          <span>Category</span>
+          <select name="category" required>
+            <option value="">Select category</option>
+            <option value="debugging">Debugging</option>
+            <option value="ui">UI</option>
+            <option value="backend">Backend</option>
+            <option value="optimization">Optimization</option>
+            <option value="testing">Testing</option>
+            <option value="architecture">Architecture</option>
+          </select>
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Description</span>
+          <textarea name="description" rows="3" maxlength="300" placeholder="Short description"></textarea>
+        </label>
+        <label class="admin-field admin-field-full">
+          <span>Prompt text</span>
+          <textarea name="prompt_text" rows="8" maxlength="5000" required placeholder="Prompt content"></textarea>
+        </label>
+        <label class="admin-field">
+          <span>Visibility</span>
+          <select name="is_public">
+            <option value="true">Public</option>
+            <option value="false">Private</option>
+          </select>
+        </label>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-btn admin-btn-primary" type="submit">Create prompt</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <h2>Existing prompts</h2>
+    </div>
+
+    <% if (Array.isArray(prompts) && prompts.length) { %>
+      <div class="admin-grid admin-grid-2">
+        <% prompts.forEach((prompt) => { %>
+          <article class="admin-info-card" data-prompt-card data-prompt-id="<%= prompt.id %>">
+            <div class="admin-panel-header">
+              <div>
+                <h3><%= prompt.title %></h3>
+                <p class="admin-muted"><%= prompt.category %> · <%= prompt.is_public ? 'Public' : 'Private' %></p>
+              </div>
+            </div>
+
+            <p class="admin-muted"><%= prompt.description || 'No description' %></p>
+            <pre class="admin-code"><%= prompt.prompt_text %></pre>
+
+            <form class="admin-form admin-prompt-edit-form" data-prompt-id="<%= prompt.id %>">
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Title</span>
+                  <input name="title" type="text" maxlength="120" value="<%= prompt.title %>" required>
+                </label>
+                <label class="admin-field">
+                  <span>Category</span>
+                  <select name="category" required>
+                    <option value="debugging" <%= prompt.category === 'debugging' ? 'selected' : '' %>>Debugging</option>
+                    <option value="ui" <%= prompt.category === 'ui' ? 'selected' : '' %>>UI</option>
+                    <option value="backend" <%= prompt.category === 'backend' ? 'selected' : '' %>>Backend</option>
+                    <option value="optimization" <%= prompt.category === 'optimization' ? 'selected' : '' %>>Optimization</option>
+                    <option value="testing" <%= prompt.category === 'testing' ? 'selected' : '' %>>Testing</option>
+                    <option value="architecture" <%= prompt.category === 'architecture' ? 'selected' : '' %>>Architecture</option>
+                  </select>
+                </label>
+                <label class="admin-field admin-field-full">
+                  <span>Description</span>
+                  <textarea name="description" rows="3" maxlength="300"><%= prompt.description || '' %></textarea>
+                </label>
+                <label class="admin-field admin-field-full">
+                  <span>Prompt text</span>
+                  <textarea name="prompt_text" rows="8" maxlength="5000" required><%= prompt.prompt_text %></textarea>
+                </label>
+                <label class="admin-field">
+                  <span>Visibility</span>
+                  <select name="is_public">
+                    <option value="true" <%= prompt.is_public ? 'selected' : '' %>>Public</option>
+                    <option value="false" <%= !prompt.is_public ? 'selected' : '' %>>Private</option>
+                  </select>
+                </label>
+              </div>
+              <div class="admin-form-actions">
+                <button class="admin-btn admin-btn-primary" type="submit">Save changes</button>
+                <button class="admin-btn admin-btn-secondary" type="button" data-delete-prompt="<%= prompt.id %>">Delete</button>
+              </div>
+            </form>
+          </article>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="admin-empty">No prompts created yet.</p>
+    <% } %>
+  </section>
+</main>
+
+<script>
+  const createPromptForm = document.getElementById('createPromptForm');
+  if (createPromptForm) {
+    createPromptForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Prompt created');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to create prompt');
+      }
+    });
+  }
+
+  document.querySelectorAll('.admin-prompt-edit-form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const promptId = form.dataset.promptId;
+      const data = Object.fromEntries(new FormData(form));
+      const res = await fetch(`/api/prompts/${promptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Prompt updated');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to update prompt');
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-delete-prompt]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const promptId = button.dataset.deletePrompt;
+      if (!confirm('Delete this prompt permanently?')) return;
+      const res = await fetch(`/api/prompts/${promptId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        alert('Prompt deleted');
+        location.reload();
+      } else {
+        alert(json.error || 'Failed to delete prompt');
+      }
+    });
+  });
+</script>
+
+<%- include('../partials/admin-footer') %>

@@ -228,7 +228,11 @@ export async function initializeDatabase() {
         explanation TEXT,
         points INTEGER DEFAULT 1,
         order_index INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT quiz_question_options_required CHECK (
+          question_type NOT IN ('multiple_choice', 'true_false')
+          OR (options IS NOT NULL AND jsonb_typeof(options) = 'array' AND jsonb_array_length(options) >= 2)
+        )
       )
       `,
       `
@@ -372,6 +376,19 @@ export async function initializeDatabase() {
         expires_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS prompts (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        prompt_text TEXT NOT NULL,
+        description TEXT,
+        is_public BOOLEAN DEFAULT true,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
       `
     ];
 
@@ -411,7 +428,9 @@ export async function initializeDatabase() {
       `CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_reviews_lesson ON reviews(lesson_id)`,
       `CREATE INDEX IF NOT EXISTS idx_certifications_user ON certifications(user_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_certificates_user ON certificates(user_id)`
+      `CREATE INDEX IF NOT EXISTS idx_certificates_user ON certificates(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_prompts_category ON prompts(category)`,
+      `CREATE INDEX IF NOT EXISTS idx_prompts_public ON prompts(is_public)`
     ];
 
     for (const statement of indexStatements) {

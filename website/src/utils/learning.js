@@ -253,6 +253,19 @@ function normalizeLearningRow(row) {
   };
 }
 
+function isValidQuestionRow(row) {
+  if (!row || !row.question_text) return false;
+
+  const type = normalizeQuestionType(row.question_type);
+  const options = normalizeOptions(row.options);
+
+  if (['multiple_choice', 'true_false'].includes(type)) {
+    return Array.isArray(options) && options.length >= 2 && options.every((option) => String(option ?? '').trim().length > 0);
+  }
+
+  return String(row.correct_answer ?? row.solution ?? '').trim().length > 0;
+}
+
 export async function loadQuestions() {
   const quizQuestions = await all(`
     SELECT
@@ -297,6 +310,7 @@ export async function loadQuestions() {
 
   return [...quizQuestions, ...challengeRows]
     .map(normalizeLearningRow)
+    .filter(isValidQuestionRow)
     .sort((left, right) => {
       const leftDate = new Date(left.created_at || 0).getTime();
       const rightDate = new Date(right.created_at || 0).getTime();

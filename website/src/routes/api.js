@@ -313,6 +313,157 @@ router.get('/learning/questions', isAuthenticated, async (req, res) => {
   }
 });
 
+function normalizePromptPayload(body) {
+  return {
+    title: validator.trim(String(body.title || '')).substring(0, 120),
+    category: validator.trim(String(body.category || '')).substring(0, 50),
+    prompt_text: validator.trim(String(body.prompt_text || '')).substring(0, 5000),
+    description: validator.trim(String(body.description || '')).substring(0, 300),
+    is_public: body.is_public === true || body.is_public === 'true' || body.is_public === undefined
+  };
+}
+
+router.get('/prompts', isAuthenticated, async (req, res) => {
+  try {
+    const prompts = await all(
+      `
+      SELECT id, title, category, prompt_text, description, is_public, created_by, created_at, updated_at
+      FROM prompts
+      WHERE is_public = true OR created_by = $1 OR $2 = true
+      ORDER BY created_at DESC
+      `,
+      [req.session.user.id, !!req.session.user.is_admin]
+    );
+
+    res.json(prompts);
+  } catch (error) {
+    console.error('[PROMPTS ERROR]', error);
+    res.status(500).json({ error: 'Failed to fetch prompts' });
+  }
+});
+
+router.get('/prompts/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!validator.isInt(id)) {
+      return res.status(400).json({ error: 'Invalid prompt ID' });
+    }
+
+    const prompt = await get(
+      `
+      SELECT id, title, category, prompt_text, description, is_public, created_by, created_at, updated_at
+      FROM prompts
+      WHERE id = $1 AND (is_public = true OR created_by = $2 OR $3 = true)
+      `,
+      [parseInt(id), req.session.user.id, !!req.session.user.is_admin]
+    );
+
+    if (!prompt) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+
+    res.json(prompt);
+  } catch (error) {
+    console.error('[PROMPT DETAIL ERROR]', error);
+    res.status(500).json({ error: 'Failed to fetch prompt' });
+  }
+});
+
+router.post('/prompts', isAuthenticated, async (req, res) => {
+  try {
+    const payload = normalizePromptPayload(req.body);
+
+    if (!payload.title || !payload.category || !payload.prompt_text) {
+      return res.status(400).json({ error: 'Title, category, and prompt text are required' });
+    }
+
+    const created = await run(
+      `
+      INSERT INTO prompts (title, category, prompt_text, description, is_public, created_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+      RETURNING id
+      `,
+      [payload.title, payload.category, payload.prompt_text, payload.description || null, payload.is_public, req.session.user.id]
+    );
+
+    const prompt = await get(
+      `SELECT id, title, category, prompt_text, description, is_public, created_by, created_at, updated_at FROM prompts WHERE id = $1`,
+      [created.id]
+    );
+
+    res.status(201).json({ success: true, prompt });
+  } catch (error) {
+    console.error('[PROMPT CREATE ERROR]', error);
+    res.status(500).json({ error: 'Failed to create prompt' });
+  }
+});
+
+router.put('/prompts/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!validator.isInt(id)) {
+      return res.status(400).json({ error: 'Invalid prompt ID' });
+    }
+
+    const existing = await get('SELECT * FROM prompts WHERE id = $1', [parseInt(id)]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+
+    if (existing.created_by !== req.session.user.id && !req.session.user.is_admin) {
+      return res.status(403).json({ error: 'Not allowed to edit this prompt' });
+    }
+
+    const payload = normalizePromptPayload(req.body);
+    if (!payload.title || !payload.category || !payload.prompt_text) {
+      return res.status(400).json({ error: 'Title, category, and prompt text are required' });
+    }
+
+    await run(
+      `
+      UPDATE prompts
+      SET title = $1, category = $2, prompt_text = $3, description = $4, is_public = $5, updated_at = NOW()
+      WHERE id = $6
+      `,
+      [payload.title, payload.category, payload.prompt_text, payload.description || null, payload.is_public, parseInt(id)]
+    );
+
+    const prompt = await get(
+      `SELECT id, title, category, prompt_text, description, is_public, created_by, created_at, updated_at FROM prompts WHERE id = $1`,
+      [parseInt(id)]
+    );
+
+    res.json({ success: true, prompt });
+  } catch (error) {
+    console.error('[PROMPT UPDATE ERROR]', error);
+    res.status(500).json({ error: 'Failed to update prompt' });
+  }
+});
+
+router.delete('/prompts/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!validator.isInt(id)) {
+      return res.status(400).json({ error: 'Invalid prompt ID' });
+    }
+
+    const existing = await get('SELECT * FROM prompts WHERE id = $1', [parseInt(id)]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+
+    if (existing.created_by !== req.session.user.id && !req.session.user.is_admin) {
+      return res.status(403).json({ error: 'Not allowed to delete this prompt' });
+    }
+
+    await run('DELETE FROM prompts WHERE id = $1', [parseInt(id)]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[PROMPT DELETE ERROR]', error);
+    res.status(500).json({ error: 'Failed to delete prompt' });
+  }
+});
+
 router.post('/submit-answer', isAuthenticated, async (req, res) => {
   try {
     const { questionId, answer } = req.body;

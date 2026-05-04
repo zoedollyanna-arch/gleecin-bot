@@ -33,9 +33,9 @@
         <h3>Scripts</h3>
         <p class="admin-muted"><%= stats?.total_scripts || 0 %> total · <%= stats?.public_scripts || 0 %> public</p>
       </a>
-      <a class="admin-info-card admin-link" href="/admin/challenges">
-        <h3>Challenges</h3>
-        <p class="admin-muted"><%= stats?.total_challenges || 0 %> total challenge records</p>
+      <a class="admin-info-card admin-link" href="/admin/prompts">
+        <h3>Prompts</h3>
+        <p class="admin-muted">Manage student-facing prompt library</p>
       </a>
       <a class="admin-info-card admin-link" href="/admin/quizzes">
         <h3>Quizzes</h3>
@@ -80,26 +80,12 @@
     </div>
 
     <div class="admin-panel">
-      <div class="admin-panel-header">
-        <h2>Recent challenges</h2>
-        <a class="admin-link" href="/admin/challenges">Manage challenges</a>
-      </div>
-      <% if (Array.isArray(recentChallenges) && recentChallenges.length) { %>
-        <div class="admin-list">
-          <% recentChallenges.forEach((challenge) => { %>
-            <article class="admin-list-item">
-              <div>
-                <strong><%= challenge.title %></strong>
-                <p class="admin-muted"><%= challenge.difficulty || '—' %> · <%= challenge.completion_count ?? 0 %> completions</p>
-              </div>
-              <span class="admin-pill"><%= String(challenge.price_tier || 'free').toUpperCase() %></span>
-            </article>
-          <% }) %>
-        </div>
-      <% } else { %>
-        <p class="admin-empty">No challenges found.</p>
-      <% } %>
+    <div class="admin-panel-header">
+      <h2>Recent prompts</h2>
+      <a class="admin-link" href="/admin/prompts">Manage prompts</a>
     </div>
+    <p class="admin-muted">Prompts are maintained from the prompt management section.</p>
+  </div>
 
     <div class="admin-panel">
       <div class="admin-panel-header">

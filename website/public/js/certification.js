@@ -12,224 +12,191 @@ class CertificationSystem {
     }
 
     setupEventListeners() {
-        // Download PDF buttons
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('download-pdf')) {
-                this.downloadCertificate(e.target.dataset.certificateId);
-            }
-        });
+        document.addEventListener('click', async (event) => {
+            const viewButton = event.target.closest('[data-view-certificate]');
+            const downloadButton = event.target.closest('[data-download-certificate]');
+            const shareButton = event.target.closest('[data-share-certificate]');
+            const closeButton = event.target.closest('[data-close-certificate-modal]');
 
-        // Share certificate buttons
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('share-certificate')) {
-                this.shareCertificate(e.target.dataset.certificateId);
+            if (viewButton) {
+                event.preventDefault();
+                this.openCertificateModal(viewButton.getAttribute('data-view-certificate'));
+                return;
             }
-        });
 
-        // Verify blockchain buttons
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('verify-blockchain')) {
-                this.verifyBlockchain(e.target.dataset.certificateId);
+            if (downloadButton) {
+                event.preventDefault();
+                await this.downloadCertificate(downloadButton.getAttribute('data-download-certificate'));
+                return;
+            }
+
+            if (shareButton) {
+                event.preventDefault();
+                await this.shareCertificate(shareButton.getAttribute('data-share-certificate'));
+                return;
+            }
+
+            if (closeButton) {
+                event.preventDefault();
+                this.closeModal();
             }
         });
     }
 
     async loadCertificates() {
+        const container = document.getElementById('certificates-container');
+        const emptyState = document.getElementById('certificates-empty-state');
+        if (!container || !emptyState) return;
+
         try {
-            const response = await fetch('/api/certifications', {
-                credentials: 'include'
-            });
-            this.certificates = await response.json();
-            
-            const container = document.getElementById('certificates-container');
-            if (container) {
-                container.innerHTML = this.certificates.map(cert => this.renderCertificateCard(cert)).join('');
-                this.setupEventListeners(); // Rebind events for new elements
+            const response = await fetch('/api/certifications', { credentials: 'include' });
+            const data = await response.json();
+            this.certificates = Array.isArray(data) ? data : [];
+
+            if (!this.certificates.length) {
+                container.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
             }
+
+            emptyState.style.display = 'none';
+            container.innerHTML = this.certificates.map((certificate) => this.renderCertificateCard(certificate)).join('');
         } catch (error) {
-            console.error('Error loading certificates:', error);
-            this.showNotification('Failed to load certificates', 'error');
+            console.error('[CERTIFICATES LOAD ERROR]', error);
+            emptyState.style.display = 'block';
+            emptyState.innerHTML = '<p>Failed to load certificates.</p>';
         }
     }
 
     async loadStats() {
         try {
-            const response = await fetch('/api/certifications/stats', {
-                credentials: 'include'
-            });
-            const stats = await response.json();
-            
+            const response = await fetch('/api/certificate', { credentials: 'include' });
+            const data = await response.json();
+            const certificates = Array.isArray(data.certificates) ? data.certificates : [];
+
             const totalElement = document.getElementById('total-certificates');
             const verifiedElement = document.getElementById('verified-certificates');
             const sharedElement = document.getElementById('shared-certificates');
-            
-            if (totalElement) totalElement.textContent = stats.total || 0;
-            if (verifiedElement) verifiedElement.textContent = stats.verified || 0;
-            if (sharedElement) sharedElement.textContent = stats.shared || 0;
-            
+
+            if (totalElement) totalElement.textContent = String(certificates.length);
+            if (verifiedElement) verifiedElement.textContent = String(certificates.length);
+            if (sharedElement) sharedElement.textContent = String(certificates.filter((certificate) => certificate.shared).length);
         } catch (error) {
-            console.error('Error loading certificate stats:', error);
+            console.error('[CERTIFICATE STATS ERROR]', error);
         }
     }
 
     renderCertificateCard(certificate) {
+        const issuedDate = certificate.issued_at ? new Date(certificate.issued_at).toLocaleDateString() : 'Recently';
+
         return `
-            <div class="certificate-card" data-certificate-id="${certificate.id}">
+            <article class="certificate-card" data-certificate-id="${certificate.id}">
                 <div class="certificate-preview">
-                    <img src="${certificate.imageUrl || '/images/certificates/default.jpg'}" alt="${this.escapeHtml(certificate.name)} Certificate">
+                    <div class="certificate-placeholder">GL</div>
+                    <div class="certificate-overlay">
+                        <button class="btn-primary" type="button" data-view-certificate="${certificate.id}">View Certificate</button>
+                    </div>
                 </div>
                 <div class="certificate-info">
-                    <h2>${this.escapeHtml(certificate.name)}</h2>
-                    <p class="issue-date">Issued: ${new Date(certificate.earnedDate).toLocaleDateString()}</p>
-                    <div class="verification-status ${certificate.isVerified ? 'verified' : 'unverified'}">
-                        ${certificate.isVerified ? 'Blockchain Verified ✓' : 'Not Verified'}
-                    </div>
-                    ${certificate.blockchainHash ? `
-                        <div class="blockchain-hash" title="Click to verify">${this.truncateHash(certificate.blockchainHash)}</div>
-                    ` : ''}
-                    <div class="certificate-actions">
-                        <button class="btn-secondary download-pdf" data-certificate-id="${certificate.id}">
-                            <i class="fas fa-file-pdf"></i> Download PDF
-                        </button>
-                        <button class="btn-secondary share-certificate" data-certificate-id="${certificate.id}">
-                            <i class="fas fa-share-alt"></i> Share
-                        </button>
-                        ${certificate.isVerified ? `
-                            <button class="btn-success verify-blockchain" data-certificate-id="${certificate.id}">
-                                Verify
-                            </button>
-                        ` : ''}
+                    <h3>${this.escapeHtml(certificate.course_name || 'Certificate')}</h3>
+                    <p class="issue-date">Issued: ${issuedDate}</p>
+                    <div class="certificate-meta">
+                        <span class="status verified">Verified</span>
+                        <span class="blockchain-hash">${this.escapeHtml(certificate.certificate_id || '')}</span>
                     </div>
                 </div>
-            </div>
+                <div class="certificate-actions">
+                    <button class="btn-secondary" type="button" data-download-certificate="${certificate.id}">Download</button>
+                    <button class="btn-secondary" type="button" data-share-certificate="${certificate.id}">Share</button>
+                </div>
+            </article>
         `;
+    }
+
+    openCertificateModal(certificateId) {
+        const certificate = this.certificates.find((entry) => String(entry.id) === String(certificateId));
+        if (!certificate) {
+            this.showNotification('Certificate not found', 'error');
+            return;
+        }
+
+        const modal = document.getElementById('certificate-modal');
+        if (!modal) return;
+
+        const image = document.getElementById('certificate-full-image');
+        const title = document.getElementById('certificate-title');
+        const recipient = document.getElementById('certificate-recipient');
+        const date = document.getElementById('certificate-date');
+        const verification = document.getElementById('verification-status');
+        const hash = document.querySelector('.blockchain-hash-inline');
+
+        if (image) image.src = certificate.certificate_url || '';
+        if (title) title.textContent = certificate.course_name || 'Certificate';
+        if (recipient) recipient.textContent = `Awarded to: ${certificate.user_id}`;
+        if (date) date.textContent = `Issued on: ${certificate.issued_at ? new Date(certificate.issued_at).toLocaleDateString() : 'Recently'}`;
+        if (verification) verification.textContent = 'Status: Verified';
+        if (hash) hash.textContent = certificate.certificate_id || '';
+
+        modal.style.display = 'flex';
+    }
+
+    closeModal() {
+        const modal = document.getElementById('certificate-modal');
+        if (modal) modal.style.display = 'none';
     }
 
     async downloadCertificate(certificateId) {
         try {
-            // Show loading state
-            const button = document.querySelector(`[data-certificate-id="${certificateId}"] .download-pdf`);
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-            button.disabled = true;
-
-            // Generate and download PDF
-            const response = await fetch(`/api/certifications/${certificateId}/pdf`, {
+            const response = await fetch(`/api/certifications/${certificateId}/download`, {
                 credentials: 'include'
             });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.error || 'Download failed');
+            }
+
             const blob = await response.blob();
-            
-            // Create download link
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `certificate-${certificateId}.pdf`;
+            a.download = `GLEECIN-Certificate-${certificateId}.pdf`;
             document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
+            a.remove();
             window.URL.revokeObjectURL(url);
-            
-            // Restore button
-            button.innerHTML = originalText;
-            button.disabled = false;
-            
-            this.showNotification('Certificate downloaded successfully!', 'success');
-            
+            this.showNotification('Certificate downloaded successfully', 'success');
         } catch (error) {
-            console.error('Error downloading certificate:', error);
-            this.showNotification('Failed to download certificate', 'error');
-            
-            // Restore button on error
-            const button = document.querySelector(`[data-certificate-id="${certificateId}"] .download-pdf`);
-            if (button) {
-                button.innerHTML = '<i class="fas fa-file-pdf"></i> Download PDF';
-                button.disabled = false;
-            }
+            console.error('[CERT DOWNLOAD ERROR]', error);
+            this.showNotification(error.message || 'Failed to download certificate', 'error');
         }
     }
 
     async shareCertificate(certificateId) {
-        const certificate = this.certificates.find(cert => cert.id == certificateId);
-        if (!certificate) return;
-
-        const shareData = {
-            title: `${certificate.name} Certificate`,
-            text: `I earned my ${certificate.name} certificate from GLEECIN Academy!`,
-            url: certificate.pdfUrl || window.location.href
-        };
-
         try {
-            if (navigator.share) {
-                await navigator.share(shareData);
-            } else {
-                // Fallback: copy URL to clipboard
-                await navigator.clipboard.writeText(shareData.url);
-                this.showNotification('Certificate URL copied to clipboard!', 'success');
-                
-                // Update shared count in database
-                await this.markCertificateShared(certificateId);
-            }
-        } catch (error) {
-            console.error('Error sharing certificate:', error);
-            this.showNotification('Failed to share certificate', 'error');
-        }
-    }
-
-    async markCertificateShared(certificateId) {
-        try {
-            await fetch(`/api/certifications/${certificateId}/share`, {
+            const response = await fetch(`/api/certifications/${certificateId}/share`, {
                 method: 'POST',
                 credentials: 'include'
             });
-        } catch (error) {
-            console.error('Error marking certificate as shared:', error);
-        }
-    }
+            const data = await response.json();
 
-    async verifyBlockchain(certificateId) {
-        const certificate = this.certificates.find(cert => cert.id == certificateId);
-        if (!certificate || !certificate.blockchainHash) return;
-
-        try {
-            // In a real implementation, this would verify against the actual blockchain
-            // For simulation, we'll just show a verification process
-            const button = document.querySelector(`[data-certificate-id="${certificateId}"] .verify-blockchain`);
-            const originalText = button.textContent;
-            button.textContent = 'Verifying...';
-            button.disabled = true;
-
-            // Simulate blockchain verification delay
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Show verification result
-            this.showNotification('Certificate verified on blockchain! ✅', 'success');
-            
-            // Restore button
-            button.textContent = originalText;
-            button.disabled = false;
-            
-        } catch (error) {
-            console.error('Error verifying blockchain:', error);
-            this.showNotification('Blockchain verification failed', 'error');
-            
-            // Restore button on error
-            const button = document.querySelector(`[data-certificate-id="${certificateId}"] .verify-blockchain`);
-            if (button) {
-                button.textContent = 'Verify';
-                button.disabled = false;
+            if (!response.ok) {
+                throw new Error(data.error || 'Share failed');
             }
-        }
-    }
 
-    truncateHash(hash) {
-        if (!hash || hash.length <= 12) return hash;
-        return `${hash.substring(0, 6)}...${hash.substring(hash.length - 6)}`;
+            await navigator.clipboard.writeText(data.shareUrl || window.location.href);
+            this.showNotification('Certificate link copied', 'success');
+            await this.loadCertificates();
+            await this.loadStats();
+        } catch (error) {
+            console.error('[CERT SHARE ERROR]', error);
+            this.showNotification(error.message || 'Failed to share certificate', 'error');
+        }
     }
 
     escapeHtml(text) {
-        if (!text) return '';
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = String(text ?? '');
         return div.innerHTML;
     }
 
@@ -238,14 +205,10 @@ class CertificationSystem {
         notification.className = `notification ${type}`;
         notification.textContent = message;
         document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+        setTimeout(() => notification.remove(), 2500);
     }
 }
 
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new CertificationSystem();
 });
