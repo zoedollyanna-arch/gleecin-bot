@@ -233,6 +233,12 @@ async function startup() {
     console.log('[BOT] Loading events...');
     await loadBotEvents();
 
+    // Seed content needed for the Academy homepage counters.
+    // These seed scripts are idempotent (upsert / ON CONFLICT / EXISTS checks).
+    console.log('[CONTENT] Seeding academy lesson content...');
+    await import('../seed-learning.js');
+    console.log('[CONTENT] ✅ Academy lesson content seeded');
+
     if (process.env.NODE_ENV === 'production') {
       console.log('[CONTENT] Seeding production academy content...');
       await import('../seed-lsl-scripts.js');
