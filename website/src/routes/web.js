@@ -220,9 +220,83 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
     }
 
     const tier = getUserTier(user);
+    const userId = user.id;
+
+    const [classesStats, lessonsStats, challengesStats, certsStats, scriptsStats] = await Promise.all([
+      // Classes (accessible + enrolled)
+      all(`
+        SELECT
+          COUNT(*)::int AS accessible_total,
+          COALESCE(
+            SUM(CASE WHEN e.status IN ('enrolled','completed') THEN 1 ELSE 0 END),
+            0
+          )::int AS enrolled_total
+        FROM classes c
+        LEFT JOIN enrollments e
+          ON e.class_id = c.id AND e.user_id = $1
+        WHERE c.price_tier = 'free'
+           OR (c.price_tier = 'paid' AND ($2 IN ('paid','advanced')))
+           OR (c.price_tier = 'advanced' AND $2 = 'advanced')
+      `, [userId, tier]),
+
+      // Lessons (accessible + completed)
+      all(`
+        SELECT
+          COUNT(*)::int AS accessible_total,
+          COALESCE(
+            SUM(CASE WHEN lp.completed = true THEN 1 ELSE 0 END),
+            0
+          )::int AS completed_total
+        FROM lessons l
+        LEFT JOIN lesson_progress lp
+          ON lp.lesson_id = l.id AND lp.user_id = $1
+        WHERE l.price_tier = 'free'
+           OR (l.price_tier = 'paid' AND ($2 IN ('paid','advanced')))
+           OR (l.price_tier = 'advanced' AND $2 = 'advanced')
+      `, [userId, tier]),
+
+      // Challenges (accessible + passed)
+      all(`
+        SELECT
+          COUNT(*)::int AS accessible_total,
+          COALESCE(
+            SUM(CASE WHEN cs.status = 'passed' THEN 1 ELSE 0 END),
+            0
+          )::int AS passed_total
+        FROM challenges c
+        LEFT JOIN challenge_submissions cs
+          ON cs.challenge_id = c.id AND cs.user_id = $1
+        WHERE c.price_tier = 'free'
+           OR (c.price_tier = 'paid' AND ($2 IN ('paid','advanced')))
+           OR (c.price_tier = 'advanced' AND $2 = 'advanced')
+      `, [userId, tier]),
+
+      get('SELECT COUNT(*)::int AS count FROM certifications WHERE user_id = $1', [userId]),
+      get('SELECT COUNT(*)::int AS count FROM script_downloads WHERE user_id = $1', [userId])
+    ]);
+
+    const classesRow = classesStats?.[0] || { accessible_total: 0, enrolled_total: 0 };
+    const lessonsRow = lessonsStats?.[0] || { accessible_total: 0, completed_total: 0 };
+    const challengesRow = challengesStats?.[0] || { accessible_total: 0, passed_total: 0 };
+
+    const safePercent = (completed, total) => (total > 0 ? Math.round((completed / total) * 100) : 0);
+
     res.render('dashboard', {
       user,
       tier,
+      stats: {
+        classesEnrolled: classesRow.enrolled_total || 0,
+        classesAccessible: classesRow.accessible_total || 0,
+        lessonsCompleted: lessonsRow.completed_total || 0,
+        lessonsAccessible: lessonsRow.accessible_total || 0,
+        challengesSolved: challengesRow.passed_total || 0,
+        challengesAccessible: challengesRow.accessible_total || 0,
+        certificatesEarned: certsStats?.count || 0,
+        scriptsDownloaded: scriptsStats?.count || 0,
+        lessonsProgressPercent: safePercent(lessonsRow.completed_total || 0, lessonsRow.accessible_total || 0),
+        challengesProgressPercent: safePercent(challengesRow.passed_total || 0, challengesRow.accessible_total || 0),
+        classesProgressPercent: safePercent(classesRow.enrolled_total || 0, classesRow.accessible_total || 0)
+      },
       previewMode: isStudentPreview,
       previewPublic: false,
       title: isStudentPreview ? 'Student Preview - GLEECIN Academy' : 'Dashboard - GLEECIN Academy'

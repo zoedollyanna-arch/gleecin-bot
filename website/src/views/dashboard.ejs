@@ -174,30 +174,36 @@
         <div class="progress-item">
             <div>
                 <strong>Classes</strong>
-                <span style="float: right; color: var(--accent-cyan);">Live</span>
+                <span style="float: right; color: var(--accent-cyan);">
+                    <%= (stats?.classesEnrolled ?? 0) %> / <%= (stats?.classesAccessible ?? 0) %>
+                </span>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: 100%"></div>
+                <div class="progress-fill" style="width: <%= (stats?.classesProgressPercent ?? 0) %>%;"></div>
             </div>
         </div>
 
         <div class="progress-item">
             <div>
                 <strong>Lessons</strong>
-                <span style="float: right; color: var(--accent-cyan);">Available</span>
+                <span style="float: right; color: var(--accent-cyan);">
+                    <%= (stats?.lessonsCompleted ?? 0) %> / <%= (stats?.lessonsAccessible ?? 0) %>
+                </span>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: 100%"></div>
+                <div class="progress-fill" style="width: <%= (stats?.lessonsProgressPercent ?? 0) %>%;"></div>
             </div>
         </div>
 
         <div class="progress-item">
             <div>
                 <strong>Challenges</strong>
-                <span style="float: right; color: var(--accent-cyan);">Interactive</span>
+                <span style="float: right; color: var(--accent-cyan);">
+                    <%= (stats?.challengesSolved ?? 0) %> / <%= (stats?.challengesAccessible ?? 0) %>
+                </span>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: 100%"></div>
+                <div class="progress-fill" style="width: <%= (stats?.challengesProgressPercent ?? 0) %>%;"></div>
             </div>
         </div>
     </div>

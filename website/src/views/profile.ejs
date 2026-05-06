@@ -86,34 +86,34 @@
             <div class="progress-overview">
                 <div class="progress-item">
                     <div class="progress-info">
-                        <h3>Scripting Fundamentals</h3>
-                        <p>Course Progress</p>
+                        <h3>Lessons Completed</h3>
+                        <p>Based on your real lesson completion records</p>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: 75%;"></div>
-                        <span class="progress-text">75%</span>
+                        <div class="progress-fill" style="width: 0%;"></div>
+                        <span class="progress-text" id="lessons-progress-text">0 completed</span>
                     </div>
                 </div>
-                
+
                 <div class="progress-item">
                     <div class="progress-info">
-                        <h3>Interactive Challenges</h3>
-                        <p>Challenges Completed</p>
+                        <h3>Challenges Passed</h3>
+                        <p>Based on your real challenge submission records</p>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: 45%;"></div>
-                        <span class="progress-text">45%</span>
+                        <div class="progress-fill" style="width: 0%;"></div>
+                        <span class="progress-text" id="challenges-progress-text">0 passed</span>
                     </div>
                 </div>
-                
+
                 <div class="progress-item">
                     <div class="progress-info">
-                        <h3>Lesson Vault</h3>
-                        <p>Videos Watched</p>
+                        <h3>Quiz Accuracy</h3>
+                        <p>Loaded from your quiz progress</p>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: 60%;"></div>
-                        <span class="progress-text">60%</span>
+                        <div class="progress-fill" style="width: 0%;"></div>
+                        <span class="progress-text" id="quiz-progress-text">Loading…</span>
                     </div>
                 </div>
             </div>
@@ -187,11 +187,12 @@
                         <div class="form-group">
                             <label for="notification-preferences">Notification Preferences</label>
                             <div class="checkbox-group">
-                                <label><input type="checkbox" checked> Class announcements</label>
-                                <label><input type="checkbox" checked> Challenge updates</label>
+                                <label><input type="checkbox"> Class announcements</label>
+                                <label><input type="checkbox"> Challenge updates</label>
                                 <label><input type="checkbox"> Community updates</label>
                                 <label><input type="checkbox"> Certification reminders</label>
                             </div>
+                            <p style="margin-top: 0.5rem; color: var(--muted-text); font-size: 0.9rem;">These settings are not yet connected to the backend; defaults are intentionally not pre-filled.</p>
                         </div>
                 
                 <div class="form-group">
@@ -200,6 +201,7 @@
                         <label><input type="radio" name="privacy" checked> Public profile</label>
                         <label><input type="radio" name="privacy"> Private profile</label>
                     </div>
+                    <p style="margin-top: 0.5rem; color: var(--muted-text); font-size: 0.9rem;">Privacy settings are not yet connected to the backend.</p>
                 </div>
                 
                 <button type="submit" class="btn-primary">Save Changes</button>
