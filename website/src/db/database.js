@@ -108,6 +108,27 @@ async function seedDefaultPrompts() {
   }
 }
 
+async function seedDefaultClasses() {
+  await query(
+    `INSERT INTO classes (name, description, level, duration, instructor, price_tier, start_date, end_date, max_students, current_students, topics, requirements, created_at)
+     SELECT $1, $2, $3, $4, $5, $6, $7::timestamp, $8::timestamp, $9, 0, $10, $11, NOW()
+     WHERE NOT EXISTS (SELECT 1 FROM classes WHERE LOWER(name) = LOWER($1))`,
+    [
+      'Scripting Fundamentals',
+      'Learn the basics of scripting from the ground up. This course covers variables, data types, control flow, functions, event handling, and practical production workflows.',
+      'beginner',
+      '2 weeks',
+      'jwett',
+      'free',
+      '2026-05-04 18:00:00',
+      '2026-05-13 20:00:00',
+      0,
+      'Variables and data types, Control flow, Functions and scope, Event handling, Debugging techniques, Best practices',
+      'Basic computer skills, Willingness to learn, Access to virtual world client'
+    ]
+  );
+}
+
 export async function initializeDatabase() {
   try {
     await query('SELECT 1');
@@ -141,6 +162,26 @@ export async function initializeDatabase() {
         topics TEXT,
         requirements TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS enrollments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+        status TEXT DEFAULT 'enrolled' CHECK (status IN ('pending', 'enrolled', 'completed', 'cancelled')),
+        enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, class_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        category TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
       `CREATE TABLE IF NOT EXISTS certifications (
         id SERIAL PRIMARY KEY,
@@ -427,6 +468,26 @@ export async function initializeDatabase() {
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        category TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS support_articles (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`
     ];
 
@@ -455,7 +516,7 @@ export async function initializeDatabase() {
       `CREATE INDEX IF NOT EXISTS idx_schedules_class ON schedules(class_id)`,
       `CREATE INDEX IF NOT EXISTS idx_admin_logs_admin ON admin_logs(admin_id)`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_challenges_title_unique ON challenges (LOWER(title))`,
-      `CREATE UNIQUE INDEX IF NOT EXISTS idx_challenges_content_unique ON challenges (LOWER(COALESCE(description, '')), LOWER(COALESCE(starter_code, '')), LOWER(COALESCE(solution, '')), LOWER(COALESCE(explanation, '')))`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_challenges_content_unique ON challenges (LOWER(COALESCE(description, '')), LOWER(COALESCE(starter_code, '')), LOWER(COALESCE(solution, '')), LOWER(COALESCE(explanation, '')))` ,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_quizzes_title_unique ON quizzes (LOWER(title))`,
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_quizzes_content_unique ON quizzes (LOWER(COALESCE(description, '')), COALESCE(lesson_id, 0), COALESCE(difficulty, ''), COALESCE(passing_score, 0), COALESCE(time_limit_minutes, 0))`,
       `CREATE INDEX IF NOT EXISTS idx_quizzes_lesson ON quizzes(lesson_id)`,
@@ -467,7 +528,9 @@ export async function initializeDatabase() {
       `CREATE INDEX IF NOT EXISTS idx_certifications_user ON certifications(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_certificates_user ON certificates(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_prompts_category ON prompts(category)`,
-      `CREATE INDEX IF NOT EXISTS idx_prompts_public ON prompts(is_public)`
+      `CREATE INDEX IF NOT EXISTS idx_prompts_public ON prompts(is_public)`,
+      `CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status)`
     ];
 
     for (const statement of indexStatements) {
@@ -475,6 +538,7 @@ export async function initializeDatabase() {
     }
 
     await seedDefaultPrompts();
+    await seedDefaultClasses();
   } catch (error) {
     console.error('[DB] Connection error:', error);
     throw error;

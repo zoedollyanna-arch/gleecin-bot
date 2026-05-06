@@ -351,6 +351,14 @@ const migrations = [
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`,
+  `CREATE TABLE IF NOT EXISTS support_articles (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`,
   `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS shared BOOLEAN DEFAULT false`,
   `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS shared_at TIMESTAMP`,
   `ALTER TABLE certifications ADD COLUMN IF NOT EXISTS pdf_url TEXT`,

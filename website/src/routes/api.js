@@ -42,15 +42,34 @@ router.use(apiLimiter);
 router.get('/classes', isAuthenticated, async (req, res) => {
   try {
     const tier = getUserTier(req.session.user);
+    const userId = req.session.user.id;
 
     const classes = await all(`
-      SELECT id, name, description, level, duration, instructor, price_tier,
-             current_students, max_students, start_date, end_date
-      FROM classes
-      WHERE price_tier = 'free' OR (price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
-         OR (price_tier = 'advanced' AND $1 = 'advanced')
-      ORDER BY start_date DESC
-    `, [tier]);
+      SELECT
+        c.id,
+        c.name,
+        c.description,
+        c.level,
+        c.duration,
+        c.instructor,
+        c.price_tier,
+        c.start_date,
+        c.end_date,
+        c.max_students,
+        c.current_students,
+        c.topics,
+        c.requirements,
+        EXISTS (
+          SELECT 1
+          FROM enrollments e
+          WHERE e.class_id = c.id AND e.user_id = $2 AND e.status = 'enrolled'
+        ) AS is_enrolled
+      FROM classes c
+      WHERE c.price_tier = 'free'
+         OR (c.price_tier = 'paid' AND ($1 IN ('paid', 'advanced')))
+         OR (c.price_tier = 'advanced' AND $1 = 'advanced')
+      ORDER BY c.start_date DESC, c.id ASC
+    `, [tier, userId]);
 
     res.json(classes);
   } catch (error) {
@@ -67,18 +86,23 @@ router.get('/class/:id', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Invalid class ID' });
     }
 
-    const classData = await get('SELECT * FROM classes WHERE id = $1', [parseInt(id)]);
+    const classData = await get(`
+      SELECT
+        c.*,
+        EXISTS (
+          SELECT 1
+          FROM enrollments e
+          WHERE e.class_id = c.id AND e.user_id = $2 AND e.status = 'enrolled'
+        ) AS is_enrolled
+      FROM classes c
+      WHERE c.id = $1
+    `, [parseInt(id), req.session.user.id]);
 
     if (!classData) {
       return res.status(404).json({ error: 'Class not found' });
     }
 
-    const enrollment = await get('SELECT * FROM enrollments WHERE user_id = $1 AND class_id = $2', [req.session.user.id, id]);
-
-    res.json({
-      ...classData,
-      isEnrolled: !!enrollment
-    });
+    res.json(classData);
   } catch (error) {
     console.error('[CLASS DETAIL ERROR]', error);
     res.status(500).json({ error: 'Failed to fetch class' });
@@ -274,6 +298,43 @@ router.get('/lessons/:id', isAuthenticated, async (req, res) => {
   }
 });
 
+router.post('/classes/:id/enroll', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!validator.isInt(id)) {
+      return res.status(400).json({ error: 'Invalid class ID' });
+    }
+
+    const classData = await get('SELECT id, max_students FROM classes WHERE id = $1', [parseInt(id)]);
+    if (!classData) {
+      return res.status(404).json({ error: 'Class not found' });
+    }
+
+    const existingEnrollment = await get('SELECT id, status FROM enrollments WHERE user_id = $1 AND class_id = $2', [req.session.user.id, parseInt(id)]);
+    if (existingEnrollment?.status === 'enrolled') {
+      return res.json({ success: true, isEnrolled: true });
+    }
+
+    const currentCount = await get('SELECT COUNT(*)::int AS count FROM enrollments WHERE class_id = $1 AND status = $2', [parseInt(id), 'enrolled']);
+    if (typeof classData.max_students === 'number' && classData.max_students > 0 && currentCount.count >= classData.max_students) {
+      return res.status(409).json({ error: 'Class is full' });
+    }
+
+    if (existingEnrollment) {
+      await run('UPDATE enrollments SET status = $1, enrolled_at = NOW() WHERE id = $2', ['enrolled', existingEnrollment.id]);
+    } else {
+      await run('INSERT INTO enrollments (user_id, class_id, status, enrolled_at) VALUES ($1, $2, $3, NOW())', [req.session.user.id, parseInt(id), 'enrolled']);
+    }
+
+    await run('UPDATE classes SET current_students = (SELECT COUNT(*) FROM enrollments WHERE class_id = $1 AND status = $2) WHERE id = $1', [parseInt(id), 'enrolled']);
+
+    res.json({ success: true, isEnrolled: true });
+  } catch (error) {
+    console.error('[ENROLL ERROR]', error);
+    res.status(500).json({ error: 'Failed to enroll in class' });
+  }
+});
 router.post('/lessons/:id/progress', isAuthenticated, submitLimiter, async (req, res) => {
   try {
     const { id } = req.params;
@@ -563,9 +624,9 @@ router.get('/certificate', isAuthenticated, async (req, res) => {
 
 // ============ CHALLENGES ============
 
-router.get('/challenges', isAuthenticated, async (req, res) => {
+router.get('/challenges', async (req, res) => {
   try {
-    const tier = getUserTier(req.session.user);
+    const tier = getUserTier(req.session?.user);
 
     const challenges = await all(`
       SELECT
@@ -649,7 +710,7 @@ router.post('/challenges/:id/submit', isAuthenticated, submitLimiter, async (req
 router.get('/certifications', isAuthenticated, async (req, res) => {
   try {
     const certs = await all(
-      'SELECT * FROM certifications WHERE user_id = $1 ORDER BY completion_date DESC',
+      'SELECT * FROM certifications WHERE user_id = $1 ORDER BY issued_at DESC',
       [req.session.user.id]
     );
 
@@ -757,6 +818,73 @@ router.post('/certifications/:id/share', isAuthenticated, async (req, res) => {
 
 // ============ SCHEDULE ============
 
+const supportArticles = [
+  {
+    id: 'getting-started-enrollment',
+    category: 'Getting Started',
+    title: 'How do I enroll in the Scripting Fundamentals class?',
+    body: 'Open the Classes page, review the Scripting Fundamentals card, and select Enroll Now. Logged-in students will see Enrolled after the enrollment is saved.'
+  },
+  {
+    id: 'getting-started-client',
+    category: 'Getting Started',
+    title: 'What do I need before class starts?',
+    body: 'Install the Virtual World Client, sign in to the academy, and make sure your code editor and debug console are ready before the session.'
+  },
+  {
+    id: 'technical-class',
+    category: 'Technical Issues',
+    title: 'What if the class page or syllabus does not open?',
+    body: 'Refresh the page, confirm you are signed in, and open the enrollment letter from the Class Details page. If the PDF is missing, the server will return a clear error state.'
+  },
+  {
+    id: 'billing-account',
+    category: 'Account & Billing',
+    title: 'How do I update my account?',
+    body: 'Use the Discord login flow and profile page to keep account information current. Billing actions are handled by the payment workflow in the academy.'
+  },
+  {
+    id: 'community-hub',
+    category: 'Community',
+    title: 'Where can I find community resources?',
+    body: 'Use the Academy, Tools & Setup, and Prompts pages for guided learning, setup help, and coding agent starter prompts.'
+  }
+];
+
+router.get('/support/articles', async (req, res) => {
+  try {
+    res.json(supportArticles);
+  } catch (error) {
+    console.error('[SUPPORT ARTICLES ERROR]', error);
+    res.status(500).json({ error: 'Failed to load support articles' });
+  }
+});
+
+router.post('/support/tickets', isAuthenticated, async (req, res) => {
+  try {
+    const name = String(req.body.name || req.session.user.username || '').trim();
+    const email = String(req.body.email || req.session.user.email || '').trim();
+    const subject = String(req.body.subject || '').trim();
+    const category = String(req.body.category || '').trim();
+    const message = String(req.body.message || '').trim();
+
+    if (!name || !email || !subject || !category || !message) {
+      return res.status(400).json({ error: 'All ticket fields are required' });
+    }
+
+    const ticket = await run(
+      `INSERT INTO support_tickets (user_id, name, email, subject, category, message, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'open', NOW(), NOW()) RETURNING id`,
+      [req.session.user.id, name, email, subject, category, message]
+    );
+
+    res.status(201).json({ success: true, ticketId: ticket.id });
+  } catch (error) {
+    console.error('[SUPPORT TICKET ERROR]', error);
+    res.status(500).json({ error: 'Failed to submit support ticket' });
+  }
+});
+
 router.get('/schedule', async (req, res) => {
   try {
     const schedules = await all(`
@@ -781,6 +909,35 @@ router.get('/schedule', async (req, res) => {
   } catch (error) {
     console.error('[SCHEDULE ERROR]', error);
     res.status(500).json({ error: 'Failed to fetch schedule' });
+  }
+});
+
+router.get('/academy-summary', async (req, res) => {
+  try {
+    const [stats, scripts, challenges, lessons, certs] = await Promise.all([
+      get(`
+        SELECT
+          (SELECT COUNT(*)::int FROM scripts WHERE is_public = true) AS script_count,
+          (SELECT COUNT(*)::int FROM challenges) AS challenge_count,
+          (SELECT COUNT(*)::int FROM lessons) AS lesson_count,
+          (SELECT COUNT(*)::int FROM certifications) AS certification_count
+      `),
+      all(`SELECT id, title, description, category, language, price_tier FROM scripts WHERE is_public = true ORDER BY created_at DESC LIMIT 3`),
+      all(`SELECT id, title, description, difficulty, level, price_tier FROM challenges ORDER BY created_at DESC LIMIT 3`),
+      all(`SELECT id, title, description, price_tier FROM lessons ORDER BY created_at DESC LIMIT 3`),
+      all(`SELECT id, course_name, issued_at FROM certifications ORDER BY issued_at DESC LIMIT 3`)
+    ]);
+
+    res.json({
+      stats: stats || { script_count: 0, challenge_count: 0, lesson_count: 0, certification_count: 0 },
+      scripts,
+      challenges,
+      lessons,
+      certifications: certs
+    });
+  } catch (error) {
+    console.error('[ACADEMY SUMMARY ERROR]', error);
+    res.status(500).json({ error: 'Failed to fetch academy summary' });
   }
 });
 

@@ -352,15 +352,110 @@ router.get('/tools', (req, res) => {
   });
 });
 
-router.get('/support', (req, res) => {
+router.get('/support', async (req, res) => {
   const user = req.session?.user;
   const isAuth = !!user;
+
+  try {
+    const articles = await all(`
+      SELECT id, title, category, body
+      FROM (
+        SELECT id::text AS id, title, category, body
+        FROM support_articles
+        UNION ALL
+        SELECT id, title, category, body
+        FROM (
+          VALUES
+            ('getting-started-enrollment', 'How do I enroll in the Scripting Fundamentals class?', 'Getting Started', 'Open the Classes page, review the Scripting Fundamentals card, and select Enroll Now. Logged-in students will see Enrolled after the enrollment is saved.'),
+            ('getting-started-client', 'What do I need before class starts?', 'Getting Started', 'Install the Virtual World Client, sign in to the academy, and make sure your code editor and debug console are ready before the session.'),
+            ('technical-class', 'What if the class page or syllabus does not open?', 'Technical Issues', 'Refresh the page, confirm you are signed in, and open the enrollment letter from the Class Details page. If the PDF is missing, the server will return a clear error state.'),
+            ('technical-client', 'What should I do if the client or guide does not load?', 'Technical Issues', 'Reload the page, verify your network connection, and open the linked guide again from the Tools or Support sections.'),
+            ('billing-account', 'How do I update my account?', 'Account & Billing', 'Use the Discord login flow and profile page to keep account information current. Billing actions are handled by the payment workflow in the academy.'),
+            ('billing-access', 'Why can’t I access paid content?', 'Account & Billing', 'Check your tier on the profile page and complete the payment workflow if your tier has not been upgraded yet.'),
+            ('community-hub', 'Where can I find community resources?', 'Community', 'Use the Academy, Tools & Setup, and Prompts pages for guided learning, setup help, and coding agent starter prompts.'),
+            ('community-policies', 'What are the community rules?', 'Community', 'Follow respectful communication, keep shared resources professional, and contact support if you need clarification about academy policies.')
+      ) AS articles(id, title, category, body)
+    `);
+
+    res.render('support', {
+      user,
+      isAuth,
+      pageCss: 'support',
+      title: 'Support Center - GLEECIN',
+      articles
+    });
+  } catch (error) {
+    console.error('[SUPPORT PAGE ERROR]', error);
+    res.render('support', {
+      user,
+      isAuth,
+      pageCss: 'support',
+      title: 'Support Center - GLEECIN',
+      articles: []
+    });
+  }
+});
+
+router.get('/support/articles/:id', async (req, res) => {
+  const user = req.session?.user;
+  const isAuth = !!user;
+  const { id } = req.params;
+
+  const articleMap = {
+    'getting-started-enrollment': {
+      category: 'Getting Started',
+      title: 'How do I enroll in the Scripting Fundamentals class?',
+      body: 'Open the Classes page, review the Scripting Fundamentals card, and select Enroll Now. Logged-in students will see Enrolled after the enrollment is saved.'
+    },
+    'getting-started-client': {
+      category: 'Getting Started',
+      title: 'What do I need before class starts?',
+      body: 'Install the Virtual World Client, sign in to the academy, and make sure your code editor and debug console are ready before the session.'
+    },
+    'technical-class': {
+      category: 'Technical Issues',
+      title: 'What if the class page or syllabus does not open?',
+      body: 'Refresh the page, confirm you are signed in, and open the enrollment letter from the Class Details page. If the PDF is missing, the server will return a clear error state.'
+    },
+    'technical-client': {
+      category: 'Technical Issues',
+      title: 'What should I do if the client or guide does not load?',
+      body: 'Reload the page, verify your network connection, and open the linked guide again from the Tools or Support sections.'
+    },
+    'billing-account': {
+      category: 'Account & Billing',
+      title: 'How do I update my account?',
+      body: 'Use the Discord login flow and profile page to keep account information current. Billing actions are handled by the payment workflow in the academy.'
+    },
+    'billing-access': {
+      category: 'Account & Billing',
+      title: 'Why can’t I access paid content?',
+      body: 'Check your tier on the profile page and complete the payment workflow if your tier has not been upgraded yet.'
+    },
+    'community-hub': {
+      category: 'Community',
+      title: 'Where can I find community resources?',
+      body: 'Use the Academy, Tools & Setup, and Prompts pages for guided learning, setup help, and coding agent starter prompts.'
+    },
+    'community-policies': {
+      category: 'Community',
+      title: 'What are the community rules?',
+      body: 'Follow respectful communication, keep shared resources professional, and contact support if you need clarification about academy policies.'
+    }
+  };
+
+  const article = articleMap[id];
+  if (!article) {
+    return res.status(404).render('error', { error: 'Support article not found', user });
+  }
 
   res.render('support', {
     user,
     isAuth,
     pageCss: 'support',
-    title: 'Support Center - GLEECIN'
+    title: `${article.title} - GLEECIN Support`,
+    articles: [article],
+    selectedArticleId: id
   });
 });
 
