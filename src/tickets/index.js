@@ -41,6 +41,7 @@ import {
   getTicketByChannel,
   closeTicket,
   addNote,
+  saveTranscript,
   peekNextTicketNumber,
   countActiveCommissions,
   STATUS_LABELS,
@@ -744,8 +745,8 @@ export async function applyStatusSideEffects({ guild, channel, ticket, status })
   return notes;
 }
 
-/** Newest-last plain-text transcript of a ticket channel. */
-export async function buildTranscript(channel, ticket) {
+/** Newest-last plain-text transcript of a ticket channel, as raw text. */
+export async function buildTranscriptText(channel, ticket) {
   const collected = [];
   let before;
 
@@ -780,48 +781,139 @@ export async function buildTranscript(channel, ticket) {
     return `[${stamp}] ${m.author.tag}: ${[m.content, embedText, attachments].filter(Boolean).join(' ')}`.trim();
   });
 
-  const text = [...header, ...body].join('\n');
+  return { text: [...header, ...body].join('\n'), messageCount: ordered.length };
+}
+
+/** Wrap transcript text as a downloadable .txt attachment. */
+export function transcriptFile(text, ticketNumber) {
   return new AttachmentBuilder(Buffer.from(text, 'utf8'), {
-    name: `transcript-${String(ticket.ticket_number).padStart(4, '0')}.txt`
+    name: `transcript-${String(ticketNumber).padStart(4, '0')}.txt`
   });
 }
 
+/** Live transcript of an open ticket, as a file. */
+export async function buildTranscript(channel, ticket) {
+  const { text } = await buildTranscriptText(channel, ticket);
+  return transcriptFile(text, ticket.ticket_number);
+}
+
 /**
- * Close, transcript, and archive.
+ * Close a ticket: persist everything, then delete the channel.
  *
- * The channel is kept, not deleted — a paid commission is a business record.
- * The client loses write access; staff keep full history.
+ * The full conversation is written to discord_ticket_transcripts, so the
+ * business record survives without leaving dozens of dead channels sitting in
+ * the server. Pull it back any time with /ticket history.
+ *
+ * Deletion happens last and only after the transcript is safely stored — if
+ * saving fails, the channel is left alone rather than losing the record.
  */
 export async function closeAndArchive({ channel, ticket, closedBy, reason }) {
-  const transcript = await buildTranscript(channel, ticket).catch(() => null);
+  let transcript = null;
+  let saved = false;
+
+  try {
+    transcript = await buildTranscriptText(channel, ticket);
+    await saveTranscript({
+      ticketId: ticket.id,
+      body: transcript.text,
+      messageCount: transcript.messageCount
+    });
+    saved = true;
+  } catch (error) {
+    console.error(`[TICKET] Could not save transcript for #${ticket.ticket_number}:`, error.message);
+  }
+
   const updated = await closeTicket({
     channelId: channel.id,
     closedBy: closedBy.id,
     closedByTag: closedBy.tag
   });
 
-  const embed = new EmbedBuilder()
-    .setTitle('🔒 Ticket Closed')
-    .setColor(COLORS.danger)
-    .addFields(
-      { name: 'Closed by', value: `<@${closedBy.id}>`, inline: true },
-      { name: 'Opened by', value: `<@${ticket.user_id}>`, inline: true },
-      { name: 'Reason', value: reason || 'No reason given' }
-    )
-    .setTimestamp();
+  // Optional durable copy in Discord itself, so the record isn't only in the DB.
+  const logChannelId = process.env.TICKET_LOG_CHANNEL_ID;
+  if (logChannelId) {
+    const logChannel = await channel.guild.channels.fetch(logChannelId).catch(() => null);
+    if (logChannel) {
+      const embed = new EmbedBuilder()
+        .setTitle(`🔒 #${String(ticket.ticket_number).padStart(4, '0')} closed — ${ticket.subject ?? ticket.type}`)
+        .setColor(COLORS.danger)
+        .addFields(
+          { name: 'Type', value: ticket.type, inline: true },
+          { name: 'Opened by', value: `<@${ticket.user_id}>`, inline: true },
+          { name: 'Closed by', value: `<@${closedBy.id}>`, inline: true },
+          ...(ticket.quote_amount
+            ? [{ name: 'Value', value: formatPrice(ticket.quote_amount), inline: true }]
+            : []),
+          { name: 'Reason', value: reason || 'No reason given' }
+        )
+        .setFooter({ text: `Pull it back with /ticket history number:${ticket.ticket_number}` })
+        .setTimestamp();
 
-  await channel.send({ embeds: [embed], files: transcript ? [transcript] : [] }).catch(() => {});
-
-  const archiveId = process.env.TICKET_ARCHIVE_CATEGORY_ID;
-  if (archiveId) {
-    await channel.setParent(archiveId, { lockPermissions: false, reason: 'Ticket archived' }).catch(() => {});
+      await logChannel
+        .send({
+          embeds: [embed],
+          files: transcript ? [transcriptFile(transcript.text, ticket.ticket_number)] : []
+        })
+        .catch(() => {});
+    }
   }
-  await channel.permissionOverwrites
-    .edit(ticket.user_id, { SendMessages: false }, { reason: 'Ticket archived' })
-    .catch(() => {});
-  await channel.setName(`closed-${channel.name}`.slice(0, 90)).catch(() => {});
 
-  return updated ?? ticket;
+  if (!saved) {
+    // Keep the channel so nothing is lost; staff can retry or copy it manually.
+    await channel
+      .send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(COLORS.danger)
+            .setTitle('⚠️ Transcript could not be saved')
+            .setDescription(
+              'This ticket is marked closed, but the transcript failed to save, so the channel has ' +
+              'been left in place. Copy anything you need before deleting it manually.'
+            )
+        ]
+      })
+      .catch(() => {});
+    return { ticket: updated ?? ticket, deleted: false, saved: false };
+  }
+
+  await channel.delete(`Ticket #${ticket.ticket_number} closed — transcript saved`).catch((error) => {
+    console.error('[TICKET] Could not delete channel:', error.message);
+  });
+
+  return { ticket: updated ?? ticket, deleted: true, saved: true, transcript };
+}
+
+/**
+ * Confirm a close back to the staff member who triggered it.
+ *
+ * Deleting the channel invalidates the interaction response, so editReply is
+ * best-effort and the transcript is DMed as well — that copy always lands.
+ */
+export async function reportClose(interaction, ticket, result) {
+  if (!result.saved) {
+    return interaction
+      .editReply({
+        content:
+          '⚠️ Ticket marked closed, but the transcript could not be saved — the channel has been ' +
+          'left in place so nothing is lost. Check the logs.'
+      })
+      .catch(() => {});
+  }
+
+  if (result.transcript) {
+    await interaction.user
+      .send({
+        content:
+          `🔒 Ticket **#${ticket.ticket_number}** (${ticket.subject ?? ticket.type}) is closed and its ` +
+          `transcript is saved. Pull it back any time with \`/ticket history number:${ticket.ticket_number}\`.`,
+        files: [transcriptFile(result.transcript.text, ticket.ticket_number)]
+      })
+      .catch(() => {});
+  }
+
+  return interaction
+    .editReply({ content: '✅ Closed. Transcript saved to the database — the channel has been removed.' })
+    .catch(() => {});
 }
 
 export { getTicketByChannel, addNote };

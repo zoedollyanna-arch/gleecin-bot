@@ -101,6 +101,18 @@ export async function initTicketsTable() {
     CHECK (type IN (${TICKET_TYPES.map((t) => `'${t}'`).join(', ')}))
   `);
 
+  // Transcripts live in their own table: they are large, written once, and read
+  // rarely, so keeping them out of discord_tickets keeps the common queries
+  // cheap. This is the durable record — the Discord channel is deleted on close.
+  await query(`
+    CREATE TABLE IF NOT EXISTS discord_ticket_transcripts (
+      ticket_id INTEGER PRIMARY KEY REFERENCES discord_tickets(id) ON DELETE CASCADE,
+      body TEXT NOT NULL,
+      message_count INTEGER NOT NULL DEFAULT 0,
+      saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   await query(`
     CREATE TABLE IF NOT EXISTS discord_ticket_notes (
       id SERIAL PRIMARY KEY,
@@ -285,6 +297,54 @@ export async function reopenTicket(channelId) {
     [channelId]
   );
   return result.rows[0] || null;
+}
+
+export async function saveTranscript({ ticketId, body, messageCount }) {
+  const result = await query(
+    `INSERT INTO discord_ticket_transcripts (ticket_id, body, message_count)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (ticket_id) DO UPDATE
+       SET body = $2, message_count = $3, saved_at = CURRENT_TIMESTAMP
+     RETURNING *`,
+    [ticketId, body, messageCount]
+  );
+  return result.rows[0];
+}
+
+/** Pull a saved transcript back by its per-guild ticket number. */
+export async function getTranscriptByNumber(guildId, ticketNumber) {
+  const result = await query(
+    `SELECT t.*, tr.body, tr.message_count, tr.saved_at
+     FROM discord_tickets t
+     LEFT JOIN discord_ticket_transcripts tr ON tr.ticket_id = t.id
+     WHERE t.guild_id = $1 AND t.ticket_number = $2`,
+    [guildId, ticketNumber]
+  );
+  return result.rows[0] || null;
+}
+
+/** Closed tickets, for browsing history now that channels don't persist. */
+export async function getClosedTickets(guildId, { userId = null, type = null, limit = 20 } = {}) {
+  const params = [guildId];
+  let sql = `
+    SELECT t.*, (tr.ticket_id IS NOT NULL) AS has_transcript
+    FROM discord_tickets t
+    LEFT JOIN discord_ticket_transcripts tr ON tr.ticket_id = t.id
+    WHERE t.guild_id = $1 AND t.status = 'closed'`;
+
+  if (userId) {
+    params.push(userId);
+    sql += ` AND t.user_id = $${params.length}`;
+  }
+  if (type) {
+    params.push(type);
+    sql += ` AND t.type = $${params.length}`;
+  }
+  params.push(limit);
+  sql += ` ORDER BY t.closed_at DESC NULLS LAST LIMIT $${params.length}`;
+
+  const result = await query(sql, params);
+  return result.rows;
 }
 
 export async function addNote({ ticketId, authorId, authorTag, note }) {

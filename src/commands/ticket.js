@@ -13,8 +13,11 @@ import {
   buildTicketEmbed,
   buildStaffRows,
   buildTranscript,
+  transcriptFile,
   applyStatusSideEffects,
-  closeAndArchive
+  closeAndArchive,
+  reportClose,
+  TYPE_ICONS
 } from '../tickets/index.js';
 
 import {
@@ -24,6 +27,8 @@ import {
   setStatus,
   setQuote,
   setRevisionsAllowed,
+  getTranscriptByNumber,
+  getClosedTickets,
   getNotes,
   STATUS_LABELS,
   PRIORITY_LABELS,
@@ -90,8 +95,18 @@ export default {
     .addSubcommand((s) => s.setName('notes').setDescription('Show private notes on this ticket (staff)'))
     .addSubcommand((s) =>
       s.setName('close')
-        .setDescription('Close and archive this ticket')
+        .setDescription('Close this ticket — transcript is saved and the channel removed')
         .addStringOption((o) => o.setName('reason').setDescription('Reason').setRequired(false))
+    )
+    .addSubcommand((s) =>
+      s.setName('history')
+        .setDescription('Pull a closed ticket back from the database (staff)')
+        .addIntegerOption((o) =>
+          o.setName('number').setDescription('Ticket number to retrieve').setRequired(false).setMinValue(1)
+        )
+        .addUserOption((o) =>
+          o.setName('user').setDescription('List closed tickets for this person').setRequired(false)
+        )
     )
     .addSubcommand((s) =>
       s.setName('list')
@@ -129,6 +144,7 @@ export default {
       transcript: handleTranscript,
       notes: handleNotes,
       close: handleClose,
+      history: handleHistory,
       list: handleList,
       stats: handleStats
     };
@@ -319,16 +335,96 @@ async function handleClose(interaction) {
   }
 
   await interaction.deferReply(EPHEMERAL);
-  await closeAndArchive({
+  const result = await closeAndArchive({
     channel: interaction.channel,
     ticket,
     closedBy: interaction.user,
     reason: interaction.options.getString('reason') || 'No reason given'
   });
 
-  return interaction.editReply({
-    content: '✅ Closed and archived. The channel is kept with a transcript attached.'
-  });
+  return reportClose(interaction, ticket, result);
+}
+
+/**
+ * Pull a closed ticket's record back out of the database.
+ *
+ * This is what replaces keeping dead channels around: the conversation is
+ * stored on close and retrieved on demand.
+ */
+async function handleHistory(interaction) {
+  await interaction.deferReply(EPHEMERAL);
+
+  const number = interaction.options.getInteger('number');
+
+  if (number) {
+    const record = await getTranscriptByNumber(interaction.guild.id, number);
+    if (!record) {
+      return interaction.editReply({ content: `❌ No ticket #${number} in this server.` });
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${TYPE_ICONS[record.type] ?? '🎫'} #${record.ticket_number} — ${record.subject ?? record.type}`)
+      .setColor(COLORS.info)
+      .addFields(
+        { name: 'Opened by', value: `<@${record.user_id}>`, inline: true },
+        { name: 'Status', value: STATUS_LABELS[record.status] ?? record.status, inline: true },
+        ...(record.quote_amount
+          ? [{ name: 'Value', value: formatPrice(record.quote_amount), inline: true }]
+          : []),
+        {
+          name: 'Opened',
+          value: `<t:${Math.floor(new Date(record.created_at).getTime() / 1000)}:D>`,
+          inline: true
+        },
+        ...(record.closed_at
+          ? [{
+              name: 'Closed',
+              value: `<t:${Math.floor(new Date(record.closed_at).getTime() / 1000)}:D>`,
+              inline: true
+            }]
+          : [])
+      )
+      .setTimestamp();
+
+    if (!record.body) {
+      embed.setFooter({ text: 'No transcript stored for this ticket.' });
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    embed.setFooter({ text: `${record.message_count} messages` });
+    return interaction.editReply({
+      embeds: [embed],
+      files: [transcriptFile(record.body, record.ticket_number)]
+    });
+  }
+
+  const user = interaction.options.getUser('user');
+  const closed = await getClosedTickets(interaction.guild.id, { userId: user?.id ?? null });
+
+  if (closed.length === 0) {
+    return interaction.editReply({
+      content: user ? `📋 No closed tickets for ${user}.` : '📋 No closed tickets yet.'
+    });
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(user ? `📋 Closed tickets — ${user.displayName ?? user.username}` : '📋 Closed tickets')
+    .setColor(COLORS.info)
+    .setDescription(
+      closed
+        .map(
+          (t) =>
+            `${TYPE_ICONS[t.type] ?? '🎫'} **#${t.ticket_number}** ${t.subject ?? t.user_tag}` +
+            (t.quote_amount ? ` · ${formatPrice(t.quote_amount)}` : '') +
+            (t.closed_at ? ` · <t:${Math.floor(new Date(t.closed_at).getTime() / 1000)}:R>` : '') +
+            (t.has_transcript ? '' : ' · _no transcript_')
+        )
+        .join('\n')
+        .slice(0, 4000)
+    )
+    .setFooter({ text: 'Use /ticket history number:<n> to pull the full transcript' });
+
+  return interaction.editReply({ embeds: [embed] });
 }
 
 async function handleList(interaction) {

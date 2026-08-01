@@ -29,6 +29,7 @@ import {
   buildNoteModal,
   buildReviewModal,
   buildTranscript,
+  reportClose,
   applyStatusSideEffects,
   openTicket,
   closeAndArchive,
@@ -246,15 +247,13 @@ async function handleTicketButton(interaction, action) {
 
     case 'close': {
       await interaction.deferReply(EPHEMERAL);
-      await closeAndArchive({
+      const result = await closeAndArchive({
         channel: interaction.channel,
         ticket,
         closedBy: interaction.user,
         reason: 'Closed from ticket controls'
       });
-      return interaction.editReply({
-        content: '✅ Closed and archived. The channel is kept with a transcript attached.'
-      });
+      return reportClose(interaction, ticket, result);
     }
 
     default:
