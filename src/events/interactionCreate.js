@@ -1,411 +1,493 @@
 /**
  * Unified Interaction Handler
- * Handles all button clicks, slash commands, and modals
+ * Routes buttons, select menus, and modal submissions.
  */
 
 import {
   Events,
   EmbedBuilder,
-  PermissionFlagsBits,
-  ChannelType,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  MessageFlags
 } from 'discord.js';
+
 import {
-  createTicket,
+  COLORS,
+  isStaff,
+  buildCommissionPanel,
+  buildSupportPanel,
+  buildCommissionModal,
+  buildSupportModal,
+  buildTicketEmbed,
+  buildStaffRows,
+  buildStatusMenu,
+  buildPriorityMenu,
+  buildQuoteModal,
+  buildNoteModal,
+  buildTranscript,
+  openTicket,
+  closeAndArchive,
+  getSupportCategory
+} from '../tickets/index.js';
+
+import {
   getTicketByChannel,
-  closeTicket,
-  deleteTicket
+  setStatus,
+  setPriority,
+  setQuote,
+  setAwaitingClient,
+  addNote,
+  STATUS_LABELS,
+  PRIORITY_LABELS,
+  PRIORITIES
 } from '../database/models/ticket.js';
+
+import { getCommissionType, formatPrice } from '../config/pricing.js';
+
+const EPHEMERAL = { flags: MessageFlags.Ephemeral };
 
 export default {
   name: Events.InteractionCreate,
 
   async execute(interaction, client) {
-    if (interaction.isButton()) {
-      await this.handleButton(interaction, client);
-    } else if (interaction.isModalSubmit()) {
-      await this.handleModal(interaction, client);
+    try {
+      if (interaction.isButton()) return await handleButton(interaction);
+      if (interaction.isStringSelectMenu()) return await handleSelect(interaction);
+      if (interaction.isModalSubmit()) return await handleModal(interaction);
+    } catch (error) {
+      console.error('[INTERACTION ERROR]', error);
+      await safeReply(interaction, '❌ Something went wrong handling that. Check the logs.');
     }
-  },
-
-  async handleButton(interaction, client) {
-    const buttonId = interaction.customId;
-
-    if (buttonId === 'get_access') {
-      await handleGetAccess(interaction);
-    } else if (buttonId === 'enroll_class') {
-      await handleEnrollClass(interaction);
-    } else if (buttonId === 'open_commission') {
-      await handleOpenTicket(interaction, 'commission');
-    } else if (buttonId === 'open_support') {
-      await handleOpenTicket(interaction, 'support');
-    } else if (buttonId === 'visit_marketplace') {
-      await handleVisitMarketplace(interaction);
-    } else if (buttonId.startsWith('close_ticket_')) {
-      await handleCloseTicketButton(interaction);
-    } else if (buttonId.startsWith('claim_ticket_')) {
-      await handleClaimTicket(interaction);
-    } else {
-      await interaction.reply({
-        content: '❌ This button action is not yet configured.',
-        ephemeral: true
-      }).catch(() => {});
-    }
-  },
-
-  async handleModal(interaction, client) {
-    // Modal handlers will be added here if needed
   }
 };
 
-// =====================
-// GET ACCESS
-// =====================
+/** Reply, or follow up if the interaction was already acknowledged. */
+async function safeReply(interaction, content) {
+  const payload = { content, ...EPHEMERAL };
+  try {
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp(payload);
+    } else {
+      await interaction.reply(payload);
+    }
+  } catch {
+    /* interaction expired — nothing useful left to do */
+  }
+}
+
+/** Staff gate for ticket controls. Returns the ticket, or null if refused. */
+async function requireStaffTicket(interaction) {
+  if (!isStaff(interaction.member)) {
+    await interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
+    return null;
+  }
+  const ticket = await getTicketByChannel(interaction.channel.id);
+  if (!ticket) {
+    await interaction.reply({ content: '❌ This is not a ticket channel.', ...EPHEMERAL });
+    return null;
+  }
+  return ticket;
+}
+
+/**
+ * Re-render the ticket embed in place so the header always reflects current
+ * status, priority, and quote rather than the values it was opened with.
+ */
+async function refreshTicketMessage(channel, ticket) {
+  const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+  if (!messages) return;
+  const target = messages.find(
+    (m) => m.author.bot && m.components.length > 0 && m.embeds.length > 0
+  );
+  if (!target) return;
+  await target
+    .edit({ embeds: [buildTicketEmbed(ticket)], components: buildStaffRows(ticket) })
+    .catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Buttons
+// ---------------------------------------------------------------------------
+
+async function handleButton(interaction) {
+  const id = interaction.customId;
+
+  if (id === 'get_access') return handleGetAccess(interaction);
+  if (id === 'enroll_class') return handleEnrollClass(interaction);
+  if (id === 'visit_marketplace') return handleVisitMarketplace(interaction);
+
+  // Legacy panel buttons now lead into the select → modal intake flow.
+  if (id === 'open_commission') {
+    return interaction.reply({ ...buildCommissionPanel(), ...EPHEMERAL });
+  }
+  if (id === 'open_support') {
+    return interaction.reply({ ...buildSupportPanel(), ...EPHEMERAL });
+  }
+
+  if (id.startsWith('tk:')) return handleTicketButton(interaction, id.slice(3));
+
+  // Buttons from before the rewrite carried the channel id in the custom id.
+  if (id.startsWith('close_ticket_')) return handleTicketButton(interaction, 'close');
+  if (id.startsWith('claim_ticket_')) {
+    return interaction.reply({
+      content: 'ℹ️ Claiming was removed — use **Set Status** to move the ticket to In Progress.',
+      ...EPHEMERAL
+    });
+  }
+
+  return interaction.reply({ content: '❌ This button is no longer configured.', ...EPHEMERAL });
+}
+
+async function handleTicketButton(interaction, action) {
+  const ticket = await requireStaffTicket(interaction);
+  if (!ticket) return;
+
+  switch (action) {
+    case 'status':
+      return interaction.reply({
+        content: `Current status: **${STATUS_LABELS[ticket.status]}**`,
+        components: [buildStatusMenu()],
+        ...EPHEMERAL
+      });
+
+    case 'priority':
+      return interaction.reply({
+        content: `Current priority: **${PRIORITY_LABELS[ticket.priority]}**`,
+        components: [buildPriorityMenu()],
+        ...EPHEMERAL
+      });
+
+    case 'quote':
+      return interaction.showModal(buildQuoteModal(ticket));
+
+    case 'note':
+      return interaction.showModal(buildNoteModal());
+
+    case 'paid': {
+      const updated = await setStatus(interaction.channel.id, 'paid');
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('✅ Payment Received')
+            .setColor(COLORS.success)
+            .setDescription(
+              updated.quote_amount
+                ? `**${formatPrice(updated.quote_amount)}** marked as paid. Work starts now — thank you!`
+                : 'Payment marked as received. Work starts now — thank you!'
+            )
+            .setTimestamp()
+        ]
+      });
+      return refreshTicketMessage(interaction.channel, updated);
+    }
+
+    case 'nudge': {
+      const updated = await setAwaitingClient(interaction.channel.id, true);
+      return interaction.reply({
+        content: `<@${ticket.user_id}>`,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('🔔 Waiting on you')
+            .setColor(COLORS.info)
+            .setDescription(
+              'We need a bit more from you before this can move forward — check the messages above and reply here when you can.'
+            )
+        ]
+      }).then(() => refreshTicketMessage(interaction.channel, updated));
+    }
+
+    case 'transcript': {
+      await interaction.deferReply(EPHEMERAL);
+      const file = await buildTranscript(interaction.channel, ticket);
+      return interaction.editReply({ content: '📄 Transcript:', files: [file] });
+    }
+
+    case 'close': {
+      await interaction.deferReply(EPHEMERAL);
+      await closeAndArchive({
+        channel: interaction.channel,
+        ticket,
+        closedBy: interaction.user,
+        reason: 'Closed from ticket controls'
+      });
+      return interaction.editReply({
+        content: '✅ Closed and archived. The channel is kept with a transcript attached.'
+      });
+    }
+
+    default:
+      return interaction.reply({ content: '❌ Unknown ticket action.', ...EPHEMERAL });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Select menus
+// ---------------------------------------------------------------------------
+
+async function handleSelect(interaction) {
+  const id = interaction.customId;
+  const value = interaction.values[0];
+
+  // These two open a modal, so they must not be deferred first.
+  if (id === 'commission_select') return interaction.showModal(buildCommissionModal(value));
+  if (id === 'support_select') return interaction.showModal(buildSupportModal(value));
+
+  if (id === 'tk_status_select' || id === 'tk_priority_select') {
+    const ticket = await requireStaffTicket(interaction);
+    if (!ticket) return;
+
+    const updated =
+      id === 'tk_status_select'
+        ? await setStatus(interaction.channel.id, value)
+        : await setPriority(interaction.channel.id, value);
+
+    const label =
+      id === 'tk_status_select' ? STATUS_LABELS[value] : PRIORITY_LABELS[value];
+
+    await interaction.update({
+      content: `✅ Updated to **${label}**.`,
+      components: []
+    });
+
+    await interaction.channel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(COLORS.info)
+          .setDescription(
+            id === 'tk_status_select'
+              ? `📊 Status is now **${label}**.`
+              : `🚩 Priority is now **${label}**.`
+          )
+          .setTimestamp()
+      ]
+    });
+
+    return refreshTicketMessage(interaction.channel, updated);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Modals
+// ---------------------------------------------------------------------------
+
+async function handleModal(interaction) {
+  const [id, arg] = interaction.customId.split(':');
+
+  if (id === 'commission_modal' || id === 'support_modal') {
+    return handleIntakeModal(interaction, id === 'commission_modal' ? 'commission' : 'support', arg);
+  }
+  if (id === 'tk_quote_modal') return handleQuoteModal(interaction);
+  if (id === 'tk_note_modal') return handleNoteModal(interaction);
+}
+
+async function handleIntakeModal(interaction, type, category) {
+  await interaction.deferReply(EPHEMERAL);
+
+  const get = (field) => {
+    const value = interaction.fields.getTextInputValue(field)?.trim();
+    return value || null;
+  };
+
+  const fields = {
+    category,
+    subject: get('subject'),
+    description: get('description'),
+    budget: type === 'commission' ? get('budget') : null,
+    deadline: type === 'commission' ? get('deadline') : null,
+    references: type === 'commission' ? get('references') : get('reference')
+  };
+
+  const result = await openTicket({
+    guild: interaction.guild,
+    user: interaction.user,
+    type,
+    fields
+  });
+
+  if (result.duplicate) {
+    return interaction.editReply({
+      content:
+        `⚠️ You already have an open ${type} ticket: <#${result.ticket.channel_id}>\n` +
+        'Please continue there, or ask staff to close it first.'
+    });
+  }
+
+  // Support intake takes a free-text urgency; map it onto the priority field.
+  if (type === 'support') {
+    const urgency = interaction.fields.getTextInputValue('urgency')?.trim().toLowerCase();
+    if (urgency && PRIORITIES.includes(urgency)) {
+      const updated = await setPriority(result.channel.id, urgency);
+      await refreshTicketMessage(result.channel, updated);
+    }
+  }
+
+  const label =
+    type === 'commission'
+      ? getCommissionType(category)?.label ?? 'Commission'
+      : getSupportCategory(category)?.label ?? 'Support';
+
+  return interaction.editReply({
+    content: `✅ **${label}** ticket #${result.ticket.ticket_number} opened: ${result.channel}`
+  });
+}
+
+async function handleQuoteModal(interaction) {
+  const ticket = await getTicketByChannel(interaction.channel.id);
+  if (!ticket) {
+    return interaction.reply({ content: '❌ This is not a ticket channel.', ...EPHEMERAL });
+  }
+
+  const raw = interaction.fields.getTextInputValue('amount').replace(/[^0-9]/g, '');
+  const amount = Number.parseInt(raw, 10);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return interaction.reply({
+      content: '❌ That amount didn\'t parse. Enter digits only, e.g. `6000`.',
+      ...EPHEMERAL
+    });
+  }
+
+  const scope = interaction.fields.getTextInputValue('scope')?.trim();
+  const turnaround = interaction.fields.getTextInputValue('turnaround')?.trim();
+
+  const updated = await setQuote(interaction.channel.id, { amount, note: scope });
+
+  await interaction.reply({
+    content: `<@${ticket.user_id}>`,
+    embeds: [
+      new EmbedBuilder()
+        .setTitle('💰 Your Quote')
+        .setColor(COLORS.success)
+        .setDescription(`**${formatPrice(amount)}**`)
+        .addFields(
+          { name: "What's included", value: scope || '_See the brief above._' },
+          ...(turnaround ? [{ name: 'Turnaround', value: turnaround }] : [])
+        )
+        .setFooter({ text: 'Reply here to accept, or ask about anything that needs adjusting.' })
+        .setTimestamp()
+    ]
+  });
+
+  return refreshTicketMessage(interaction.channel, updated);
+}
+
+async function handleNoteModal(interaction) {
+  const ticket = await getTicketByChannel(interaction.channel.id);
+  if (!ticket) {
+    return interaction.reply({ content: '❌ This is not a ticket channel.', ...EPHEMERAL });
+  }
+
+  const note = interaction.fields.getTextInputValue('note').trim();
+  await addNote({
+    ticketId: ticket.id,
+    authorId: interaction.user.id,
+    authorTag: interaction.user.tag,
+    note
+  });
+
+  // Kept out of the channel so the client never sees it.
+  return interaction.reply({
+    content: `📝 Note saved to ticket #${ticket.ticket_number}:\n> ${note}`,
+    ...EPHEMERAL
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Existing non-ticket handlers
+// ---------------------------------------------------------------------------
+
 async function handleGetAccess(interaction) {
   const visitorRoleId = process.env.VISITOR_ROLE_ID;
   const memberRoleId = process.env.MEMBER_ROLE_ID;
 
   if (!visitorRoleId || !memberRoleId) {
-    await interaction.reply({
+    return interaction.reply({
       content: 'Access system not properly configured. Please contact an administrator.',
-      ephemeral: true
+      ...EPHEMERAL
     });
-    return;
   }
 
   const member = interaction.member;
-  const visitorRole = await member.guild.roles.fetch(visitorRoleId).catch(() => null);
   const memberRole = await member.guild.roles.fetch(memberRoleId).catch(() => null);
-
-  if (!visitorRole || !memberRole) {
-    await interaction.reply({
+  if (!memberRole) {
+    return interaction.reply({
       content: 'Roles not found. Please contact an administrator.',
-      ephemeral: true
+      ...EPHEMERAL
     });
-    return;
   }
 
   try {
     if (member.roles.cache.has(visitorRoleId)) {
-      await member.roles.remove(visitorRole);
+      await member.roles.remove(visitorRoleId);
     }
     await member.roles.add(memberRole);
 
     await interaction.reply({
       content: '🎉 **Access Granted!** Welcome to GLEECIN! You now have full member access.',
-      ephemeral: true
+      ...EPHEMERAL
     });
-
     console.log(`[ACCESS] ${member.user.tag} gained access to the server`);
   } catch (error) {
     console.error('[ACCESS ERROR]', error);
     await interaction.reply({
       content: 'There was an error granting access. Please contact an administrator.',
-      ephemeral: true
+      ...EPHEMERAL
     });
   }
 }
 
-// =====================
-// ENROLL CLASS
-// =====================
 async function handleEnrollClass(interaction) {
-  try {
-    const enrollEmbed = new EmbedBuilder()
-      .setTitle('🎓 Scripting Academy Enrollment')
-      .setDescription('Ready to level up your scripting skills? Here\'s how to get started.')
-      .setColor('#0099ff')
-      .addFields(
-        {
-          name: '💰 Pricing',
-          value:
-            '**Standard Class:** 15,000 L$\n' +
-            '**Premium Class:** 25,000 L$\n\n' +
-            '• *Standard* covers core scripting fundamentals\n' +
-            '• *Premium* includes advanced modules + 1-on-1 mentorship'
-        },
-        {
-          name: '📩 How to Enroll',
-          value:
-            'To secure your spot, please reach out directly:\n\n' +
-            '**Discord DMs:**\n' +
-            '• <@1171505550333612112> (Lady Jwett)\n' +
-            '• <@1171505550333612112> (GLEECIN)\n\n' +
-            '**Instagram:**\n' +
-            '• [@ladyjwettt](https://instagram.com/ladyjwettt)\n' +
-            '• [@gleecin.sl](https://instagram.com/gleecin.sl)\n\n' +
-            'Send your **desired tier** (Standard or Premium) and we\'ll get you set up.'
-        },
-        {
-          name: '📅 Next Cohort',
-          value: 'Classes run in monthly sessions. Next intake begins soon — reserve your seat now!'
-        }
-      )
-      .setFooter({ text: 'GLEECIN Scripting Academy • Learn from the best' })
-      .setTimestamp();
-
-    await interaction.reply({ embeds: [enrollEmbed], ephemeral: true });
-  } catch (error) {
-    console.error('[ENROLL ERROR]', error);
-    await interaction.reply({
-      content: '❌ Failed to show enrollment info. Please contact an administrator.',
-      ephemeral: true
-    });
-  }
-}
-
-// =====================
-// OPEN TICKET (Unified)
-// =====================
-async function handleOpenTicket(interaction, ticketType) {
-  const guild = interaction.guild;
-  const user = interaction.user;
-  const staffRoleId = process.env.STAFF_ROLE_ID;
-
-  const typeConfig = {
-    support: {
-      icon: '🆘',
-      color: '#ff6600',
-      label: 'Support',
-      description: 'A team member will assist you shortly.',
-      defaultDesc: 'Support request from welcome message'
-    },
-    commission: {
-      icon: '🎨',
-      color: '#ff6b9d',
-      label: 'Commission',
-      description: 'A staff member will review your commission request shortly.',
-      defaultDesc: 'Commission request from welcome message'
-    }
-  };
-
-  const config = typeConfig[ticketType];
-
-  try {
-    const channelName = `${config.icon}-${ticketType}-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 90);
-
-    const permissionOverwrites = [
-      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+  const embed = new EmbedBuilder()
+    .setTitle('🎓 Scripting Academy Enrollment')
+    .setDescription("Ready to level up your scripting skills? Here's how to get started.")
+    .setColor(COLORS.info)
+    .addFields(
       {
-        id: user.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks
-        ]
+        name: '💰 Pricing',
+        value:
+          '**Standard Class:** 15,000 L$\n' +
+          '**Premium Class:** 25,000 L$\n\n' +
+          '• *Standard* covers core scripting fundamentals\n' +
+          '• *Premium* includes advanced modules + 1-on-1 mentorship'
+      },
+      {
+        name: '📩 How to Enroll',
+        value:
+          'Open a support ticket and choose **Academy access**, or reach out directly:\n\n' +
+          '**Instagram:** [@ladyjwettt](https://instagram.com/ladyjwettt) • [@gleecin.sl](https://instagram.com/gleecin.sl)\n\n' +
+          "Send your desired tier (Standard or Premium) and we'll get you set up."
+      },
+      {
+        name: '📅 Next Cohort',
+        value: 'Classes run in monthly sessions. Next intake begins soon — reserve your seat now!'
       }
-    ];
+    )
+    .setFooter({ text: 'GLEECIN Scripting Academy' })
+    .setTimestamp();
 
-    if (staffRoleId) {
-      permissionOverwrites.push({
-        id: staffRoleId,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.ManageMessages,
-          PermissionFlagsBits.AttachFiles
-        ]
-      });
-    }
-
-    const ticketChannel = await guild.channels.create({
-      name: channelName,
-      type: ChannelType.GuildText,
-      permissionOverwrites
-    });
-
-    // Save to database
-    const description = config.defaultDesc;
-    await createTicket({
-      guildId: guild.id,
-      channelId: ticketChannel.id,
-      userId: user.id,
-      userTag: user.tag,
-      type: ticketType,
-      description
-    });
-
-    const embed = new EmbedBuilder()
-      .setTitle(`${config.icon} ${config.label} Ticket Opened`)
-      .setDescription(config.description)
-      .setColor(config.color)
-      .addFields(
-        { name: 'Type', value: config.label, inline: true },
-        { name: 'User', value: `${user.tag} (<@${user.id}>)`, inline: true },
-        { name: 'Status', value: '🟢 Open', inline: true }
-      )
-      .setFooter({ text: `Ticket ID: ${ticketChannel.id}` })
-      .setTimestamp();
-
-    const staffRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`close_ticket_${ticketChannel.id}`)
-        .setLabel('Close Ticket')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji('🔒'),
-      new ButtonBuilder()
-        .setCustomId(`claim_ticket_${ticketChannel.id}`)
-        .setLabel('Claim Ticket')
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji('👤')
-    );
-
-    await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [staffRow] });
-    await interaction.reply({
-      content: `✅ ${config.label} ticket created: ${ticketChannel}`,
-      ephemeral: true
-    });
-
-    console.log(`[TICKET] ${ticketType.toUpperCase()} ticket opened by ${user.tag} — ${ticketChannel.name}`);
-  } catch (error) {
-    console.error(`[${ticketType.toUpperCase()} TICKET ERROR]`, error);
-    await interaction.reply({
-      content: `❌ Failed to create ${ticketType} ticket. Please try again.`,
-      ephemeral: true
-    });
-  }
+  await interaction.reply({ embeds: [embed], ...EPHEMERAL });
 }
 
-// =====================
-// CLOSE TICKET (Button)
-// =====================
-async function handleCloseTicketButton(interaction) {
-  const channel = interaction.channel;
-
-  // Verify this is a ticket channel
-  const ticket = await getTicketByChannel(channel.id);
-  if (!ticket) {
-    return interaction.reply({
-      content: '❌ This is not a ticket channel.',
-      ephemeral: true
-    });
-  }
-
-  // Check permissions
-  const staffRoleId = process.env.STAFF_ROLE_ID;
-  const isStaff = staffRoleId && interaction.member.roles.cache.has(staffRoleId);
-  const isOwner = ticket.user_id === interaction.user.id;
-
-  if (!isStaff && !isOwner) {
-    return interaction.reply({
-      content: '❌ Only staff or the ticket owner can close this ticket.',
-      ephemeral: true
-    });
-  }
-
-  try {
-    // Update database
-    await closeTicket({
-      channelId: channel.id,
-      closedBy: interaction.user.id,
-      closedByTag: interaction.user.tag
-    });
-
-    const closeEmbed = new EmbedBuilder()
-      .setTitle('🔒 Ticket Closed')
-      .setDescription(`This ticket has been closed by ${interaction.user.tag}`)
-      .setColor('#ff0000')
-      .addFields(
-        { name: 'Closed By', value: `${interaction.user.tag} (<@${interaction.user.id}>)`, inline: true },
-        { name: 'Original User', value: `${ticket.user_tag} (<@${ticket.user_id}>)`, inline: true }
-      )
-      .setTimestamp();
-
-    await channel.send({ embeds: [closeEmbed] });
-
-    await interaction.reply({
-      content: '✅ Ticket closed. This channel will be deleted in 10 seconds.',
-      ephemeral: true
-    });
-
-    console.log(`[TICKET] Closed by ${interaction.user.tag} — ${channel.name}`);
-
-    // Delete channel after delay
-    setTimeout(async () => {
-      try {
-        await channel.delete('Ticket closed');
-        await deleteTicket(channel.id);
-      } catch (err) {
-        console.error('[TICKET DELETE ERROR]', err);
-      }
-    }, 10000);
-
-  } catch (error) {
-    console.error('[TICKET CLOSE ERROR]', error);
-    await interaction.reply({
-      content: '❌ Failed to close ticket.',
-      ephemeral: true
-    });
-  }
-}
-
-// =====================
-// CLAIM TICKET
-// =====================
-async function handleClaimTicket(interaction) {
-  const staffRoleId = process.env.STAFF_ROLE_ID;
-
-  if (staffRoleId && !interaction.member.roles.cache.has(staffRoleId)) {
-    return interaction.reply({
-      content: '❌ Staff only.',
-      ephemeral: true
-    });
-  }
-
-  const channel = interaction.channel;
-  const ticket = await getTicketByChannel(channel.id);
-  if (!ticket) {
-    return interaction.reply({ content: '❌ Not a valid ticket channel.', ephemeral: true });
-  }
-
-  try {
-    const claimEmbed = new EmbedBuilder()
-      .setTitle('👤 Ticket Claimed')
-      .setDescription(`This ticket has been claimed by ${interaction.user.tag}`)
-      .setColor('#00ff88')
-      .addFields(
-        { name: 'Claimed By', value: `${interaction.user.tag} (<@${interaction.user.id}>)`, inline: true },
-        { name: 'Status', value: '🔵 In Progress', inline: true }
-      )
-      .setTimestamp();
-
-    await channel.send({ embeds: [claimEmbed] });
-    await interaction.reply({ content: '✅ Ticket claimed.', ephemeral: true });
-
-    console.log(`[TICKET] Claimed by ${interaction.user.tag} — ${channel.name}`);
-  } catch (error) {
-    console.error('[TICKET CLAIM ERROR]', error);
-    await interaction.reply({ content: '❌ Failed to claim ticket.', ephemeral: true });
-  }
-}
-
-// =====================
-// VISIT MARKETPLACE
-// =====================
 async function handleVisitMarketplace(interaction) {
-  const marketplaceEmbed = new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle('🛍️ GLEECIN Marketplace')
     .setDescription('Scripts, RP systems & exclusive releases — built for serious creators.')
-    .setColor('#ff6b9d')
+    .setColor(COLORS.commission)
     .addFields(
       {
         name: '📦 Available Categories',
-        value: '• **Scripts** — HUD systems, vendors, security tools\n• **RP Systems** — Interactive roleplay mechanics\n• **Exclusive Releases** — Limited drops and custom builds\n• **Interactive Tools** — Retail, doors, rezzing systems'
+        value:
+          '• **Scripts** — HUD systems, vendors, security tools\n' +
+          '• **RP Systems** — Interactive roleplay mechanics\n' +
+          '• **Exclusive Releases** — Limited drops and custom builds\n' +
+          '• **Interactive Tools** — Retail, doors, rezzing systems'
       },
-      {
-        name: '💳 How to Purchase',
-        value: 'Use the marketplace link below to browse and buy directly.'
-      }
+      { name: '💳 How to Purchase', value: 'Use the marketplace link below to browse and buy directly.' }
     )
     .setFooter({ text: 'Premium digital assets for Second Life creators' })
     .setTimestamp();
 
-  const marketplaceButton = new ActionRowBuilder().addComponents(
+  const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setLabel('Open Marketplace')
       .setStyle(ButtonStyle.Link)
@@ -413,9 +495,5 @@ async function handleVisitMarketplace(interaction) {
       .setEmoji('🛍️')
   );
 
-  await interaction.reply({
-    embeds: [marketplaceEmbed],
-    components: [marketplaceButton],
-    ephemeral: true
-  });
+  await interaction.reply({ embeds: [embed], components: [row], ...EPHEMERAL });
 }
