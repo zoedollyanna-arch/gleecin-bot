@@ -10,8 +10,11 @@ import { initTicketsTable } from './models/ticket.js';
 
 const { Pool } = pg;
 
+// Shares a process (and DATABASE_URL) with the website pool in
+// website/src/db/database.js — keep the combined ceiling low.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: 5,
   ssl: {
     rejectUnauthorized: false
   }

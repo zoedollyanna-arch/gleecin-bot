@@ -6,8 +6,12 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-const pool = new Pool({
+// Both this pool and the bot's pool (src/database/connection.js) run in the same
+// process and share DATABASE_URL, so cap each one well below the provider's
+// connection limit instead of relying on pg's default of 10 apiece.
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: 5,
   ssl: {
     rejectUnauthorized: false
   }

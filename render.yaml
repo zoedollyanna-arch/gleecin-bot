@@ -11,6 +11,8 @@ services:
         value: production
       - key: PORT
         value: 3000
+      - key: PUBLIC_URL
+        value: https://gleecin-bot-pxzk.onrender.com
     # These need to be added in Render dashboard:
     # - DATABASE_URL (PostgreSQL connection string)
     # - DISCORD_TOKEN (Discord bot token)

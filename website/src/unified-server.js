@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
 import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +24,7 @@ import paymentRoutes from './routes/payment.js';
 import adminRoutes from './routes/admin.js';
 import studentRoutes from './routes/student.js';
 import { isAuthenticated, checkRole } from './middleware/auth.js';
-import { initializeDatabase } from './db/database.js';
+import { initializeDatabase, pool as dbPool } from './db/database.js';
 import { initDatabase as initBotDatabase } from '../../src/database/connection.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,7 +57,17 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Sessions live in Postgres, not process memory: the free Render instance spins
+// down when idle and restarts on deploy, and MemoryStore would log everyone out
+// (and leak) every time that happens.
+const PgSession = connectPgSimple(session);
+
 app.use(session({
+  store: new PgSession({
+    pool: dbPool,
+    tableName: 'session',
+    createTableIfMissing: true
+  }),
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -249,7 +260,11 @@ async function startup() {
     // Start Express server on the platform-provided port only
     await new Promise((resolve, reject) => {
       const server = app.listen(portValue, () => {
-        const publicUrl = process.env.PUBLIC_URL || `http${process.env.NODE_ENV === 'production' ? 's' : ''}://0.0.0.0:${portValue}`;
+        // RENDER_EXTERNAL_URL is injected by Render, so the banner shows the real
+        // public address without any extra configuration.
+        const publicUrl = process.env.PUBLIC_URL
+          || process.env.RENDER_EXTERNAL_URL
+          || `http://localhost:${portValue}`;
         console.log(`
 ╔══════════════════════════════════════════╗
 ║  GLEECIN Academy Portal                 ║
