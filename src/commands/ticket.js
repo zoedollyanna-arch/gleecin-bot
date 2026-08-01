@@ -12,6 +12,7 @@ import {
   buildTicketEmbed,
   buildStaffRows,
   buildTranscript,
+  applyStatusSideEffects,
   closeAndArchive
 } from '../tickets/index.js';
 
@@ -196,7 +197,7 @@ async function handleStatus(interaction) {
   const status = interaction.options.getString('status');
   const updated = await setStatus(interaction.channel.id, status);
 
-  return interaction.reply({
+  await interaction.reply({
     embeds: [
       new EmbedBuilder()
         .setColor(COLORS.info)
@@ -204,6 +205,14 @@ async function handleStatus(interaction) {
         .setTimestamp()
     ]
   });
+
+  const notes = await applyStatusSideEffects({
+    guild: interaction.guild,
+    channel: interaction.channel,
+    ticket: updated,
+    status
+  });
+  if (notes.length) await interaction.followUp({ content: notes.join('\n'), ...EPHEMERAL });
 }
 
 async function handleQuote(interaction) {

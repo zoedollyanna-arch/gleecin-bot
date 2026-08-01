@@ -462,6 +462,88 @@ export async function openTicket({ guild, user, type, fields = {}, openedBy = nu
   return { duplicate: false, ticket, channel: ticketChannel };
 }
 
+// ---------------------------------------------------------------------------
+// Status side effects
+// ---------------------------------------------------------------------------
+
+/** Prompt shown when a commission is marked delivered. */
+export function buildReviewPrompt(guildId) {
+  const reviewsChannelId = process.env.REVIEWS_CHANNEL_ID;
+
+  const embed = new EmbedBuilder()
+    .setTitle('📦 Delivered — thank you!')
+    .setColor(COLORS.success)
+    .setDescription(
+      'Your commission is complete. If you are happy with it, a quick review genuinely helps — ' +
+      'it takes about thirty seconds.'
+    );
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('tk:review')
+      .setLabel('Leave a Review')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji('⭐')
+  );
+
+  if (reviewsChannelId) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setLabel('See other reviews')
+        .setStyle(ButtonStyle.Link)
+        .setURL(`https://discord.com/channels/${guildId}/${reviewsChannelId}`)
+    );
+  }
+
+  return { embeds: [embed], components: [row] };
+}
+
+export function buildReviewModal() {
+  const modal = new ModalBuilder().setCustomId('tk_review_modal').setTitle('Leave a Review');
+  modal.addComponents(
+    textInput('rating', 'Rating out of 5', { placeholder: '5', max: 3 }),
+    textInput('comment', 'How did it go?', {
+      style: TextInputStyle.Paragraph,
+      placeholder: 'What you ordered, how it turned out, how the process was…',
+      max: 1000
+    })
+  );
+  return modal;
+}
+
+/**
+ * Side effects that should fire however the status was changed — button,
+ * dropdown, or slash command. Centralised so the three paths can't drift.
+ *
+ * Everything here is best-effort: a missing role or channel should never stop
+ * the status change itself from going through.
+ */
+export async function applyStatusSideEffects({ guild, channel, ticket, status }) {
+  const notes = [];
+
+  if (status === 'paid') {
+    const clientRoleId = process.env.CLIENT_ROLE_ID;
+    if (clientRoleId) {
+      try {
+        const member = await guild.members.fetch(ticket.user_id);
+        if (!member.roles.cache.has(clientRoleId)) {
+          await member.roles.add(clientRoleId, `Paid commission #${ticket.ticket_number}`);
+          notes.push(`Granted <@&${clientRoleId}> to <@${ticket.user_id}>.`);
+        }
+      } catch (error) {
+        console.error('[TICKET] Could not grant client role:', error.message);
+        notes.push('⚠️ Could not grant the client role — check the bot\'s role position.');
+      }
+    }
+  }
+
+  if (status === 'delivered' && ticket.type === 'commission') {
+    await channel.send(buildReviewPrompt(guild.id)).catch(() => {});
+  }
+
+  return notes;
+}
+
 /** Newest-last plain-text transcript of a ticket channel. */
 export async function buildTranscript(channel, ticket) {
   const collected = [];

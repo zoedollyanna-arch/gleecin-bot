@@ -25,7 +25,9 @@ import {
   buildPriorityMenu,
   buildQuoteModal,
   buildNoteModal,
+  buildReviewModal,
   buildTranscript,
+  applyStatusSideEffects,
   openTicket,
   closeAndArchive,
   getSupportCategory
@@ -125,6 +127,9 @@ async function handleButton(interaction) {
     return interaction.reply({ ...buildSupportPanel(), ...EPHEMERAL });
   }
 
+  // Open to the client, not just staff — it's their review to leave.
+  if (id === 'tk:review') return interaction.showModal(buildReviewModal());
+
   if (id.startsWith('tk:')) return handleTicketButton(interaction, id.slice(3));
 
   // Buttons from before the rewrite carried the channel id in the custom id.
@@ -179,6 +184,15 @@ async function handleTicketButton(interaction, action) {
             .setTimestamp()
         ]
       });
+
+      const notes = await applyStatusSideEffects({
+        guild: interaction.guild,
+        channel: interaction.channel,
+        ticket: updated,
+        status: 'paid'
+      });
+      if (notes.length) await interaction.followUp({ content: notes.join('\n'), ...EPHEMERAL });
+
       return refreshTicketMessage(interaction.channel, updated);
     }
 
@@ -263,6 +277,16 @@ async function handleSelect(interaction) {
       ]
     });
 
+    if (id === 'tk_status_select') {
+      const notes = await applyStatusSideEffects({
+        guild: interaction.guild,
+        channel: interaction.channel,
+        ticket: updated,
+        status: value
+      });
+      if (notes.length) await interaction.followUp({ content: notes.join('\n'), ...EPHEMERAL });
+    }
+
     return refreshTicketMessage(interaction.channel, updated);
   }
 }
@@ -279,6 +303,54 @@ async function handleModal(interaction) {
   }
   if (id === 'tk_quote_modal') return handleQuoteModal(interaction);
   if (id === 'tk_note_modal') return handleNoteModal(interaction);
+  if (id === 'tk_review_modal') return handleReviewModal(interaction);
+}
+
+/**
+ * Publish a client review into the reviews channel.
+ *
+ * Posted by the bot rather than requiring the client to find the channel and
+ * write it themselves — the whole point is that it takes one click.
+ */
+async function handleReviewModal(interaction) {
+  await interaction.deferReply(EPHEMERAL);
+
+  const ticket = await getTicketByChannel(interaction.channel.id);
+  const raw = interaction.fields.getTextInputValue('rating').replace(/[^0-9]/g, '');
+  const rating = Math.min(5, Math.max(1, Number.parseInt(raw, 10) || 5));
+  const comment = interaction.fields.getTextInputValue('comment').trim();
+
+  const reviewsChannelId = process.env.REVIEWS_CHANNEL_ID;
+  if (!reviewsChannelId) {
+    return interaction.editReply({
+      content: '⚠️ No reviews channel is configured, so this could not be posted. Staff have been notified.'
+    });
+  }
+
+  const channel = await interaction.guild.channels.fetch(reviewsChannelId).catch(() => null);
+  if (!channel) {
+    return interaction.editReply({ content: '⚠️ The reviews channel could not be reached.' });
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(COLORS.success)
+    .setAuthor({
+      name: interaction.user.displayName ?? interaction.user.username,
+      iconURL: interaction.user.displayAvatarURL()
+    })
+    .setDescription(`${'⭐'.repeat(rating)}${'☆'.repeat(5 - rating)}\n\n${comment}`)
+    .setTimestamp();
+
+  if (ticket?.category) {
+    const type = getCommissionType(ticket.category);
+    if (type) embed.setFooter({ text: type.label });
+  }
+
+  await channel.send({ embeds: [embed] });
+
+  return interaction.editReply({
+    content: `⭐ Thank you — your review is posted in <#${reviewsChannelId}>.`
+  });
 }
 
 async function handleIntakeModal(interaction, type, category) {
