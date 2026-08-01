@@ -203,6 +203,16 @@ async function postClassReminders(client) {
 // ---------------------------------------------------------------------------
 
 /**
+ * The live `certifications` table predates the `shared` columns that the
+ * website's schema declares — CREATE TABLE IF NOT EXISTS never added them to an
+ * existing table. Without these the certificate job silently no-ops forever.
+ */
+async function ensureCertificateColumns() {
+  await query(`ALTER TABLE certifications ADD COLUMN IF NOT EXISTS shared BOOLEAN DEFAULT false`);
+  await query(`ALTER TABLE certifications ADD COLUMN IF NOT EXISTS shared_at TIMESTAMP`);
+}
+
+/**
  * Celebrate newly issued certificates in the showcase channel.
  *
  * Uses the certifications table's own `shared` flag as the marker, so a
@@ -254,6 +264,8 @@ async function postNewCertificates(client) {
  * coarse enough that drift does not matter.
  */
 export function startJobs(client) {
+  safely('certs-schema', ensureCertificateColumns)();
+
   const stale = safely('stale', () => sweepStaleTickets(client));
   const classes = safely('class', () => postClassReminders(client));
   const certs = safely('certs', () => postNewCertificates(client));
