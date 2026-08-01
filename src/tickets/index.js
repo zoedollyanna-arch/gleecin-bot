@@ -74,16 +74,31 @@ export const getSupportCategory = (value) =>
 // Permissions
 // ---------------------------------------------------------------------------
 
+/** Explicit staff allowlist from STAFF_USER_IDS, if one is configured. */
+function staffAllowlist() {
+  return (process.env.STAFF_USER_IDS ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 /**
- * Staff check.
+ * Staff check — the single gate for every staff button and command.
  *
- * Deliberately broader than a single role ID: the server owner and anyone with
- * Administrator always count. On a one-person operation the STAFF role often
- * isn't actually assigned to the owner, and a bare role check would lock them
- * out of their own staff controls.
+ * When STAFF_USER_IDS is set it is the whole answer: only those user IDs pass,
+ * and role membership, Administrator, and even server ownership are ignored.
+ * That is deliberate — a lone operator wants the controls pinned to their own
+ * account, not to whoever happens to hold a role.
+ *
+ * With it unset, falls back to owner / Administrator / staff roles so the bot
+ * is never left with nobody able to operate it.
  */
 export function isStaff(member) {
   if (!member) return false;
+
+  const allowlist = staffAllowlist();
+  if (allowlist.length > 0) return allowlist.includes(member.id);
+
   if (member.id === member.guild?.ownerId) return true;
   if (member.permissions?.has(PermissionFlagsBits.Administrator)) return true;
 
