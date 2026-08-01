@@ -9,6 +9,7 @@ import {
   isStaff,
   buildCommissionPanel,
   buildSupportPanel,
+  buildClassPanel,
   buildTicketEmbed,
   buildStaffRows,
   buildTranscript,
@@ -22,6 +23,7 @@ import {
   getTicketStats,
   setStatus,
   setQuote,
+  setRevisionsAllowed,
   getNotes,
   STATUS_LABELS,
   PRIORITY_LABELS,
@@ -42,8 +44,16 @@ export default {
         .addStringOption((o) =>
           o.setName('type').setDescription('Which panel').setRequired(true).addChoices(
             { name: 'Commission', value: 'commission' },
-            { name: 'Support', value: 'support' }
+            { name: 'Support', value: 'support' },
+            { name: 'Scripting class application', value: 'class' }
           )
+        )
+    )
+    .addSubcommand((s) =>
+      s.setName('revisions')
+        .setDescription('Set how many revisions are included on this ticket (staff)')
+        .addIntegerOption((o) =>
+          o.setName('allowed').setDescription('Included revisions').setRequired(true).setMinValue(0).setMaxValue(20)
         )
     )
     .addSubcommand((s) =>
@@ -115,6 +125,7 @@ export default {
       rename: handleRename,
       status: handleStatus,
       quote: handleQuote,
+      revisions: handleRevisions,
       transcript: handleTranscript,
       notes: handleNotes,
       close: handleClose,
@@ -138,9 +149,35 @@ async function ticketHere(interaction) {
 
 async function handlePanel(interaction) {
   const type = interaction.options.getString('type');
-  const panel = type === 'commission' ? buildCommissionPanel() : buildSupportPanel();
+  const panel =
+    type === 'commission'
+      ? await buildCommissionPanel(interaction.guild.id)
+      : type === 'class'
+        ? buildClassPanel()
+        : buildSupportPanel();
+
   await interaction.channel.send(panel);
   return interaction.reply({ content: `✅ ${type} panel posted.`, ...EPHEMERAL });
+}
+
+async function handleRevisions(interaction) {
+  const ticket = await ticketHere(interaction);
+  if (!ticket) return;
+
+  const allowed = interaction.options.getInteger('allowed');
+  const updated = await setRevisionsAllowed(interaction.channel.id, allowed);
+
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor(COLORS.info)
+        .setDescription(
+          `🔁 **${allowed}** revision(s) included on this project. ` +
+          `Used so far: **${updated.revisions_used}**.`
+        )
+        .setTimestamp()
+    ]
+  });
 }
 
 async function handleAdd(interaction) {

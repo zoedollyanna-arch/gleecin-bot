@@ -28,6 +28,9 @@ export const STATUS_LABELS = {
 
 export const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
+/** Commissions, customer support, and scripting-class applications. */
+export const TICKET_TYPES = ['support', 'commission', 'class'];
+
 export const PRIORITY_LABELS = {
   low: '⬇️ Low',
   normal: '➡️ Normal',
@@ -74,10 +77,28 @@ export async function initTicketsTable() {
       closed_by VARCHAR(32),
       closed_by_tag VARCHAR(100),
       archived_at TIMESTAMP,
-      CONSTRAINT discord_tickets_type_check CHECK (type IN ('support', 'commission')),
       CONSTRAINT discord_tickets_status_check
         CHECK (status IN (${TICKET_STATUSES.map((s) => `'${s}'`).join(', ')}))
     )
+  `);
+
+  // Added after the table shipped; ALTER keeps existing deployments in step.
+  const laterColumns = [
+    ['revisions_used', 'INTEGER NOT NULL DEFAULT 0'],
+    ['revisions_allowed', 'INTEGER'],
+    ['last_activity_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'],
+    ['last_nudge_at', 'TIMESTAMP']
+  ];
+  for (const [name, type] of laterColumns) {
+    await query(`ALTER TABLE discord_tickets ADD COLUMN IF NOT EXISTS ${name} ${type}`);
+  }
+
+  // Rebuilt rather than declared inline: 'class' was added after the original
+  // constraint shipped with only support/commission.
+  await query(`ALTER TABLE discord_tickets DROP CONSTRAINT IF EXISTS discord_tickets_type_check`);
+  await query(`
+    ALTER TABLE discord_tickets ADD CONSTRAINT discord_tickets_type_check
+    CHECK (type IN (${TICKET_TYPES.map((t) => `'${t}'`).join(', ')}))
   `);
 
   await query(`
@@ -279,6 +300,76 @@ export async function getNotes(ticketId) {
   const result = await query(
     `SELECT * FROM discord_ticket_notes WHERE ticket_id = $1 ORDER BY created_at ASC`,
     [ticketId]
+  );
+  return result.rows;
+}
+
+/** How many commissions are currently occupying a slot. */
+export async function countActiveCommissions(guildId) {
+  const result = await query(
+    `SELECT COUNT(*)::int AS n FROM discord_tickets
+     WHERE guild_id = $1 AND type = 'commission'
+       AND status NOT IN ('closed', 'delivered') AND archived_at IS NULL`,
+    [guildId]
+  );
+  return result.rows[0].n;
+}
+
+export async function touchActivity(channelId) {
+  await query(
+    `UPDATE discord_tickets SET last_activity_at = CURRENT_TIMESTAMP, last_nudge_at = NULL
+     WHERE channel_id = $1`,
+    [channelId]
+  );
+}
+
+export async function addRevision(channelId, { allowed = null } = {}) {
+  const result = await query(
+    `UPDATE discord_tickets
+     SET revisions_used = revisions_used + 1,
+         revisions_allowed = COALESCE($2, revisions_allowed)
+     WHERE channel_id = $1
+     RETURNING *`,
+    [channelId, allowed]
+  );
+  return result.rows[0] || null;
+}
+
+export async function setRevisionsAllowed(channelId, allowed) {
+  const result = await query(
+    `UPDATE discord_tickets SET revisions_allowed = $2 WHERE channel_id = $1 RETURNING *`,
+    [channelId, allowed]
+  );
+  return result.rows[0] || null;
+}
+
+export async function markNudged(channelId) {
+  await query(
+    `UPDATE discord_tickets SET last_nudge_at = CURRENT_TIMESTAMP WHERE channel_id = $1`,
+    [channelId]
+  );
+}
+
+/**
+ * Tickets with no activity for `days`, for the stale sweep.
+ *
+ * `stage` picks which half of the sweep: 'nudge' finds ones never nudged,
+ * 'archive' finds ones already nudged and still silent.
+ */
+export async function findStaleTickets({ days, stage }) {
+  const nudgeClause =
+    stage === 'nudge'
+      ? 'AND last_nudge_at IS NULL'
+      : "AND last_nudge_at IS NOT NULL AND last_nudge_at < NOW() - ($1 || ' days')::interval";
+
+  const result = await query(
+    `SELECT * FROM discord_tickets
+     WHERE status <> 'closed' AND archived_at IS NULL
+       AND last_activity_at < NOW() - ($1 || ' days')::interval
+       ${nudgeClause}
+     ORDER BY last_activity_at ASC
+     LIMIT 25`,
+    [String(days)]
   );
   return result.rows;
 }

@@ -9,10 +9,12 @@
 
 import 'dotenv/config';
 import { initTicketsTable } from '../src/database/models/ticket.js';
+import { initSettingsTable } from '../src/database/models/settings.js';
 import { query } from '../src/database/connection.js';
 
 try {
   await initTicketsTable();
+  await initSettingsTable();
 
   const cols = await query(
     `SELECT column_name, data_type FROM information_schema.columns
@@ -35,6 +37,17 @@ try {
      WHERE table_name = 'discord_ticket_notes'`
   );
   console.log(`discord_ticket_notes present: ${notes.rows[0].n === 1}`);
+
+  const typeCheck = await query(
+    `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+     WHERE conname = 'discord_tickets_type_check'`
+  );
+  console.log(`type constraint: ${typeCheck.rows[0]?.def ?? '(none)'}`);
+
+  const settings = await query(
+    `SELECT COUNT(*)::int AS n FROM information_schema.tables WHERE table_name = 'guild_settings'`
+  );
+  console.log(`guild_settings present: ${settings.rows[0].n === 1}`);
 
   console.log('\n✅ Migration complete.');
   process.exit(0);

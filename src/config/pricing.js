@@ -121,6 +121,31 @@ export const ADD_ONS = [
   { value: 'rush_2day', label: 'Rush Delivery — guaranteed 2-day', price: 5000, note: 'Hard 2-day deadline' }
 ];
 
+/**
+ * Scripting Academy tiers.
+ *
+ * Enrolment is by application, not self-serve: applying opens a class ticket,
+ * and the student role is granted only when that ticket is marked paid.
+ */
+export const CLASS_TIERS = [
+  {
+    value: 'standard',
+    label: 'Standard Class',
+    emoji: '📘',
+    price: 15000,
+    blurb: 'Core scripting fundamentals.'
+  },
+  {
+    value: 'premium',
+    label: 'Premium Class',
+    emoji: '🌟',
+    price: 25000,
+    blurb: 'Advanced modules plus 1-on-1 mentorship.'
+  }
+];
+
+export const getClassTier = (value) => CLASS_TIERS.find((t) => t.value === value) ?? null;
+
 export const TURNAROUND = {
   standard: '1–2 weeks, based on project size',
   rush: `Rush delivery ${fmt(2000)}, or ${fmt(5000)} for a guaranteed 2-day turnaround`,

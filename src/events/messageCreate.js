@@ -1,5 +1,7 @@
 import { Events, EmbedBuilder } from 'discord.js';
 
+import { touchActivity } from '../database/models/ticket.js';
+
 export default {
   name: Events.MessageCreate,
   async execute(message, client) {
@@ -7,6 +9,11 @@ export default {
     if (message.author.bot) return;
 
     const channelId = message.channel.id;
+
+    // Any human message resets the staleness clock and clears a pending nudge.
+    // Cheap enough to fire on every message; it no-ops on non-ticket channels.
+    touchActivity(channelId).catch(() => {});
+
     const generalChannelId = process.env.GENERAL_CHANNEL_ID;
     const galleryChannelId = process.env.GALLERY_CHANNEL_ID;
     const reviewsChannelId = process.env.REVIEWS_CHANNEL_ID;

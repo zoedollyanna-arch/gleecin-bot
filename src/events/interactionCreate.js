@@ -17,8 +17,10 @@ import {
   isStaff,
   buildCommissionPanel,
   buildSupportPanel,
+  buildClassPanel,
   buildCommissionModal,
   buildSupportModal,
+  buildClassModal,
   buildTicketEmbed,
   buildStaffRows,
   buildStatusMenu,
@@ -40,12 +42,13 @@ import {
   setQuote,
   setAwaitingClient,
   addNote,
+  addRevision,
   STATUS_LABELS,
   PRIORITY_LABELS,
   PRIORITIES
 } from '../database/models/ticket.js';
 
-import { getCommissionType, formatPrice } from '../config/pricing.js';
+import { getCommissionType, getClassTier, formatPrice } from '../config/pricing.js';
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral };
 
@@ -116,15 +119,17 @@ async function handleButton(interaction) {
   const id = interaction.customId;
 
   if (id === 'get_access') return handleGetAccess(interaction);
-  if (id === 'enroll_class') return handleEnrollClass(interaction);
   if (id === 'visit_marketplace') return handleVisitMarketplace(interaction);
 
   // Legacy panel buttons now lead into the select → modal intake flow.
   if (id === 'open_commission') {
-    return interaction.reply({ ...buildCommissionPanel(), ...EPHEMERAL });
+    return interaction.reply({ ...(await buildCommissionPanel(interaction.guild.id)), ...EPHEMERAL });
   }
   if (id === 'open_support') {
     return interaction.reply({ ...buildSupportPanel(), ...EPHEMERAL });
+  }
+  if (id === 'enroll_class' || id === 'apply_class') {
+    return interaction.reply({ ...buildClassPanel(), ...EPHEMERAL });
   }
 
   // Open to the client, not just staff — it's their review to leave.
@@ -196,6 +201,28 @@ async function handleTicketButton(interaction, action) {
       return refreshTicketMessage(interaction.channel, updated);
     }
 
+    case 'revision': {
+      const updated = await addRevision(interaction.channel.id);
+      const allowed = updated.revisions_allowed;
+      const overLimit = allowed && updated.revisions_used > allowed;
+
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(overLimit ? COLORS.danger : COLORS.info)
+            .setTitle('🔁 Revision Logged')
+            .setDescription(
+              allowed
+                ? `**${updated.revisions_used} of ${allowed}** revisions used.` +
+                  (overLimit ? '\n\nThis is beyond the agreed scope — further changes may be chargeable.' : '')
+                : `**${updated.revisions_used}** revision(s) logged on this project.`
+            )
+            .setTimestamp()
+        ]
+      });
+      return refreshTicketMessage(interaction.channel, updated);
+    }
+
     case 'nudge': {
       const updated = await setAwaitingClient(interaction.channel.id, true);
       return interaction.reply({
@@ -243,9 +270,10 @@ async function handleSelect(interaction) {
   const id = interaction.customId;
   const value = interaction.values[0];
 
-  // These two open a modal, so they must not be deferred first.
+  // These open a modal, so they must not be deferred first.
   if (id === 'commission_select') return interaction.showModal(buildCommissionModal(value));
   if (id === 'support_select') return interaction.showModal(buildSupportModal(value));
+  if (id === 'class_select') return interaction.showModal(buildClassModal(value));
 
   if (id === 'tk_status_select' || id === 'tk_priority_select') {
     const ticket = await requireStaffTicket(interaction);
@@ -298,9 +326,12 @@ async function handleSelect(interaction) {
 async function handleModal(interaction) {
   const [id, arg] = interaction.customId.split(':');
 
-  if (id === 'commission_modal' || id === 'support_modal') {
-    return handleIntakeModal(interaction, id === 'commission_modal' ? 'commission' : 'support', arg);
-  }
+  const intakeTypes = {
+    commission_modal: 'commission',
+    support_modal: 'support',
+    class_modal: 'class'
+  };
+  if (intakeTypes[id]) return handleIntakeModal(interaction, intakeTypes[id], arg);
   if (id === 'tk_quote_modal') return handleQuoteModal(interaction);
   if (id === 'tk_note_modal') return handleNoteModal(interaction);
   if (id === 'tk_review_modal') return handleReviewModal(interaction);
@@ -357,18 +388,33 @@ async function handleIntakeModal(interaction, type, category) {
   await interaction.deferReply(EPHEMERAL);
 
   const get = (field) => {
-    const value = interaction.fields.getTextInputValue(field)?.trim();
-    return value || null;
+    try {
+      return interaction.fields.getTextInputValue(field)?.trim() || null;
+    } catch {
+      return null; // field isn't on this modal
+    }
   };
 
-  const fields = {
-    category,
-    subject: get('subject'),
-    description: get('description'),
-    budget: type === 'commission' ? get('budget') : null,
-    deadline: type === 'commission' ? get('deadline') : null,
-    references: type === 'commission' ? get('references') : get('reference')
-  };
+  const fields =
+    type === 'class'
+      ? {
+          category,
+          subject: `${getClassTier(category)?.label ?? 'Class'} application`,
+          description:
+            `**Avatar:** ${get('avatar') ?? '—'}\n\n` +
+            `**Experience**\n${get('experience') ?? '—'}\n\n` +
+            `**Goals**\n${get('goals') ?? '—'}` +
+            (get('questions') ? `\n\n**Questions**\n${get('questions')}` : ''),
+          deadline: get('availability')
+        }
+      : {
+          category,
+          subject: get('subject'),
+          description: get('description'),
+          budget: type === 'commission' ? get('budget') : null,
+          deadline: type === 'commission' ? get('deadline') : null,
+          references: type === 'commission' ? get('references') : get('reference')
+        };
 
   const result = await openTicket({
     guild: interaction.guild,
@@ -385,6 +431,17 @@ async function handleIntakeModal(interaction, type, category) {
     });
   }
 
+  if (result.closed) {
+    const { active, cap, closedMessage, manuallyClosed } = result.availability;
+    return interaction.editReply({
+      content:
+        closedMessage ??
+        (manuallyClosed
+          ? '🚫 Commissions are paused right now. Please check back soon.'
+          : `🚫 All commission slots are full (${active} of ${cap}). Please check back soon.`)
+    });
+  }
+
   // Support intake takes a free-text urgency; map it onto the priority field.
   if (type === 'support') {
     const urgency = interaction.fields.getTextInputValue('urgency')?.trim().toLowerCase();
@@ -397,7 +454,9 @@ async function handleIntakeModal(interaction, type, category) {
   const label =
     type === 'commission'
       ? getCommissionType(category)?.label ?? 'Commission'
-      : getSupportCategory(category)?.label ?? 'Support';
+      : type === 'class'
+        ? getClassTier(category)?.label ?? 'Class'
+        : getSupportCategory(category)?.label ?? 'Support';
 
   return interaction.editReply({
     content: `✅ **${label}** ticket #${result.ticket.ticket_number} opened: ${result.channel}`
@@ -506,38 +565,6 @@ async function handleGetAccess(interaction) {
       ...EPHEMERAL
     });
   }
-}
-
-async function handleEnrollClass(interaction) {
-  const embed = new EmbedBuilder()
-    .setTitle('🎓 Scripting Academy Enrollment')
-    .setDescription("Ready to level up your scripting skills? Here's how to get started.")
-    .setColor(COLORS.info)
-    .addFields(
-      {
-        name: '💰 Pricing',
-        value:
-          '**Standard Class:** 15,000 L$\n' +
-          '**Premium Class:** 25,000 L$\n\n' +
-          '• *Standard* covers core scripting fundamentals\n' +
-          '• *Premium* includes advanced modules + 1-on-1 mentorship'
-      },
-      {
-        name: '📩 How to Enroll',
-        value:
-          'Open a support ticket and choose **Academy access**, or reach out directly:\n\n' +
-          '**Instagram:** [@ladyjwettt](https://instagram.com/ladyjwettt) • [@gleecin.sl](https://instagram.com/gleecin.sl)\n\n' +
-          "Send your desired tier (Standard or Premium) and we'll get you set up."
-      },
-      {
-        name: '📅 Next Cohort',
-        value: 'Classes run in monthly sessions. Next intake begins soon — reserve your seat now!'
-      }
-    )
-    .setFooter({ text: 'GLEECIN Scripting Academy' })
-    .setTimestamp();
-
-  await interaction.reply({ embeds: [embed], ...EPHEMERAL });
 }
 
 async function handleVisitMarketplace(interaction) {

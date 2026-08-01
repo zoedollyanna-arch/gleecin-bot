@@ -4,8 +4,11 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  MessageFlags
 } from 'discord.js';
+
+import { buildClassPanel, isStaff } from '../tickets/index.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -13,8 +16,13 @@ export default {
     .setDescription('Jwett Scripting Academy commands')
     .addSubcommand(subcommand =>
       subcommand
-        .setName('enroll')
-        .setDescription('Enroll in the Scripting Academy')
+        .setName('apply')
+        .setDescription('Apply to the Scripting Academy')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('panel')
+        .setDescription('Post the application panel in this channel (staff)')
     )
     .addSubcommand(subcommand =>
       subcommand
@@ -45,8 +53,16 @@ export default {
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand();
 
-    if (subcommand === 'enroll') {
-      await handleEnroll(interaction);
+    // Enrolment is by application: both routes lead to the tier picker, which
+    // opens a class ticket. The student role follows payment, not signup.
+    if (subcommand === 'apply') {
+      await interaction.reply({ ...buildClassPanel(), flags: MessageFlags.Ephemeral });
+    } else if (subcommand === 'panel') {
+      if (!isStaff(interaction.member)) {
+        return interaction.reply({ content: '❌ Staff only.', flags: MessageFlags.Ephemeral });
+      }
+      await interaction.channel.send(buildClassPanel());
+      await interaction.reply({ content: '✅ Application panel posted.', flags: MessageFlags.Ephemeral });
     } else if (subcommand === 'schedule') {
       await handleSchedule(interaction);
     } else if (subcommand === 'curriculum') {

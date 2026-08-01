@@ -4,8 +4,15 @@
 
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 
-import { COLORS, isStaff, buildCommissionPanel, openTicket } from '../tickets/index.js';
+import {
+  COLORS,
+  isStaff,
+  buildCommissionPanel,
+  getCommissionAvailability,
+  openTicket
+} from '../tickets/index.js';
 import { COMMISSION_TYPES, getCommissionType, priceLabel } from '../config/pricing.js';
+import { updateSettings } from '../database/models/settings.js';
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral };
 
@@ -40,6 +47,30 @@ export default {
         .addStringOption((o) =>
           o.setName('deadline').setDescription('When they need it').setRequired(false)
         )
+    )
+    .addSubcommand((s) =>
+      s.setName('slots')
+        .setDescription('Cap how many commissions can be open at once (staff)')
+        .addIntegerOption((o) =>
+          o.setName('count')
+            .setDescription('Max concurrent commissions. 0 removes the cap.')
+            .setRequired(true)
+            .setMinValue(0)
+            .setMaxValue(50)
+        )
+    )
+    .addSubcommand((s) =>
+      s.setName('open').setDescription('Reopen commission intake (staff)')
+    )
+    .addSubcommand((s) =>
+      s.setName('close')
+        .setDescription('Pause commission intake (staff)')
+        .addStringOption((o) =>
+          o.setName('message').setDescription('Shown on the panel while closed').setRequired(false)
+        )
+    )
+    .addSubcommand((s) =>
+      s.setName('status').setDescription('Show current intake status and slot usage (staff)')
     ),
 
   async execute(interaction) {
@@ -50,14 +81,70 @@ export default {
       return interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
     }
 
-    if (interaction.options.getSubcommand() === 'panel') {
-      await interaction.channel.send(buildCommissionPanel());
+    const sub = interaction.options.getSubcommand();
+
+    if (sub === 'panel') {
+      await interaction.channel.send(await buildCommissionPanel(interaction.guild.id));
       return interaction.reply({ content: '✅ Commission panel posted.', ...EPHEMERAL });
     }
-
-    return handleFor(interaction);
+    if (sub === 'for') return handleFor(interaction);
+    return handleIntake(interaction, sub);
   }
 };
+
+/**
+ * Intake controls.
+ *
+ * Repost the panel afterwards (`/commission panel`) if you want the visible
+ * slot count to update — the posted message is a snapshot, not a live view.
+ */
+async function handleIntake(interaction, sub) {
+  const guildId = interaction.guild.id;
+
+  if (sub === 'slots') {
+    const count = interaction.options.getInteger('count');
+    await updateSettings(guildId, { commission_slots: count === 0 ? null : count });
+    const availability = await getCommissionAvailability(guildId);
+
+    return interaction.reply({
+      content:
+        count === 0
+          ? '✅ Slot cap removed — commissions are unlimited.'
+          : `✅ Capped at **${count}** concurrent commissions. Currently **${availability.active}** active.` +
+            (availability.active >= count ? '\n⚠️ You are already at or over the cap, so intake is now closed.' : ''),
+      ...EPHEMERAL
+    });
+  }
+
+  if (sub === 'open') {
+    await updateSettings(guildId, { commissions_open: true, closed_message: null });
+    return interaction.reply({ content: '✅ Commission intake is open.', ...EPHEMERAL });
+  }
+
+  if (sub === 'close') {
+    const message = interaction.options.getString('message');
+    await updateSettings(guildId, { commissions_open: false, closed_message: message });
+    return interaction.reply({
+      content: `✅ Commission intake paused.${message ? `\nPanel will show: _${message}_` : ''}`,
+      ...EPHEMERAL
+    });
+  }
+
+  const availability = await getCommissionAvailability(guildId);
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle('Commission Intake')
+        .setColor(availability.open ? COLORS.success : COLORS.danger)
+        .addFields(
+          { name: 'Accepting', value: availability.open ? '✅ Yes' : '🚫 No', inline: true },
+          { name: 'Active', value: `${availability.active}`, inline: true },
+          { name: 'Cap', value: availability.cap === null ? 'Unlimited' : `${availability.cap}`, inline: true }
+        )
+    ],
+    ...EPHEMERAL
+  });
+}
 
 async function handleFor(interaction) {
   await interaction.deferReply(EPHEMERAL);
@@ -75,6 +162,7 @@ async function handleFor(interaction) {
     user,
     type: 'commission',
     openedBy: interaction.user.id,
+    force: true, // staff can see the queue; the cap is for self-serve intake
     fields: {
       category: typeValue,
       subject: type?.label ?? 'Commission',

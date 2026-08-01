@@ -24,13 +24,15 @@ import {
 
 import {
   COMMISSION_TYPES,
-  ADD_ONS,
+  CLASS_TIERS,
   TURNAROUND,
   getCommissionType,
+  getClassTier,
   priceLabel,
-  addOnLabel,
   formatPrice
 } from '../config/pricing.js';
+
+import { getSettings } from '../database/models/settings.js';
 
 import {
   createTicket,
@@ -39,6 +41,7 @@ import {
   closeTicket,
   addNote,
   peekNextTicketNumber,
+  countActiveCommissions,
   STATUS_LABELS,
   PRIORITY_LABELS,
   TICKET_STATUSES
@@ -90,13 +93,48 @@ export function isStaff(member) {
 // Panels (posted once into the intake channels)
 // ---------------------------------------------------------------------------
 
-export function buildCommissionPanel() {
+/**
+ * Commission availability, from the configured slot cap.
+ *
+ * A solo operator overcommits by accident; the panel refuses new intake once
+ * the cap is reached rather than relying on remembering.
+ */
+export async function getCommissionAvailability(guildId) {
+  const settings = await getSettings(guildId);
+  const active = await countActiveCommissions(guildId);
+  const cap = settings.commission_slots;
+
+  return {
+    open: settings.commissions_open && (cap === null || active < cap),
+    manuallyClosed: !settings.commissions_open,
+    active,
+    cap,
+    closedMessage: settings.closed_message
+  };
+}
+
+export async function buildCommissionPanel(guildId) {
+  const availability = guildId
+    ? await getCommissionAvailability(guildId)
+    : { open: true, active: 0, cap: null, manuallyClosed: false, closedMessage: null };
+
+  const slotLine =
+    availability.cap === null
+      ? null
+      : `**Slots** — ${availability.active} of ${availability.cap} taken`;
+
   const embed = new EmbedBuilder()
-    .setTitle('🎨 Open a Commission')
-    .setColor(COLORS.commission)
+    .setTitle(availability.open ? '🎨 Open a Commission' : '🎨 Commissions Closed')
+    .setColor(availability.open ? COLORS.commission : COLORS.danger)
     .setDescription(
-      'Pick what you want built. The next step is a short form — the more detail you give, the faster you get a quote.\n\n' +
-      `**Turnaround** — ${TURNAROUND.standard}\n${TURNAROUND.rush}\n${TURNAROUND.sameDay}`
+      (availability.open
+        ? 'Pick what you want built. The next step is a short form — the more detail you give, the faster you get a quote.'
+        : availability.closedMessage ??
+          (availability.manuallyClosed
+            ? 'Commissions are paused right now. Check back soon — or open a support ticket if you have a question.'
+            : 'All commission slots are currently full. Check back soon.')) +
+      (slotLine ? `\n\n${slotLine}` : '') +
+      `\n\n**Turnaround** — ${TURNAROUND.standard}\n${TURNAROUND.rush}\n${TURNAROUND.sameDay}`
     )
     .addFields({
       name: 'Starting prices',
@@ -108,7 +146,8 @@ export function buildCommissionPanel() {
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId('commission_select')
-    .setPlaceholder('What do you need built?')
+    .setPlaceholder(availability.open ? 'What do you need built?' : 'Commissions are closed')
+    .setDisabled(!availability.open)
     .addOptions(
       COMMISSION_TYPES.map((type) =>
         new StringSelectMenuOptionBuilder()
@@ -116,6 +155,43 @@ export function buildCommissionPanel() {
           .setLabel(`${type.label} — ${priceLabel(type)}`.slice(0, 100))
           .setDescription(type.blurb.slice(0, 100))
           .setEmoji(type.emoji)
+      )
+    );
+
+  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] };
+}
+
+// ---------------------------------------------------------------------------
+// Scripting class applications
+// ---------------------------------------------------------------------------
+
+export function buildClassPanel() {
+  const embed = new EmbedBuilder()
+    .setTitle('🎓 Apply to the Scripting Academy')
+    .setColor(COLORS.info)
+    .setDescription(
+      'Enrolment is by application. Pick a tier and fill in the short form — that opens a private ' +
+      'channel where we go through your application and arrange payment.\n\n' +
+      'Your student role is granted once payment is confirmed.'
+    )
+    .addFields({
+      name: 'Tiers',
+      value: CLASS_TIERS.map(
+        (t) => `${t.emoji} **${t.label}** — ${formatPrice(t.price)}\n${t.blurb}`
+      ).join('\n\n')
+    })
+    .setFooter({ text: 'Classes run in monthly cohorts' });
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('class_select')
+    .setPlaceholder('Which tier are you applying for?')
+    .addOptions(
+      CLASS_TIERS.map((tier) =>
+        new StringSelectMenuOptionBuilder()
+          .setValue(tier.value)
+          .setLabel(`${tier.label} — ${formatPrice(tier.price)}`.slice(0, 100))
+          .setDescription(tier.blurb.slice(0, 100))
+          .setEmoji(tier.emoji)
       )
     );
 
@@ -225,17 +301,66 @@ export function buildSupportModal(categoryValue) {
   return modal;
 }
 
+export function buildClassModal(tierValue) {
+  const tier = getClassTier(tierValue);
+  const modal = new ModalBuilder()
+    .setCustomId(`class_modal:${tierValue}`)
+    .setTitle(`Apply — ${tier?.label ?? 'Class'}`.slice(0, 45));
+
+  modal.addComponents(
+    textInput('avatar', 'Your Second Life avatar name', { placeholder: 'firstname.lastname', max: 100 }),
+    textInput('experience', 'Your scripting experience so far', {
+      style: TextInputStyle.Paragraph,
+      placeholder: 'Complete beginner? Written some LSL? Be honest — it shapes the pacing.',
+      max: 800
+    }),
+    textInput('goals', 'What do you want to be able to build?', {
+      style: TextInputStyle.Paragraph,
+      placeholder: 'HUDs, vendors, RP systems, your own products…',
+      max: 800
+    }),
+    textInput('availability', 'Availability / timezone', {
+      placeholder: 'e.g. weekday evenings, SLT',
+      max: 100
+    }),
+    textInput('questions', 'Anything you want to ask first?', {
+      style: TextInputStyle.Paragraph,
+      required: false,
+      max: 500
+    })
+  );
+
+  return modal;
+}
+
 // ---------------------------------------------------------------------------
 // Ticket embed + staff controls
 // ---------------------------------------------------------------------------
 
+export const TYPE_ICONS = { commission: '🎨', support: '🆘', class: '🎓' };
+
+const TYPE_COLORS = {
+  commission: COLORS.commission,
+  support: COLORS.support,
+  class: COLORS.info
+};
+
+/** The catalog entry behind a ticket, whichever catalog that is. */
+function categoryFor(ticket) {
+  if (ticket.type === 'commission') return getCommissionType(ticket.category);
+  if (ticket.type === 'class') return getClassTier(ticket.category);
+  return getSupportCategory(ticket.category);
+}
+
 export function buildTicketEmbed(ticket) {
   const isCommission = ticket.type === 'commission';
-  const type = isCommission ? getCommissionType(ticket.category) : getSupportCategory(ticket.category);
+  const type = categoryFor(ticket);
 
   const embed = new EmbedBuilder()
-    .setTitle(`${isCommission ? '🎨' : '🆘'} #${String(ticket.ticket_number).padStart(4, '0')} — ${ticket.subject ?? 'Ticket'}`)
-    .setColor(isCommission ? COLORS.commission : COLORS.support)
+    .setTitle(
+      `${TYPE_ICONS[ticket.type] ?? '🎫'} #${String(ticket.ticket_number).padStart(4, '0')} — ${ticket.subject ?? 'Ticket'}`
+    )
+    .setColor(TYPE_COLORS[ticket.type] ?? COLORS.info)
     .setDescription(ticket.description || '_No description given._')
     .addFields(
       { name: 'Type', value: type?.label ?? ticket.type, inline: true },
@@ -249,8 +374,21 @@ export function buildTicketEmbed(ticket) {
   if (isCommission && type && !type.quoteOnly) {
     embed.addFields({ name: 'Guide price', value: priceLabel(type), inline: true });
   }
+  if (ticket.type === 'class' && type) {
+    embed.addFields({ name: 'Tier price', value: formatPrice(type.price), inline: true });
+  }
   if (ticket.budget) embed.addFields({ name: 'Client budget', value: ticket.budget, inline: true });
   if (ticket.deadline) embed.addFields({ name: 'Deadline', value: ticket.deadline, inline: true });
+  if (ticket.revisions_used > 0 || ticket.revisions_allowed) {
+    const allowed = ticket.revisions_allowed;
+    embed.addFields({
+      name: '🔁 Revisions',
+      value: allowed
+        ? `**${ticket.revisions_used} / ${allowed}**${ticket.revisions_used >= allowed ? ' — limit reached' : ''}`
+        : `**${ticket.revisions_used}** used`,
+      inline: true
+    });
+  }
   if (ticket.quote_amount) {
     embed.addFields({
       name: '💰 Quoted',
@@ -282,20 +420,29 @@ export function buildStaffRows(ticket) {
     new ButtonBuilder().setCustomId('tk:close').setLabel('Close & Archive').setStyle(ButtonStyle.Danger).setEmoji('🔒')
   );
 
+  const priority = new ButtonBuilder()
+    .setCustomId('tk:priority').setLabel('Priority').setStyle(ButtonStyle.Secondary).setEmoji('🚩');
+
   if (ticket.type === 'commission') {
     rows.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('tk:quote').setLabel('Send Quote').setStyle(ButtonStyle.Success).setEmoji('💰'),
         new ButtonBuilder().setCustomId('tk:paid').setLabel('Mark Paid').setStyle(ButtonStyle.Success).setEmoji('✅'),
-        new ButtonBuilder().setCustomId('tk:priority').setLabel('Priority').setStyle(ButtonStyle.Secondary).setEmoji('🚩')
+        new ButtonBuilder().setCustomId('tk:revision').setLabel('Log Revision').setStyle(ButtonStyle.Secondary).setEmoji('🔁'),
+        priority
+      )
+    );
+  } else if (ticket.type === 'class') {
+    // Class applications share the payment step — Mark Paid is what grants
+    // the student role, so the tier price stands in for a quote.
+    rows.push(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('tk:paid').setLabel('Mark Paid').setStyle(ButtonStyle.Success).setEmoji('✅'),
+        priority
       )
     );
   } else {
-    rows.push(
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('tk:priority').setLabel('Priority').setStyle(ButtonStyle.Secondary).setEmoji('🚩')
-      )
-    );
+    rows.push(new ActionRowBuilder().addComponents(priority));
   }
 
   rows.push(common);
@@ -380,16 +527,27 @@ function channelNameFor(type, ticketNumber, username) {
  * Callers must have deferred or be prepared to reply — channel creation plus a
  * DB round trip comfortably exceeds Discord's 3 second interaction window.
  */
-export async function openTicket({ guild, user, type, fields = {}, openedBy = null }) {
+export async function openTicket({ guild, user, type, fields = {}, openedBy = null, force = false }) {
   const existing = await findOpenTicketForUser(guild.id, user.id, type);
   if (existing) {
     return { duplicate: true, ticket: existing };
   }
 
+  // Staff opening on someone's behalf bypasses the cap deliberately — they can
+  // see the queue and are making the call knowingly.
+  if (type === 'commission' && !force) {
+    const availability = await getCommissionAvailability(guild.id);
+    if (!availability.open) {
+      return { closed: true, availability };
+    }
+  }
+
   const parentId =
     type === 'commission'
       ? process.env.COMMISSION_CATEGORY_ID
-      : process.env.SUPPORT_CATEGORY_ID;
+      : type === 'class'
+        ? process.env.CLASS_CATEGORY_ID || process.env.SUPPORT_CATEGORY_ID
+        : process.env.SUPPORT_CATEGORY_ID;
 
   const staffRoles = [process.env.STAFF_ROLE_ID, process.env.INSTRUCTOR_ROLE_ID].filter(Boolean);
 
@@ -518,27 +676,62 @@ export function buildReviewModal() {
  * Everything here is best-effort: a missing role or channel should never stop
  * the status change itself from going through.
  */
+/** What a client should be told, by DM, when their ticket moves. */
+const STATUS_DMS = {
+  quoted: (t) =>
+    `💰 Your quote is ready${t.quote_amount ? ` — **${formatPrice(t.quote_amount)}**` : ''}.`,
+  paid: () => '✅ Payment confirmed — work starts now.',
+  in_progress: () => '🔨 Work has started on your project.',
+  review: () => '👀 Something is ready for you to look over.',
+  delivered: () => '📦 Your order has been delivered.'
+};
+
 export async function applyStatusSideEffects({ guild, channel, ticket, status }) {
   const notes = [];
 
   if (status === 'paid') {
-    const clientRoleId = process.env.CLIENT_ROLE_ID;
-    if (clientRoleId) {
+    // Commissions grant the client role; class applications grant the student
+    // role — paying is what turns an application into an enrolment.
+    const roleId =
+      ticket.type === 'class' ? process.env.STUDENT_ROLE_ID : process.env.CLIENT_ROLE_ID;
+
+    if (roleId) {
       try {
         const member = await guild.members.fetch(ticket.user_id);
-        if (!member.roles.cache.has(clientRoleId)) {
-          await member.roles.add(clientRoleId, `Paid commission #${ticket.ticket_number}`);
-          notes.push(`Granted <@&${clientRoleId}> to <@${ticket.user_id}>.`);
+        if (!member.roles.cache.has(roleId)) {
+          await member.roles.add(roleId, `Paid ticket #${ticket.ticket_number}`);
+          notes.push(`Granted <@&${roleId}> to <@${ticket.user_id}>.`);
         }
       } catch (error) {
-        console.error('[TICKET] Could not grant client role:', error.message);
-        notes.push('⚠️ Could not grant the client role — check the bot\'s role position.');
+        console.error('[TICKET] Could not grant role:', error.message);
+        notes.push("⚠️ Could not grant the role — check the bot's role position in Server Settings.");
       }
     }
   }
 
   if (status === 'delivered' && ticket.type === 'commission') {
     await channel.send(buildReviewPrompt(guild.id)).catch(() => {});
+  }
+
+  // Clients rarely watch a ticket channel; a DM is what actually gets a reply.
+  const dm = STATUS_DMS[status];
+  if (dm) {
+    try {
+      const user = await guild.client.users.fetch(ticket.user_id);
+      await user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(TYPE_COLORS[ticket.type] ?? COLORS.info)
+            .setTitle(`${TYPE_ICONS[ticket.type] ?? '🎫'} Ticket #${ticket.ticket_number}`)
+            .setDescription(`${dm(ticket)}\n\n[Open the ticket](https://discord.com/channels/${guild.id}/${ticket.channel_id})`)
+            .setFooter({ text: guild.name })
+            .setTimestamp()
+        ]
+      });
+    } catch {
+      // Closed DMs are common and not an error worth surfacing.
+      notes.push(`ℹ️ Could not DM <@${ticket.user_id}> — they have DMs closed.`);
+    }
   }
 
   return notes;

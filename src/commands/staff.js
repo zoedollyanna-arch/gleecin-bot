@@ -8,6 +8,7 @@
 import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 
 import { COLORS, isStaff } from '../tickets/index.js';
+import { sendDailyDigest } from '../jobs/index.js';
 import { getOpenTickets, STATUS_LABELS, PRIORITY_LABELS } from '../database/models/ticket.js';
 import { formatPrice } from '../config/pricing.js';
 
@@ -22,6 +23,9 @@ export default {
     .setDescription('Staff tools')
     .addSubcommand((s) =>
       s.setName('workload').setDescription('What needs attention, ordered by priority')
+    )
+    .addSubcommand((s) =>
+      s.setName('digest').setDescription('Send yourself the daily digest now')
     ),
 
   async execute(interaction) {
@@ -30,6 +34,12 @@ export default {
     }
     if (!isStaff(interaction.member)) {
       return interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
+    }
+
+    if (interaction.options.getSubcommand() === 'digest') {
+      await interaction.deferReply(EPHEMERAL);
+      await sendDailyDigest(interaction.client);
+      return interaction.editReply({ content: '☀️ Digest sent to the server owner by DM.' });
     }
 
     const tickets = await getOpenTickets(interaction.guild.id);

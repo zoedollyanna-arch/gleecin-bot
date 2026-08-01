@@ -11,6 +11,7 @@ import { isAuthenticated, getUserTier } from '../middleware/auth.js';
 import { get, all, run } from '../db/database.js';
 import { issueCertificate, verifyCertificate } from '../utils/certificates.js';
 import { gradeSubmission, getProgress, loadQuestions, maybeIssueCertificate, saveSubmission } from '../utils/learning.js';
+import { emitBridge, BRIDGE_EVENTS } from '../../../src/bridge/events.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -877,6 +878,19 @@ router.post('/support/tickets', isAuthenticated, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, 'open', NOW(), NOW()) RETURNING id`,
       [req.session.user.id, name, email, subject, category, message]
     );
+
+    // Surface it in Discord. Fire-and-forget — a Discord outage must not fail
+    // the customer's submission.
+    emitBridge(BRIDGE_EVENTS.SUPPORT_TICKET_CREATED, {
+      id: ticket.id,
+      name,
+      email,
+      subject,
+      category,
+      message,
+      userId: req.session.user.id,
+      discordId: req.session.user.discord_id ?? null
+    });
 
     res.status(201).json({ success: true, ticketId: ticket.id });
   } catch (error) {

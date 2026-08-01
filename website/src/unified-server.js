@@ -26,6 +26,9 @@ import studentRoutes from './routes/student.js';
 import { isAuthenticated, checkRole } from './middleware/auth.js';
 import { initializeDatabase, pool as dbPool } from './db/database.js';
 import { initDatabase as initBotDatabase } from '../../src/database/connection.js';
+import { initSettingsTable } from '../../src/database/models/settings.js';
+import { startJobs } from '../../src/jobs/index.js';
+import { registerWebTicketBridge } from '../../src/bridge/web-tickets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -186,6 +189,8 @@ async function loadBotEvents() {
 // Bot event handlers
 bot.once(Events.ClientReady, (c) => {
   botStatus = true;
+  registerWebTicketBridge(c);
+  startJobs(c);
   console.log(`
 ╔══════════════════════════════════════════╗
 ║  ✅ Discord Bot Connected                ║
@@ -235,6 +240,7 @@ async function startup() {
     // Initialize bot database connection
     console.log('[BOT] Initializing database...');
     await initBotDatabase();
+    await initSettingsTable();
     console.log('[BOT] ✅ Database ready');
 
     // Load bot commands and events
