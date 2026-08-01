@@ -75,62 +75,6 @@ export default {
   }
 };
 
-async function handleEnroll(interaction) {
-  const studentRoleId = process.env.STUDENT_ROLE_ID;
-
-  if (!studentRoleId) {
-    return interaction.reply({
-      content: '❌ Student role not configured.',
-      ephemeral: true
-    });
-  }
-
-  try {
-    const member = interaction.member;
-    const hasStudentRole = member.roles.cache.has(studentRoleId);
-
-    if (hasStudentRole) {
-      return interaction.reply({
-        content: '✅ You\'re already enrolled in the Scripting Academy!',
-        ephemeral: true
-      });
-    }
-
-    await member.roles.add(studentRoleId);
-
-    const enrollEmbed = new EmbedBuilder()
-      .setTitle('🎓 Welcome to Scripting Academy!')
-      .setDescription('You have been enrolled in the Jwett Scripting Academy.')
-      .setColor('#0099ff')
-      .addFields(
-        { name: '📅 Class Starts', value: 'May 1st, 2026', inline: true },
-        { name: '📍 Main Hub', value: 'Check #class-updates for announcements', inline: true },
-        { name: '🔗 Quick Links', value: 'Use `/class schedule` for class times\nUse `/class curriculum` for course content\nUse `/class resources` for materials' }
-      )
-      .setFooter({ text: 'Ready to level up your scripting skills!' })
-      .setTimestamp();
-
-    await interaction.reply({ embeds: [enrollEmbed], ephemeral: true });
-
-    // Optional: Send to class channel
-    const classChannelId = process.env.CLASS_UPDATES_CHANNEL_ID;
-    if (classChannelId) {
-      const channel = await interaction.guild.channels.fetch(classChannelId).catch(() => null);
-      if (channel) {
-        const joinEmbed = new EmbedBuilder()
-          .setTitle('👤 New Student Enrolled')
-          .setDescription(`${interaction.user.username} has joined the Scripting Academy!`)
-          .setColor('#00ff88')
-          .setTimestamp();
-        await channel.send({ embeds: [joinEmbed] }).catch(() => {});
-      }
-    }
-  } catch (error) {
-    console.error('[ENROLL ERROR]', error);
-    await interaction.reply({ content: 'Failed to enroll. Please contact an administrator.', ephemeral: true });
-  }
-}
-
 async function handleSchedule(interaction) {
   const scheduleEmbed = new EmbedBuilder()
     .setTitle('📅 Scripting Academy Schedule')

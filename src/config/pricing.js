@@ -129,20 +129,37 @@ export const ADD_ONS = [
  */
 export const CLASS_TIERS = [
   {
-    value: 'standard',
-    label: 'Standard Class',
-    emoji: '📘',
-    price: 15000,
-    blurb: 'Core scripting fundamentals.'
+    value: 'mentorship',
+    label: 'Mentorship',
+    emoji: '🧭',
+    price: 3000,
+    blurb: 'One-to-one mentorship — bring your own project and get unstuck.'
   },
   {
-    value: 'premium',
-    label: 'Premium Class',
+    value: 'session_3day',
+    label: '3-Day Session',
+    emoji: '📗',
+    price: 6000,
+    blurb: 'A focused three-day run through the fundamentals.'
+  },
+  {
+    value: 'week',
+    label: '1 Week Course',
+    emoji: '📘',
+    price: 10000,
+    blurb: 'A full week of structured scripting tuition.'
+  },
+  {
+    value: 'fortnight_mentorship',
+    label: '2 Weeks + Mentorship',
     emoji: '🌟',
-    price: 25000,
-    blurb: 'Advanced modules plus 1-on-1 mentorship.'
+    price: 15000,
+    blurb: 'Two weeks of tuition plus ongoing one-to-one mentorship.'
   }
 ];
+
+/** True of every tier — surfaced wherever a tier price is shown. */
+export const CLASS_INCLUDES = 'Every tier includes full Academy portal access.';
 
 export const getClassTier = (value) => CLASS_TIERS.find((t) => t.value === value) ?? null;
 

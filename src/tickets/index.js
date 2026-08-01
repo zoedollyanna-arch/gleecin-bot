@@ -25,6 +25,7 @@ import {
 import {
   COMMISSION_TYPES,
   CLASS_TIERS,
+  CLASS_INCLUDES,
   TURNAROUND,
   getCommissionType,
   getClassTier,
@@ -174,12 +175,15 @@ export function buildClassPanel() {
       'channel where we go through your application and arrange payment.\n\n' +
       'Your student role is granted once payment is confirmed.'
     )
-    .addFields({
-      name: 'Tiers',
-      value: CLASS_TIERS.map(
-        (t) => `${t.emoji} **${t.label}** — ${formatPrice(t.price)}\n${t.blurb}`
-      ).join('\n\n')
-    })
+    .addFields(
+      {
+        name: 'Tiers',
+        value: CLASS_TIERS.map(
+          (t) => `${t.emoji} **${t.label}** — ${formatPrice(t.price)}\n${t.blurb}`
+        ).join('\n\n')
+      },
+      { name: '✅ Included in every tier', value: CLASS_INCLUDES }
+    )
     .setFooter({ text: 'Classes run in monthly cohorts' });
 
   const menu = new StringSelectMenuBuilder()
@@ -375,7 +379,10 @@ export function buildTicketEmbed(ticket) {
     embed.addFields({ name: 'Guide price', value: priceLabel(type), inline: true });
   }
   if (ticket.type === 'class' && type) {
-    embed.addFields({ name: 'Tier price', value: formatPrice(type.price), inline: true });
+    embed.addFields(
+      { name: 'Tier price', value: formatPrice(type.price), inline: true },
+      { name: 'Included', value: CLASS_INCLUDES }
+    );
   }
   if (ticket.budget) embed.addFields({ name: 'Client budget', value: ticket.budget, inline: true });
   if (ticket.deadline) embed.addFields({ name: 'Deadline', value: ticket.deadline, inline: true });

@@ -8,10 +8,13 @@ import { COLORS } from '../tickets/index.js';
 import {
   groupedCatalog,
   ADD_ONS,
+  CLASS_TIERS,
+  CLASS_INCLUDES,
   TURNAROUND,
   POLICIES,
   priceLabel,
-  addOnLabel
+  addOnLabel,
+  formatPrice
 } from '../config/pricing.js';
 
 export default {
@@ -40,6 +43,12 @@ export default {
     }
 
     embed.addFields(
+      {
+        name: '🎓 Scripting Academy',
+        value:
+          CLASS_TIERS.map((t) => `${t.emoji} **${t.label}** — ${formatPrice(t.price)}`).join('\n') +
+          `\n\n_${CLASS_INCLUDES}_\nApply with \`/class apply\`.`
+      },
       {
         name: '⚙️ Add-ons',
         value: ADD_ONS.map((a) => `• **${a.label}** — ${addOnLabel(a)}`).join('\n')
