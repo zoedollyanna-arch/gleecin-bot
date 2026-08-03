@@ -10,13 +10,17 @@ import {
   buildCommissionPanel,
   buildSupportPanel,
   buildClassPanel,
+  buildStudentPanel,
   buildTicketEmbed,
   buildStaffRows,
   buildTranscript,
   transcriptFile,
   applyStatusSideEffects,
   closeAndArchive,
+  openTicket,
   reportClose,
+  STUDENT_CATEGORIES,
+  SUPPORT_CATEGORIES,
   TYPE_ICONS
 } from '../tickets/index.js';
 
@@ -50,8 +54,34 @@ export default {
           o.setName('type').setDescription('Which panel').setRequired(true).addChoices(
             { name: 'Commission', value: 'commission' },
             { name: 'Support', value: 'support' },
-            { name: 'Scripting class application', value: 'class' }
+            { name: 'Scripting class application', value: 'class' },
+            { name: 'Student Desk', value: 'student' }
           )
+        )
+    )
+    .addSubcommand((s) =>
+      s.setName('open')
+        .setDescription('Open a ticket on someone else\'s behalf (staff)')
+        .addUserOption((o) =>
+          o.setName('user').setDescription('Who the ticket is for').setRequired(true)
+        )
+        .addStringOption((o) =>
+          o.setName('category').setDescription('What it is about').setRequired(true).addChoices(
+            ...STUDENT_CATEGORIES.map((c) => ({
+              name: `🎓 Student Desk — ${c.label}`,
+              value: `student:${c.value}`
+            })),
+            ...SUPPORT_CATEGORIES.map((c) => ({
+              name: `🆘 Support — ${c.label}`,
+              value: `support:${c.value}`
+            }))
+          )
+        )
+        .addStringOption((o) =>
+          o.setName('subject').setDescription('One line — what is this about?').setRequired(false)
+        )
+        .addStringOption((o) =>
+          o.setName('details').setDescription('Anything to seed the channel with').setRequired(false)
         )
     )
     .addSubcommand((s) =>
@@ -114,7 +144,9 @@ export default {
         .addStringOption((o) =>
           o.setName('type').setDescription('Filter').setRequired(false).addChoices(
             { name: 'Commission', value: 'commission' },
-            { name: 'Support', value: 'support' }
+            { name: 'Support', value: 'support' },
+            { name: 'Class application', value: 'class' },
+            { name: 'Student Desk', value: 'student' }
           )
         )
     )
@@ -135,6 +167,7 @@ export default {
 
     const handlers = {
       panel: handlePanel,
+      open: handleOpen,
       add: handleAdd,
       remove: handleRemove,
       rename: handleRename,
@@ -170,10 +203,60 @@ async function handlePanel(interaction) {
       ? await buildCommissionPanel(interaction.guild.id)
       : type === 'class'
         ? buildClassPanel()
-        : buildSupportPanel();
+        : type === 'student'
+          ? buildStudentPanel()
+          : buildSupportPanel();
 
   await interaction.channel.send(panel);
   return interaction.reply({ content: `✅ ${type} panel posted.`, ...EPHEMERAL });
+}
+
+/**
+ * Open a ticket for someone else.
+ *
+ * The point is not to save the student a click — it's that a question asked in
+ * general chat can be pulled into its own channel without asking them to go
+ * find the panel and re-type it. They land in the channel already added, and it
+ * says who opened it on their behalf.
+ */
+async function handleOpen(interaction) {
+  const user = interaction.options.getUser('user');
+  const [type, category] = interaction.options.getString('category').split(':');
+
+  if (user.bot) {
+    return interaction.reply({ content: '❌ Bots cannot own tickets.', ...EPHEMERAL });
+  }
+
+  await interaction.deferReply(EPHEMERAL);
+
+  const catalog = type === 'student' ? STUDENT_CATEGORIES : SUPPORT_CATEGORIES;
+  const label = catalog.find((c) => c.value === category)?.label ?? type;
+
+  const result = await openTicket({
+    guild: interaction.guild,
+    user,
+    type,
+    openedBy: interaction.user.id,
+    force: true,
+    fields: {
+      category,
+      subject: interaction.options.getString('subject') || label,
+      description:
+        interaction.options.getString('details') ||
+        `Opened by ${interaction.user.tag} on ${user.tag}'s behalf — details to follow in the channel.`
+    }
+  });
+
+  if (result.duplicate) {
+    return interaction.editReply({
+      content:
+        `⚠️ ${user} already has an open **${label}** ticket: <#${result.ticket.channel_id}>`
+    });
+  }
+
+  return interaction.editReply({
+    content: `✅ **${label}** ticket #${result.ticket.ticket_number} opened for ${user}: ${result.channel}`
+  });
 }
 
 async function handleRevisions(interaction) {
@@ -443,7 +526,7 @@ async function handleList(interaction) {
 
   for (const t of tickets.slice(0, 25)) {
     embed.addFields({
-      name: `${t.type === 'commission' ? '🎨' : '🆘'} #${t.ticket_number} — ${t.subject ?? t.user_tag}`,
+      name: `${TYPE_ICONS[t.type] ?? '🎫'} #${t.ticket_number} — ${t.subject ?? t.user_tag}`,
       value:
         `<#${t.channel_id}> · ${STATUS_LABELS[t.status]} · ${PRIORITY_LABELS[t.priority]}` +
         (t.quote_amount ? ` · ${formatPrice(t.quote_amount)}` : '') +
@@ -468,6 +551,8 @@ async function handleStats(interaction) {
       { name: '📈 Total', value: `${n(s.open_count) + n(s.closed_count)}`, inline: true },
       { name: '🎨 Commission', value: `${n(s.commission_count)}`, inline: true },
       { name: '🆘 Support', value: `${n(s.support_count)}`, inline: true },
+      { name: '🎓 Applications', value: `${n(s.class_count)}`, inline: true },
+      { name: '📚 Student Desk', value: `${n(s.student_count)}`, inline: true },
       { name: '⏳ Awaiting client', value: `${n(s.awaiting_count)}`, inline: true },
       { name: '💰 Paid', value: formatPrice(n(s.paid_total)), inline: true },
       { name: '📬 Pipeline', value: formatPrice(n(s.pipeline_total)), inline: true }

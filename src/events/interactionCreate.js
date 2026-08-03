@@ -18,9 +18,11 @@ import {
   buildCommissionPanel,
   buildSupportPanel,
   buildClassPanel,
+  buildStudentPanel,
   buildCommissionModal,
   buildSupportModal,
   buildClassModal,
+  buildStudentModal,
   buildTicketEmbed,
   buildStaffRows,
   buildStatusMenu,
@@ -33,7 +35,8 @@ import {
   applyStatusSideEffects,
   openTicket,
   closeAndArchive,
-  getSupportCategory
+  getSupportCategory,
+  getStudentCategory
 } from '../tickets/index.js';
 
 import {
@@ -132,6 +135,12 @@ async function handleButton(interaction) {
   if (id === 'enroll_class' || id === 'apply_class') {
     return interaction.reply({ ...buildClassPanel(), ...EPHEMERAL });
   }
+  if (id === 'student_desk') {
+    return interaction.reply({ ...buildStudentPanel(), ...EPHEMERAL });
+  }
+
+  // The resources embed's debug button lands on the desk with debug preselected.
+  if (id === 'get_debug_help') return interaction.showModal(buildStudentModal('debug'));
 
   // Open to the client, not just staff — it's their review to leave.
   if (id === 'tk:review') return interaction.showModal(buildReviewModal());
@@ -273,6 +282,7 @@ async function handleSelect(interaction) {
   if (id === 'commission_select') return interaction.showModal(buildCommissionModal(value));
   if (id === 'support_select') return interaction.showModal(buildSupportModal(value));
   if (id === 'class_select') return interaction.showModal(buildClassModal(value));
+  if (id === 'student_select') return interaction.showModal(buildStudentModal(value));
 
   if (id === 'tk_status_select' || id === 'tk_priority_select') {
     const ticket = await requireStaffTicket(interaction);
@@ -328,7 +338,8 @@ async function handleModal(interaction) {
   const intakeTypes = {
     commission_modal: 'commission',
     support_modal: 'support',
-    class_modal: 'class'
+    class_modal: 'class',
+    student_modal: 'student'
   };
   if (intakeTypes[id]) return handleIntakeModal(interaction, intakeTypes[id], arg);
   if (id === 'tk_quote_modal') return handleQuoteModal(interaction);
@@ -406,7 +417,19 @@ async function handleIntakeModal(interaction, type, category) {
             (get('questions') ? `\n\n**Questions**\n${get('questions')}` : ''),
           deadline: get('availability')
         }
-      : {
+      : type === 'student'
+        ? {
+            category,
+            subject: get('subject'),
+            // "Already tried" is folded into the body rather than dropped: it is
+            // the part that stops the first reply being a question back.
+            description:
+              (get('description') ?? '—') +
+              (get('tried') ? `\n\n**Already tried**\n${get('tried')}` : ''),
+            deadline: get('deadline'),
+            references: get('reference')
+          }
+        : {
           category,
           subject: get('subject'),
           description: get('description'),
@@ -414,6 +437,15 @@ async function handleIntakeModal(interaction, type, category) {
           deadline: type === 'commission' ? get('deadline') : null,
           references: type === 'commission' ? get('references') : get('reference')
         };
+
+  const label =
+    type === 'commission'
+      ? getCommissionType(category)?.label ?? 'Commission'
+      : type === 'class'
+        ? getClassTier(category)?.label ?? 'Class'
+        : type === 'student'
+          ? getStudentCategory(category)?.label ?? 'Student Desk'
+          : getSupportCategory(category)?.label ?? 'Support';
 
   const result = await openTicket({
     guild: interaction.guild,
@@ -425,8 +457,8 @@ async function handleIntakeModal(interaction, type, category) {
   if (result.duplicate) {
     return interaction.editReply({
       content:
-        `⚠️ You already have an open ${type} ticket: <#${result.ticket.channel_id}>\n` +
-        'Please continue there, or ask staff to close it first.'
+        `⚠️ You already have an open **${label}** ticket: <#${result.ticket.channel_id}>\n` +
+        'Please continue there, or close it first.'
     });
   }
 
@@ -449,13 +481,6 @@ async function handleIntakeModal(interaction, type, category) {
       await refreshTicketMessage(result.channel, updated);
     }
   }
-
-  const label =
-    type === 'commission'
-      ? getCommissionType(category)?.label ?? 'Commission'
-      : type === 'class'
-        ? getClassTier(category)?.label ?? 'Class'
-        : getSupportCategory(category)?.label ?? 'Support';
 
   return interaction.editReply({
     content: `✅ **${label}** ticket #${result.ticket.ticket_number} opened: ${result.channel}`

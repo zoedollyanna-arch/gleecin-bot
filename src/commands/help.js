@@ -11,8 +11,12 @@ export default {
       .setColor('#00ff88')
       .addFields(
         {
-          name: '🎫 Ticket System',
-          value: '`/ticket open <category> <description>` — Open a support ticket\n`/ticket close [reason]` — Close current ticket\n`/ticket reopen` — Reopen a closed ticket'
+          name: '🎫 Tickets',
+          value:
+            '`/ticket close [reason]` — Close the ticket you are in\n' +
+            '`/ticket open <user> <category>` — Open one on a member\'s behalf (staff)\n' +
+            '`/ticket panel <type>` — Post an intake panel (staff)\n' +
+            '`/ticket list` · `/ticket stats` · `/ticket history` — (staff)'
         },
         {
           name: '💬 Community',
@@ -20,7 +24,12 @@ export default {
         },
         {
           name: '📚 Scripting Academy',
-          value: '`/class enroll` — Enroll in Scripting Academy\n`/class schedule` — View class times and dates\n`/class curriculum` — View course content\n`/class resources` — Access learning materials'
+          value:
+            '`/class desk` — **Student Desk** — code review, homework, debugging, office hours\n' +
+            '`/class apply` — Apply to the Academy\n' +
+            '`/class schedule` — View class times and dates\n' +
+            '`/class curriculum` — View course content\n' +
+            '`/class resources` — Access learning materials'
         },
         {
           name: '🐛 Debugging & Support',
@@ -37,12 +46,15 @@ export default {
       )
       .addFields(
         {
-          name: '📋 Ticket Categories',
-          value: '🆘 Support • 🎨 Commission • 🐛 Bug Report • ❓ Service Inquiry • ⚙️ Technical Issue'
+          name: '📋 Ticket Types',
+          value:
+            '🎨 Commission • 🆘 Support • 🎓 Class application • 📚 Student Desk\n' +
+            '_Student Desk:_ 💻 Code Review • 🔍 Debug • 🚀 Project Assistance • ' +
+            '📋 Assignment Review • ✅ Progress Check-In • ☕ Office Hours • 🎯 Mentorship'
         },
         {
           name: '💡 Quick Tips',
-          value: '• Use `/ticket` for any inquiries\n• Check `/class schedule` for important dates\n• Submit projects in `/showcase submit`\n• Get debug help with `/debug`'
+          value: '• Students: `/class desk` is the fastest way to reach your instructor\n• Check `/class schedule` for important dates\n• Submit projects in `/showcase submit`'
         }
       )
       .setFooter({ text: 'Need more help? Open a support ticket!' })

@@ -28,8 +28,12 @@ export const STATUS_LABELS = {
 
 export const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
-/** Commissions, customer support, and scripting-class applications. */
-export const TICKET_TYPES = ['support', 'commission', 'class'];
+/**
+ * Commissions, customer support, scripting-class applications, and the student
+ * desk. `class` is the one-time enrolment application; `student` is the ongoing
+ * help desk enrolled students use for the rest of the course.
+ */
+export const TICKET_TYPES = ['support', 'commission', 'class', 'student'];
 
 export const PRIORITY_LABELS = {
   low: '⬇️ Low',
@@ -93,8 +97,8 @@ export async function initTicketsTable() {
     await query(`ALTER TABLE discord_tickets ADD COLUMN IF NOT EXISTS ${name} ${type}`);
   }
 
-  // Rebuilt rather than declared inline: 'class' was added after the original
-  // constraint shipped with only support/commission.
+  // Rebuilt rather than declared inline: 'class' and later 'student' were added
+  // after the original constraint shipped with only support/commission.
   await query(`ALTER TABLE discord_tickets DROP CONSTRAINT IF EXISTS discord_tickets_type_check`);
   await query(`
     ALTER TABLE discord_tickets ADD CONSTRAINT discord_tickets_type_check
@@ -190,14 +194,26 @@ export async function getTicketByChannel(channelId) {
 /**
  * An unarchived, unclosed ticket of this type already owned by the user.
  * Used to stop one person opening ten channels.
+ *
+ * Pass `category` to narrow the check to that one category. The student desk
+ * uses this: a student may reasonably have a code review and a homework
+ * submission running side by side — one open ticket per question is the point —
+ * but not two of the same kind.
  */
-export async function findOpenTicketForUser(guildId, userId, type) {
+export async function findOpenTicketForUser(guildId, userId, type, category = null) {
+  const params = [guildId, userId, type];
+  let categoryClause = '';
+  if (category) {
+    params.push(category);
+    categoryClause = ` AND category = $${params.length}`;
+  }
+
   const result = await query(
     `SELECT * FROM discord_tickets
-     WHERE guild_id = $1 AND user_id = $2 AND type = $3
+     WHERE guild_id = $1 AND user_id = $2 AND type = $3${categoryClause}
        AND status <> 'closed' AND archived_at IS NULL
      ORDER BY created_at DESC LIMIT 1`,
-    [guildId, userId, type]
+    params
   );
   return result.rows[0] || null;
 }
@@ -441,6 +457,8 @@ export async function getTicketStats(guildId) {
        COUNT(*) FILTER (WHERE status = 'closed') AS closed_count,
        COUNT(*) FILTER (WHERE type = 'support') AS support_count,
        COUNT(*) FILTER (WHERE type = 'commission') AS commission_count,
+       COUNT(*) FILTER (WHERE type = 'class') AS class_count,
+       COUNT(*) FILTER (WHERE type = 'student') AS student_count,
        COUNT(*) FILTER (WHERE awaiting_client) AS awaiting_count,
        COALESCE(SUM(quote_amount) FILTER (WHERE status = 'paid' OR paid_at IS NOT NULL), 0) AS paid_total,
        COALESCE(SUM(quote_amount) FILTER (WHERE status NOT IN ('closed') AND paid_at IS NULL), 0) AS pipeline_total

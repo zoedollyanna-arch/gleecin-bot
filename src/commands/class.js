@@ -8,7 +8,7 @@ import {
   MessageFlags
 } from 'discord.js';
 
-import { buildClassPanel, isStaff } from '../tickets/index.js';
+import { buildClassPanel, buildStudentPanel, isStaff } from '../tickets/index.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -21,8 +21,22 @@ export default {
     )
     .addSubcommand(subcommand =>
       subcommand
+        .setName('desk')
+        .setDescription('Open a Student Desk ticket — code review, homework, debugging, office hours')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
         .setName('panel')
-        .setDescription('Post the application panel in this channel (staff)')
+        .setDescription('Post a panel in this channel (staff)')
+        .addStringOption(option =>
+          option.setName('which')
+            .setDescription('Which panel to post')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Enrolment application', value: 'apply' },
+              { name: 'Student Desk', value: 'desk' }
+            )
+        )
     )
     .addSubcommand(subcommand =>
       subcommand
@@ -57,12 +71,19 @@ export default {
     // opens a class ticket. The student role follows payment, not signup.
     if (subcommand === 'apply') {
       await interaction.reply({ ...buildClassPanel(), flags: MessageFlags.Ephemeral });
+    } else if (subcommand === 'desk') {
+      // Enrolled students shouldn't have to hunt for the panel channel.
+      await interaction.reply({ ...buildStudentPanel(), flags: MessageFlags.Ephemeral });
     } else if (subcommand === 'panel') {
       if (!isStaff(interaction.member)) {
         return interaction.reply({ content: '❌ Staff only.', flags: MessageFlags.Ephemeral });
       }
-      await interaction.channel.send(buildClassPanel());
-      await interaction.reply({ content: '✅ Application panel posted.', flags: MessageFlags.Ephemeral });
+      const which = interaction.options.getString('which') ?? 'apply';
+      await interaction.channel.send(which === 'desk' ? buildStudentPanel() : buildClassPanel());
+      await interaction.reply({
+        content: which === 'desk' ? '✅ Student Desk panel posted.' : '✅ Application panel posted.',
+        flags: MessageFlags.Ephemeral
+      });
     } else if (subcommand === 'schedule') {
       await handleSchedule(interaction);
     } else if (subcommand === 'curriculum') {
@@ -102,7 +123,7 @@ async function handleSchedule(interaction) {
       },
       {
         name: '❓ Need Help With Scheduling?',
-        value: 'Use `/ticket open inquiry` to request accommodations'
+        value: 'Use `/class desk` → **Office Hours** to request accommodations'
       }
     )
     .setFooter({ text: 'All times are EST' })
@@ -167,7 +188,7 @@ async function handleResources(interaction) {
       },
       {
         name: '🤝 Getting Help',
-        value: '• **#live-discussion** — Real-time chat during class\n• **#debug-support** — Post errors and get help\n• **Office Hours** — Sundays 2-4 PM EST\n• Use `/debug` command for technical issues'
+        value: '• **#live-discussion** — Real-time chat during class\n• **#debug-support** — Post errors and get help\n• **Office Hours** — Sundays 2-4 PM EST\n• Use `/class desk` to open a private ticket with your instructor'
       },
       {
         name: '🌟 Showcase Your Work',

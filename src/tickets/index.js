@@ -54,7 +54,10 @@ export const COLORS = {
   support: 0xff6600,
   success: 0x00ff88,
   danger: 0xff3355,
-  info: 0x5865f2
+  info: 0x5865f2,
+  // Matches the Academy portal's cyan accent, so student tickets read as part
+  // of the same product rather than as generic support.
+  student: 0x67e8f9
 };
 
 /** Support request categories — the support equivalent of the price list. */
@@ -69,6 +72,34 @@ export const SUPPORT_CATEGORIES = [
 
 export const getSupportCategory = (value) =>
   SUPPORT_CATEGORIES.find((c) => c.value === value) ?? null;
+
+/**
+ * Student Desk categories — what an *enrolled* student opens once the course
+ * has started.
+ *
+ * Distinct from SUPPORT_CATEGORIES on purpose: a paying student asking for a
+ * code review is not a customer complaint, and mixing the two buries coursework
+ * under order problems. Distinct from CLASS_TIERS too — that is the one-time
+ * enrolment application; this is the rest of the course.
+ *
+ * `value` is the DB `category`, so these strings are stable identifiers —
+ * renaming one orphans existing ticket rows.
+ */
+export const STUDENT_CATEGORIES = [
+  { value: 'code_review', label: 'Code Review', emoji: '💻', blurb: 'Have your script read through line by line.' },
+  { value: 'debug', label: 'Debug Request', emoji: '🔍', blurb: "It won't compile, or it won't behave." },
+  { value: 'project_help', label: 'Project Assistance', emoji: '🚀', blurb: "Ongoing help with something you're building." },
+  { value: 'assignment', label: 'Assignment Review', emoji: '📋', blurb: 'Hand in homework and get it marked.' },
+  { value: 'progress', label: 'Progress Check-In', emoji: '✅', blurb: "Where you are, what's next, how it's going." },
+  { value: 'office_hours', label: 'Office Hours', emoji: '☕', blurb: 'Book time in a scheduled session.' },
+  { value: 'mentorship', label: 'Mentorship', emoji: '🎯', blurb: 'One-to-one guidance outside class hours.' },
+  { value: 'learning_support', label: 'Learning Support', emoji: '📖', blurb: "A concept hasn't clicked yet — talk it through." },
+  { value: 'student_services', label: 'Student Services', emoji: '🎓', blurb: 'Portal access, materials, schedule, admin.' },
+  { value: 'other', label: 'Ask the Instructor', emoji: '💬', blurb: "Anything that doesn't fit the list." }
+];
+
+export const getStudentCategory = (value) =>
+  STUDENT_CATEGORIES.find((c) => c.value === value) ?? null;
 
 // ---------------------------------------------------------------------------
 // Permissions
@@ -218,6 +249,45 @@ export function buildClassPanel() {
   return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] };
 }
 
+/**
+ * The Student Desk panel — post this once in a student-only channel.
+ *
+ * Visibility is left to channel permissions rather than a role check here, the
+ * same as every other panel: whoever can see the channel can open a desk
+ * ticket, and staff can also open one on a student's behalf with
+ * `/ticket open`.
+ */
+export function buildStudentPanel() {
+  const embed = new EmbedBuilder()
+    .setTitle('🎓 Student Desk')
+    .setColor(COLORS.student)
+    .setDescription(
+      'Stuck on something? Open a desk ticket and it becomes a private channel with your ' +
+      'instructor — one thread per question, so nothing gets lost in general chat.\n\n' +
+      'Bring the actual script if you have one. Half-finished is fine; that is the point.'
+    )
+    .addFields({
+      name: 'What do you need?',
+      value: STUDENT_CATEGORIES.map((c) => `${c.emoji} **${c.label}** — ${c.blurb}`).join('\n')
+    })
+    .setFooter({ text: 'Enrolled students • Office hours Sundays 2–4 PM EST' });
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('student_select')
+    .setPlaceholder('What do you need help with?')
+    .addOptions(
+      STUDENT_CATEGORIES.map((c) =>
+        new StringSelectMenuOptionBuilder()
+          .setValue(c.value)
+          .setLabel(c.label)
+          .setDescription(c.blurb.slice(0, 100))
+          .setEmoji(c.emoji)
+      )
+    );
+
+  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] };
+}
+
 export function buildSupportPanel() {
   const embed = new EmbedBuilder()
     .setTitle('🆘 Open a Support Ticket')
@@ -321,6 +391,51 @@ export function buildSupportModal(categoryValue) {
   return modal;
 }
 
+/**
+ * One modal for every desk category.
+ *
+ * Ten near-identical modals would be ten places to drift; the category is
+ * already carried in the custom id and shown on the ticket embed, so the form
+ * only has to collect what every question needs. "What have you tried" is
+ * asked deliberately — it is the answer that makes the reply useful.
+ */
+export function buildStudentModal(categoryValue) {
+  const category = getStudentCategory(categoryValue);
+  const modal = new ModalBuilder()
+    .setCustomId(`student_modal:${categoryValue}`)
+    .setTitle(`${category?.label ?? 'Student Desk'}`.slice(0, 45));
+
+  modal.addComponents(
+    textInput('subject', 'One line — what do you need?', {
+      placeholder: 'e.g. My vendor script fires twice on touch',
+      max: 100
+    }),
+    textInput('description', 'Tell me the details', {
+      style: TextInputStyle.Paragraph,
+      placeholder: 'What it should do, what it actually does, any error text…',
+      max: 1500
+    }),
+    textInput('reference', 'Script / lesson / assignment this relates to', {
+      required: false,
+      placeholder: 'e.g. Week 3 — listen handlers, or "my HUD project"',
+      max: 100
+    }),
+    textInput('tried', 'What have you tried so far?', {
+      style: TextInputStyle.Paragraph,
+      required: false,
+      placeholder: 'Even "nothing yet, I got stuck at the start" is a useful answer.',
+      max: 800
+    }),
+    textInput('deadline', 'Due date, if there is one', {
+      required: false,
+      placeholder: 'e.g. Thursday class, or "no rush"',
+      max: 100
+    })
+  );
+
+  return modal;
+}
+
 export function buildClassModal(tierValue) {
   const tier = getClassTier(tierValue);
   const modal = new ModalBuilder()
@@ -357,18 +472,20 @@ export function buildClassModal(tierValue) {
 // Ticket embed + staff controls
 // ---------------------------------------------------------------------------
 
-export const TYPE_ICONS = { commission: '🎨', support: '🆘', class: '🎓' };
+export const TYPE_ICONS = { commission: '🎨', support: '🆘', class: '🎓', student: '📚' };
 
 const TYPE_COLORS = {
   commission: COLORS.commission,
   support: COLORS.support,
-  class: COLORS.info
+  class: COLORS.info,
+  student: COLORS.student
 };
 
 /** The catalog entry behind a ticket, whichever catalog that is. */
 function categoryFor(ticket) {
   if (ticket.type === 'commission') return getCommissionType(ticket.category);
   if (ticket.type === 'class') return getClassTier(ticket.category);
+  if (ticket.type === 'student') return getStudentCategory(ticket.category);
   return getSupportCategory(ticket.category);
 }
 
@@ -551,7 +668,14 @@ function channelNameFor(type, ticketNumber, username) {
  * DB round trip comfortably exceeds Discord's 3 second interaction window.
  */
 export async function openTicket({ guild, user, type, fields = {}, openedBy = null, force = false }) {
-  const existing = await findOpenTicketForUser(guild.id, user.id, type);
+  // Desk tickets are one per question, so the duplicate check is per category
+  // there; everywhere else one open ticket of a type is the limit.
+  const existing = await findOpenTicketForUser(
+    guild.id,
+    user.id,
+    type,
+    type === 'student' ? fields.category ?? null : null
+  );
   if (existing) {
     return { duplicate: true, ticket: existing };
   }
@@ -570,7 +694,11 @@ export async function openTicket({ guild, user, type, fields = {}, openedBy = nu
       ? process.env.COMMISSION_CATEGORY_ID
       : type === 'class'
         ? process.env.CLASS_CATEGORY_ID || process.env.SUPPORT_CATEGORY_ID
-        : process.env.SUPPORT_CATEGORY_ID;
+        : type === 'student'
+          ? process.env.STUDENT_CATEGORY_ID ||
+            process.env.CLASS_CATEGORY_ID ||
+            process.env.SUPPORT_CATEGORY_ID
+          : process.env.SUPPORT_CATEGORY_ID;
 
   const staffRoles = [process.env.STAFF_ROLE_ID, process.env.INSTRUCTOR_ROLE_ID].filter(Boolean);
 
@@ -709,14 +837,26 @@ const STATUS_DMS = {
   delivered: () => '📦 Your order has been delivered.'
 };
 
+/** Same moments, student wording — "delivered" is wrong for a code review. */
+const STUDENT_STATUS_DMS = {
+  in_progress: () => "👀 Your instructor is looking at this now.",
+  review: () => '📝 There is feedback waiting for you on the desk.',
+  delivered: () => '✅ This one is wrapped up — nice work.'
+};
+
 export async function applyStatusSideEffects({ guild, channel, ticket, status }) {
   const notes = [];
 
   if (status === 'paid') {
     // Commissions grant the client role; class applications grant the student
-    // role — paying is what turns an application into an enrolment.
+    // role — paying is what turns an application into an enrolment. Desk
+    // tickets grant nothing: the student already paid to be here.
     const roleId =
-      ticket.type === 'class' ? process.env.STUDENT_ROLE_ID : process.env.CLIENT_ROLE_ID;
+      ticket.type === 'class'
+        ? process.env.STUDENT_ROLE_ID
+        : ticket.type === 'student'
+          ? null
+          : process.env.CLIENT_ROLE_ID;
 
     if (roleId) {
       try {
@@ -737,7 +877,10 @@ export async function applyStatusSideEffects({ guild, channel, ticket, status })
   }
 
   // Clients rarely watch a ticket channel; a DM is what actually gets a reply.
-  const dm = STATUS_DMS[status];
+  const dm =
+    ticket.type === 'student'
+      ? STUDENT_STATUS_DMS[status]
+      : STATUS_DMS[status];
   if (dm) {
     try {
       const user = await guild.client.users.fetch(ticket.user_id);
