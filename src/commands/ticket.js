@@ -7,6 +7,7 @@ import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import {
   COLORS,
   isStaff,
+  canOperateTicket,
   buildCommissionPanel,
   buildSupportPanel,
   buildClassPanel,
@@ -42,6 +43,11 @@ import {
 import { formatPrice } from '../config/pricing.js';
 
 const EPHEMERAL = { flags: MessageFlags.Ephemeral };
+
+/** Subcommands that act on the ticket in the current channel, not the server. */
+const CHANNEL_SCOPED = new Set([
+  'add', 'remove', 'rename', 'status', 'quote', 'revisions', 'transcript', 'notes', 'close'
+]);
 
 export default {
   data: new SlashCommandBuilder()
@@ -158,11 +164,25 @@ export default {
     }
 
     const sub = interaction.options.getSubcommand();
-    const staff = isStaff(interaction.member);
 
-    // Everything except `close` is staff-only; ticket owners may close their own.
-    if (!staff && sub !== 'close') {
-      return interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
+    if (!isStaff(interaction.member)) {
+      // Panels, /ticket open, and the server-wide views stay pinned to the staff
+      // allowlist. The rest act on the ticket in this channel, so they are gated
+      // on that ticket instead — which is how an instructor gets to work a
+      // Student Desk ticket, and an owner gets to close their own.
+      if (!CHANNEL_SCOPED.has(sub)) {
+        return interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
+      }
+
+      const ticket = await getTicketByChannel(interaction.channel.id);
+      if (!ticket) {
+        return interaction.reply({ content: '❌ This is not a ticket channel.', ...EPHEMERAL });
+      }
+
+      const isOwnClose = sub === 'close' && ticket.user_id === interaction.user.id;
+      if (!canOperateTicket(interaction.member, ticket) && !isOwnClose) {
+        return interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
+      }
     }
 
     const handlers = {
@@ -409,8 +429,7 @@ async function handleClose(interaction) {
   const ticket = await ticketHere(interaction);
   if (!ticket) return;
 
-  const staff = isStaff(interaction.member);
-  if (!staff && ticket.user_id !== interaction.user.id) {
+  if (!canOperateTicket(interaction.member, ticket) && ticket.user_id !== interaction.user.id) {
     return interaction.reply({
       content: '❌ Only staff or the ticket owner can close this.',
       ...EPHEMERAL

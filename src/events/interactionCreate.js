@@ -14,7 +14,7 @@ import {
 
 import {
   COLORS,
-  isStaff,
+  canOperateTicket,
   buildCommissionPanel,
   buildSupportPanel,
   buildClassPanel,
@@ -85,15 +85,20 @@ async function safeReply(interaction, content) {
   }
 }
 
-/** Staff gate for ticket controls. Returns the ticket, or null if refused. */
+/**
+ * Gate for ticket controls. Returns the ticket, or null if refused.
+ *
+ * The ticket is fetched before the permission check because the answer depends
+ * on it — instructors may work Student Desk tickets but not commissions.
+ */
 async function requireStaffTicket(interaction) {
-  if (!isStaff(interaction.member)) {
-    await interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
-    return null;
-  }
   const ticket = await getTicketByChannel(interaction.channel.id);
   if (!ticket) {
     await interaction.reply({ content: '❌ This is not a ticket channel.', ...EPHEMERAL });
+    return null;
+  }
+  if (!canOperateTicket(interaction.member, ticket)) {
+    await interaction.reply({ content: '❌ Staff only.', ...EPHEMERAL });
     return null;
   }
   return ticket;

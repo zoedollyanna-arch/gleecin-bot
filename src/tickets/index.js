@@ -137,6 +137,28 @@ export function isStaff(member) {
   return staffRoles.some((roleId) => member.roles.cache.has(roleId));
 }
 
+/** Holds INSTRUCTOR_ROLE_ID, regardless of the staff allowlist. */
+export function isInstructor(member) {
+  const roleId = process.env.INSTRUCTOR_ROLE_ID;
+  return Boolean(roleId && member?.roles?.cache?.has(roleId));
+}
+
+/**
+ * Who may work a given ticket.
+ *
+ * The STAFF_USER_IDS allowlist exists so commission and support tickets — money,
+ * refunds, client data — stay pinned to one account. Teaching does not fit that
+ * shape: an instructor has to be able to close a code review and set a status on
+ * homework without being handed the whole business.
+ *
+ * So instructors get the controls on Student Desk tickets and nowhere else. The
+ * allowlist still governs everything with a price on it.
+ */
+export function canOperateTicket(member, ticket) {
+  if (isStaff(member)) return true;
+  return ticket?.type === 'student' && isInstructor(member);
+}
+
 // ---------------------------------------------------------------------------
 // Panels (posted once into the intake channels)
 // ---------------------------------------------------------------------------
