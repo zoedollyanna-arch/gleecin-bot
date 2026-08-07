@@ -18,16 +18,15 @@ import {
   STATUS_LABELS
 } from '../database/models/ticket.js';
 
-import { closeAndArchive, COLORS, TYPE_ICONS } from '../tickets/index.js';
+import { COLORS, TYPE_ICONS } from '../tickets/index.js';
 import { formatPrice } from '../config/pricing.js';
 import { query } from '../database/connection.js';
 
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
-/** Days of client silence before a nudge, and before an auto-archive. */
+/** Days of client silence before a nudge. */
 const NUDGE_AFTER_DAYS = 3;
-const ARCHIVE_AFTER_DAYS = 7;
 
 /** Hour of the day (server local time) the digest is sent. */
 const DIGEST_HOUR = 9;
@@ -43,9 +42,8 @@ const safely = (name, fn) => async () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Nudge tickets that have gone quiet, then archive the ones still quiet after
- * a further stretch. Only touches tickets waiting on the client, so a job
- * sitting in 'in_progress' on your side is never auto-closed.
+ * Nudge tickets that have gone quiet. Tickets are never auto-closed or
+ * archived — closing is always a manual staff decision.
  */
 async function sweepStaleTickets(client) {
   const guild = client.guilds.cache.get(process.env.GUILD_ID);
@@ -63,28 +61,13 @@ async function sweepStaleTickets(client) {
           .setTitle('🔔 Still there?')
           .setDescription(
             `This ticket has been quiet for ${NUDGE_AFTER_DAYS} days. Reply here to keep it open — ` +
-            `otherwise it will be archived in ${ARCHIVE_AFTER_DAYS - NUDGE_AFTER_DAYS} days. ` +
-            'You can always open a new one later.'
+            'there\u2019s nothing to worry about, we\u2019re just checking in!'
           )
       ]
     }).catch(() => {});
 
     await markNudged(ticket.channel_id);
     console.log(`[JOB:stale] Nudged ticket #${ticket.ticket_number}`);
-  }
-
-  for (const ticket of await findStaleTickets({ days: ARCHIVE_AFTER_DAYS, stage: 'archive' })) {
-    const channel = await guild.channels.fetch(ticket.channel_id).catch(() => null);
-    if (!channel) continue;
-
-    await closeAndArchive({
-      channel,
-      ticket,
-      closedBy: client.user,
-      reason: `Automatically archived after ${ARCHIVE_AFTER_DAYS} days with no reply.`
-    }).catch(() => {});
-
-    console.log(`[JOB:stale] Auto-archived ticket #${ticket.ticket_number}`);
   }
 }
 
