@@ -1,0 +1,31 @@
+{
+  "content": "<@730181638704726118> 👋 Here is your homework assignment. The assignment document is attached below, and the summary is included in the embed for quick instructor review.",
+  "embeds": [
+    {
+      "title": "📚 Gleecin Academy Homework: Mommy & Baby HUD",
+      "description": "A friendly instructor summary of the assignment. The attached document contains the full homework details and checklist.",
+      "color": 3447003,
+      "fields": [
+        {
+          "name": "Assignment Goal",
+          "value": "Debug the HUD, connect it to Supabase, deploy the backend on Render, and ensure persistent baby/profile data across resets, crashes, redelivery, and relogs."
+        },
+        {
+          "name": "Core Tasks",
+          "value": "1. Debug HUD button/prim mapping and touch events\n2. Set up Supabase schema, migrations, and policies\n3. Verify Render deployment with no build/log errors\n4. Persist baby stats and settings in Supabase\n5. Create .env.example and configure Render env vars\n6. Run curl/integration tests for API create/update/read\n7. Confirm persistence through resets, restarts, and redelivery\n8. Test in-world and document bugs with expected behavior"
+        },
+        {
+          "name": "Deliverables",
+          "value": "Complete the Homework Checklist, verify backend and Supabase functionality, and confirm in-world testing results."
+        },
+        {
+          "name": "Document Attached",
+          "value": "📎 Gleecin Academy – Homework Assignment.docx"
+        }
+      ],
+      "footer": {
+        "text": "Instructor-friendly summary for student ticket 1533955054699020308"
+      }
+    }
+  ]
+}
